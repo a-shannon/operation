@@ -1,0 +1,18 @@
+{
+  "status": "PASS exact source-series application and bounded local checks",
+  "finalTree": "4579ad9756d12ee08596352910fe124c9a5d9636",
+  "helperTests": 4,
+  "helperTypeDiagnostics": 0,
+  "reusedBalanceTests": 60,
+  "reusedConsumerChecks": 10,
+  "exactGroups": 6,
+  "guardedGroups": 6,
+  "sourceManifestSha256": "4daa0c4ea58f1199b31aa390d2cf608530a398b4b8c0d7f4e01540d8e94ce953",
+  "receiptSha256": "0c73fa071105ea7476cc9c3b38f43ba668679dfe8482efa9842d53108cfe93f2",
+  "limits": [
+    "Locally validated source and contributor preparation; no public submission, release or activation.",
+    "Registry lock and npm ci acceptance require the exact producer releases and full Changesets version operation.",
+    "Existing Amount displays decimals through99; higher-decimal rows remain unavailable.",
+    "Cached unit/address policy changes require refresh/rebuild before operational display acceptance."
+  ]
+}

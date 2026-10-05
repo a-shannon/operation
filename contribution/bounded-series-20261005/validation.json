@@ -1,0 +1,83 @@
+{
+  "sourceCandidate": {
+    "bytes": 15316,
+    "sha256": "a8406add600ab06a1efa97822a6e4efa38ed791ef74df36e290f6e8dbeee9fff"
+  },
+  "independentApplicationAndValidation": {
+    "receipt": {
+      "bytes": 24740,
+      "sha256": "9ef6d0af7f5a084f802b99e9ae7d048f24d40efc31aa0ad601177d5feb732b90"
+    },
+    "groups": 4,
+    "changedPaths": 22,
+    "testedSourceFiles": 73,
+    "tests": [
+      {
+        "id": "g01",
+        "passed": 69,
+        "total": 69,
+        "failed": 0,
+        "receipt": {
+          "bytes": 23091,
+          "sha256": "66293cdbe249573274faf3168c8f3d7d924b231c8a348505df28668ccf56192e"
+        }
+      },
+      {
+        "id": "g07",
+        "passed": 38,
+        "total": 38,
+        "failed": 0,
+        "receipt": {
+          "bytes": 11856,
+          "sha256": "4044400d2586ea35378786bc0de352b68e7afc11b3af104be77aaf95739641ea"
+        }
+      },
+      {
+        "id": "health",
+        "passed": 56,
+        "total": 56,
+        "failed": 0,
+        "receipt": {
+          "bytes": 18250,
+          "sha256": "e88a5eeee26cd3921f017beb8da16fa370f02ecebf3148fea67c10e32e3fbd6a"
+        }
+      }
+    ],
+    "sourceAndIndexWrites": 0
+  },
+  "contractReuse": {
+    "receipt": {
+      "bytes": 8198,
+      "sha256": "5174c9935eaa4e83a2a342e1c7aa964b1fd7a674ec94c2c0cd6674ba3de1d85a"
+    },
+    "sourceMatches": [
+      {
+        "path": "src/main/scala/rosen/bridge/AvalancheOverlayMerge.scala",
+        "sha256": "75afed9bd4dc51a0b158f61b9410008845dae438601e681bc523a3c972f069a2",
+        "match": true
+      },
+      {
+        "path": "src/main/scala/rosen/bridge/AvalanchePreparation.scala",
+        "sha256": "78c5da418726c1523039ef51f9daf8c2201475a983c455c8b7d07409c208c497",
+        "match": true
+      },
+      {
+        "path": "src/test/scala/contracts/AvalancheOverlayMergeSpec.scala",
+        "sha256": "9b3510cee3ba05d57bb7058d7025698e985784930ec74d6bdd8a7c54d0588f84",
+        "match": true
+      },
+      {
+        "path": "src/test/scala/contracts/AvalanchePreparationSpec.scala",
+        "sha256": "f6636fae10b7331dd0e41773e3bebdf32054fb0d561140d638ea72df2f148e88",
+        "match": true
+      }
+    ],
+    "scope": "Four exact candidate source/test pins match independently reviewed CM1 predecessor; no unchanged Scala suite repeated"
+  },
+  "verifier": {
+    "bytes": 5483,
+    "sha256": "d49aefa6167f6e425160c8ea3f4abb368562a30c9667d350714240424f54ecc6",
+    "scope": "Byte-identical verifier previously reviewed for the eight-group series. Its application to these four groups requires the linked fresh replay."
+  },
+  "limits": "Local installed dependencies qualify the stated tests only. The contract patch targets its pinned upstream baseline. Actual accepted releases, normal registry installation, Rosen review and activation remain pending."
+}

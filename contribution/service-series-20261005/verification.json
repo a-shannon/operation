@@ -1,0 +1,12 @@
+{
+  "status": "PASS exact source-series application",
+  "results": [
+    {
+      "id": "C-SERVICE-REPLAY",
+      "tree": "fcec80f7be5bc25372686dbc616cf1dfcb046b22",
+      "exactChangedPaths": 11
+    }
+  ],
+  "originalIndexWrites": 0,
+  "publicActions": 0
+}

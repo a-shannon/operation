@@ -1,0 +1,27 @@
+{
+  "status": "PASS exact source-series application",
+  "results": [
+    {
+      "id": "W03",
+      "tree": "42ccbba4fe06982fd2a0d568bdacd5ccc0ab8926",
+      "exactChangedPaths": 8
+    },
+    {
+      "id": "W01",
+      "tree": "4152d6a2217692a8247a25a12fe59aa0d31f30a4",
+      "exactChangedPaths": 3
+    },
+    {
+      "id": "W02",
+      "tree": "c726522020194221160195e8175e3ea4677ac8db",
+      "exactChangedPaths": 3
+    },
+    {
+      "id": "C-WATCHER",
+      "tree": "a61591623580b0a358afd83ac18cf146e17b4188",
+      "exactChangedPaths": 38
+    }
+  ],
+  "originalIndexWrites": 0,
+  "publicActions": 0
+}

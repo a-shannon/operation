@@ -1,0 +1,148 @@
+{
+  "schema": "rosen-guard-focused-runtime-source-map.v1",
+  "author": "A. Shannon",
+  "sourceSeries": {
+    "manifestSha256": "9645a68eef2393e7f3ecc8df3aeefd8bf624979789eb3208d3dfe64f38aede17",
+    "finalTree": "68496f6b1bad18617d16bc4a3d3032c78dd3fa33",
+    "sourceFiles": 870,
+    "path": "../guard-chain-series-20261005/manifest.json"
+  },
+  "toolchain": {
+    "node": "v22.18.0",
+    "vitest": "3.1.4",
+    "vite": "5.4.18",
+    "reflectMetadata": "0.2.2",
+    "tsx": "4.21.0",
+    "pinnedToolFiles": 6,
+    "packageIdentityComparison": {
+      "comparison": "Earlier selected Vitest installation versus final selected Guard installation",
+      "nestedNodeModulesExcluded": true,
+      "packages": [
+        {
+          "name": "vitest",
+          "files": 109,
+          "sameResolvedDirectory": true,
+          "byteInventoryEqual": true,
+          "aggregateSha256": "3c919e7089033c6fad3f7586dccad48a70d038eb44d525d8b284403bac309e11"
+        },
+        {
+          "name": "vite",
+          "files": 31,
+          "sameResolvedDirectory": true,
+          "byteInventoryEqual": true,
+          "aggregateSha256": "c4b643faff4f774d750a6b78e2507319d85370767b5231c516d4bfa88b8d0824"
+        },
+        {
+          "name": "reflect-metadata",
+          "files": 11,
+          "sameResolvedDirectory": true,
+          "byteInventoryEqual": true,
+          "aggregateSha256": "dff1ee65180f1cefe5c1bbbd9b8d732f1e4fdaf2c49af3d70ddfd934118e40a2"
+        },
+        {
+          "name": "tsx",
+          "files": 50,
+          "sameResolvedDirectory": true,
+          "byteInventoryEqual": true,
+          "aggregateSha256": "6aee6f694f72ce60ae2062af2cf42395fbcb8c8bcb873ffcfe44e23ad7f8e59f"
+        }
+      ]
+    }
+  },
+  "recipe": {
+    "path": "replay.mjs",
+    "sha256": "edc5cb66374dcffd3d7b272e757d9ea04c8fc9ef757ef73d68e83f4ba4f4efcb",
+    "sourceChanges": 0,
+    "testChanges": 0,
+    "mockChanges": 0
+  },
+  "selectedService": "services/guard-service",
+  "configDirectory": "services/guard-service/config",
+  "setupFiles": [
+    "tests/setup/setupTests.ts",
+    "tests/setup/mockChainHandler.ts"
+  ],
+  "sourceAliases": {
+    "@rosen-chains/ergo": "packages/chains/ergo/lib/index.ts",
+    "@rosen-chains/ergo-node-network": "packages/networks/ergo-node/lib/index.ts",
+    "@rosen-chains/ergo-explorer-network": "packages/networks/ergo-explorer/lib/index.ts"
+  },
+  "environment": {
+    "NODE_OPTIONS": "--import tsx",
+    "NODE_BACKEND": "js",
+    "NODE_ENV": "test",
+    "NODE_CONFIG_DIR": "<guard-repository-root>/services/guard-service/config",
+    "NO_COLOR": "1"
+  },
+  "bound": {
+    "maxWorkers": 1,
+    "minWorkers": 1,
+    "testTimeoutMs": 10000,
+    "childTimeoutMs": 240000
+  },
+  "inputs": "input-pins.json",
+  "tests": [
+    {
+      "path": "tests/jobs/avalancheScannerWiring.spec.ts",
+      "cases": 4
+    },
+    {
+      "path": "tests/jobs/avalancheScannerRegistration.spec.ts",
+      "cases": 6
+    },
+    {
+      "path": "tests/jobs/avalancheStartupOrdering.spec.ts",
+      "cases": 8
+    },
+    {
+      "path": "tests/transaction/avalancheLastCheck.spec.ts",
+      "cases": 48
+    },
+    {
+      "path": "tests/transaction/avalancheSigningProcessor.spec.ts",
+      "cases": 22
+    },
+    {
+      "path": "tests/transaction/avalancheTransactionActions.spec.ts",
+      "cases": 59
+    }
+  ],
+  "result": {
+    "path": "validated-replay.json",
+    "sha256": "1629738fa17c48ee096cf30efb62f6f8e6a9859b6b75acef9bb81b3677584fb0",
+    "passed": 147,
+    "exitCode": 0
+  },
+  "inputRefusals": {
+    "recipeSha256": "edc5cb66374dcffd3d7b272e757d9ea04c8fc9ef757ef73d68e83f4ba4f4efcb",
+    "passed": 4,
+    "testsLaunched": 0,
+    "controls": [
+      {
+        "name": "missing arguments",
+        "exitCode": 1,
+        "status": "PASS refusal before test launch"
+      },
+      {
+        "name": "extra arguments",
+        "exitCode": 1,
+        "status": "PASS refusal before test launch"
+      },
+      {
+        "name": "existing output",
+        "exitCode": 1,
+        "status": "PASS refusal before test launch"
+      },
+      {
+        "name": "output in source",
+        "exitCode": 1,
+        "status": "PASS refusal before test launch"
+      }
+    ]
+  },
+  "limits": [
+    "Six selected source-owned suites; overlaps prior 529 scoped controls.",
+    "Prepared installed dependency graph and three Ergo source aliases; ordinary registry qualification remains separate.",
+    "SQLite fixtures and mocked network/TSS transports; no complete Guard-job or production-signing qualification."
+  ]
+}

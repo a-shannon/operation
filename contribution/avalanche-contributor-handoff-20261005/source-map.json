@@ -1,0 +1,125 @@
+{
+  "schema": "rosen-avalanche-contributor-source-selection.v1",
+  "author": "A. Shannon",
+  "verifiedDate": "2026-10-05",
+  "rcsRevision": "7b9784dae9d8d5b66b80de7a6043d1ba36a3a4bf",
+  "classification": "Dependency-ordered contributor source proposal; Rosen acceptance pending",
+  "application": {
+    "workingDirectory": "integration-root",
+    "repositoryParent": "Contains each verifier's named repositories at their exact baseline commits",
+    "scratchRule": "A separate absent scratch directory with an existing parent, outside all source repositories, for every command",
+    "installationsPerformed": false,
+    "newAggregatorRequired": false,
+    "boundedSelection": "The existing bounded verifier applies all four groups. Retain only health-check from its private fresh result; guard-service and contract outputs are superseded and excluded."
+  },
+  "series": [
+    {
+      "id": "producers",
+      "manifest": "operation/contribution/producer-health-series-20261005/manifest.json",
+      "manifestSha256": "ef0361f3e20bfcbbe2dd2919cae8301a07029773c6661a9fa0fc060ed0729240",
+      "command": "node operation/contribution/producer-health-series-20261005/verify.mjs <repository-parent> <fresh-producers>",
+      "groupOrder": ["S01", "S02", "U01", "C-UTILS", "SC01", "SC02", "SC03", "C-SCANNER"],
+      "retainRepositories": ["sign-protocols", "utils", "scanner"]
+    },
+    {
+      "id": "health",
+      "manifest": "operation/contribution/bounded-series-20261005/manifest.json",
+      "manifestSha256": "5919293ddbe5cc0b63fbc8ed18527c444b652cd37e9563b851fd5ee34adeaf6c",
+      "command": "node operation/contribution/bounded-series-20261005/verify.mjs <repository-parent> <fresh-bounded>",
+      "groupOrder": ["G01", "G07", "C-HEALTH", "C-CONTRACT"],
+      "selectedGroupOrder": ["C-HEALTH"],
+      "retainRepositories": ["health-check"],
+      "excludeRepositories": ["guard-service", "contract"]
+    },
+    {
+      "id": "guard",
+      "manifest": "operation/contribution/guard-chain-series-20261005/manifest.json",
+      "manifestSha256": "9645a68eef2393e7f3ecc8df3aeefd8bf624979789eb3208d3dfe64f38aede17",
+      "command": "node operation/contribution/guard-chain-series-20261005/verify.mjs <repository-parent> <fresh-guard>",
+      "groupOrder": ["G02", "G03", "G06", "G05", "G04-TSS", "G04-SEMANTICS", "G04-CAS", "G04-SYNC", "G01", "G07", "C-GUARD-SOURCE", "G04-CONSUMERS", "C-GUARD-WIRING"],
+      "retainRepositories": ["guard-service"],
+      "boundaries": "Generic eight, G01/G07, chain source, required generic signing consumers, final startup wiring; architecture proposal remains subject to Rosen review"
+    },
+    {
+      "id": "ui",
+      "manifest": "operation/contribution/ui-complete-series-20261005/manifest.json",
+      "manifestSha256": "f7fb980cbfc835ff62c0270eb9a7383086459b7b2d3af6c4edb74deac5c5b720",
+      "command": "node operation/contribution/ui-complete-series-20261005/verify.mjs <repository-parent> <fresh-ui>",
+      "groupOrder": ["P01-shared-interfaces", "P02-statistics", "P03-evm-bounds", "G01-guard-balance-components", "G02-utils-explorer-producer", "C01-avalanche-final"],
+      "retainRepositories": ["ui"],
+      "serviceRuntime": "Includes apps/rosen-service runtime source, configuration, dependency floor and changeset"
+    },
+    {
+      "id": "watcher",
+      "manifest": "operation/contribution/watcher-series-20261005/manifest.json",
+      "manifestSha256": "576158f3c9b19594ab97b28e405e75f748eb7260b9974ef952e9ee8ab12335be",
+      "command": "node operation/contribution/watcher-series-20261005/verify.mjs <repository-parent> <fresh-watcher>",
+      "groupOrder": ["W03", "W01", "W02", "C-WATCHER"],
+      "retainRepositories": ["watcher"]
+    },
+    {
+      "id": "fee",
+      "manifest": "operation/contribution/fee-series-installed-20261005/manifest.json",
+      "manifestSha256": "d72498db4d7e5bef6e52605d04aad8edf0091e634c669bae07196fe2532ab525",
+      "command": "node operation/contribution/fee-series-installed-20261005/verify.mjs <repository-parent> <fresh-fee>",
+      "groupOrder": ["F01", "F02", "C-FEE", "C-FEE-UI"],
+      "retainRepositories": ["minimum-fee-job"]
+    },
+    {
+      "id": "contract",
+      "manifest": "operation/contribution/contract-source-series-20261005/manifest.json",
+      "manifestSha256": "55436e3be6414d2b6e971c54b4a682933e624f4cc36e243eeb12c9809bf25424",
+      "command": "node operation/contribution/contract-source-series-20261005/verify.mjs <repository-parent> <fresh-contract>",
+      "groupOrder": ["C-CONTRACT"],
+      "retainRepositories": ["contract"]
+    },
+    {
+      "id": "service-replay",
+      "manifest": "operation/contribution/service-series-20261005/manifest.json",
+      "manifestSha256": "aa7a5a5a641ec3ef6b267300aaff439828b56b22def2dd019c75dd6ef9c98a9d",
+      "command": "node operation/contribution/service-series-20261005/verify.mjs <repository-parent> <fresh-service-replay>",
+      "groupOrder": ["C-SERVICE-REPLAY"],
+      "retainRepositories": ["operation"],
+      "purpose": "Eleven source-owned process replay support files; complementary to the Service runtime included in UI6"
+    }
+  ],
+  "repositories": [
+    {"repo": "sign-protocols", "series": "producers", "baseline": "243f5882e6c589f8e1fc16b5887d0a1162fbf89c", "beforeTree": "be2cf16cf5e97769581bcc8cabe8f174ac199c69", "finalTree": "1658a9e4b648bea9c26d80cf3420b08ade514f01", "groups": ["S01", "S02"]},
+    {"repo": "utils", "series": "producers", "baseline": "28e3bd960d10b662eef3c05c29e11e0acb9372ae", "beforeTree": "4adddf1d517718b6e8b83c1a31205da21726ea9c", "finalTree": "0b8395cd457768879a48681e3213f2dc1fb04742", "groups": ["U01", "C-UTILS"]},
+    {"repo": "scanner", "series": "producers", "baseline": "8f3a4e35c0dab5763a0f89a9903357261e5e55a5", "beforeTree": "ff3f885f5ed6be1c19d2778b7f6a33ebd7f78ba3", "finalTree": "bd4f7837a5c5c480019a5c0c4b0295153f8738db", "groups": ["SC01", "SC02", "SC03", "C-SCANNER"]},
+    {"repo": "health-check", "series": "health", "baseline": "8612db85d00db32651a5fbaa9bde7dd075a651e3", "beforeTree": "c543b667bf657dd7f5c92685b7767af2ff7ae4dd", "finalTree": "b3e3886498c597ebb7214e16e44c4a21d8aa7d4f", "groups": ["C-HEALTH"]},
+    {"repo": "guard-service", "series": "guard", "baseline": "b1f5ab6f81435053a979e8078eb098d8ec1f5a47", "beforeTree": "1fe15e93b4f4ef5d94032050d020bab0ea0c0076", "finalTree": "68496f6b1bad18617d16bc4a3d3032c78dd3fa33", "groups": ["G02", "G03", "G06", "G05", "G04-TSS", "G04-SEMANTICS", "G04-CAS", "G04-SYNC", "G01", "G07", "C-GUARD-SOURCE", "G04-CONSUMERS", "C-GUARD-WIRING"]},
+    {"repo": "ui", "series": "ui", "baseline": "d62818e0c5e3e3452454f07def81059b14c784f9", "beforeTree": "ef570f15bda0b5470a5b30d151fc4f9cb16c5e93", "finalTree": "4579ad9756d12ee08596352910fe124c9a5d9636", "groups": ["P01-shared-interfaces", "P02-statistics", "P03-evm-bounds", "G01-guard-balance-components", "G02-utils-explorer-producer", "C01-avalanche-final"]},
+    {"repo": "watcher", "series": "watcher", "baseline": "4552b29b95dd48947f85406857641b1ecb2e5490", "beforeTree": "42a7ea1f3e9f0cf8da1b038cd848f39a541e14bf", "finalTree": "a61591623580b0a358afd83ac18cf146e17b4188", "groups": ["W03", "W01", "W02", "C-WATCHER"]},
+    {"repo": "minimum-fee-job", "series": "fee", "baseline": "de706245e439506ef55697b64caf6605cadf5171", "beforeTree": "d7ccc449f0f93e2bfdc7a9607420cc69be2156c7", "finalTree": "6312b8ab91defcab07f0869a0d8b3a0fc47a7967", "groups": ["F01", "F02", "C-FEE", "C-FEE-UI"]},
+    {"repo": "contract", "series": "contract", "baseline": "4302d8d34020b0012c3fcb25d7484aa602813cab", "beforeTree": "853b52f9838b3c280c897636ff52f77924ff3fa3", "finalTree": "b7a81f0408026c99e4a3a520e01c4150ccb56421", "groups": ["C-CONTRACT"]},
+    {"repo": "operation", "series": "service-replay", "baseline": "f0634e155bc83db7477a0a54a42cf70bc9b83b63", "beforeTree": "cad6009de21877535010eda59cf496250fbc8fb2", "finalTree": "fcec80f7be5bc25372686dbc616cf1dfcb046b22", "groups": ["C-SERVICE-REPLAY"]}
+  ],
+  "supersession": [
+    {"exclude": "operation/contribution/producer-series-20261004", "select": "producers", "reason": "Final scanner producer includes the bounded health-read successor"},
+    {"exclude": "operation/contribution/guard-shared-series-20261005", "select": "guard", "reason": "Its eight generic groups are already included exactly"},
+    {"exclude": "bounded Guard G01/G07 outputs", "select": "guard", "reason": "Same file inventories rebased after the generic eight; applying again would duplicate changes"},
+    {"exclude": "bounded contract output and operation/contribution/contract-series-20261005", "select": "contract", "reason": "Final five-path reviewed source export supersedes the earlier contract group"},
+    {"exclude": "operation/contribution/ui-series-20261004", "select": "ui", "reason": "Complete six-group successor includes shared producer and final consumers"},
+    {"exclude": "operation/contribution/fee-series-20261005", "select": "fee", "reason": "Installed-source four-group successor includes the final validation corrections"},
+    {"exclude": "Earlier native-only, source, shared or replay drafts", "reason": "Historical evidence only; do not stack on selected final repositories"}
+  ],
+  "serviceUiJoin": {
+    "relationship": "Disjoint source owners: UI6 runtime and Operation Service1 process replay kit",
+    "sameRuntimeConfigFilePins": 16,
+    "package": "apps/rosen-service/package.json",
+    "preparedPackageSha256": "0b86ba85a13ce13c4abe1cedd447e38dcb98b0f7e5de88a91ddc189ed1a6bf24",
+    "selectedPackageSha256": "f2042676cb1a4c512d435cbc7399de16c90a30efc33ac40209fc2f689927be8c",
+    "onlyJsonDifference": {"property": "dependencies.@rosen-bridge/evm-observation-extractor", "prepared": "7.1.0", "selected": "7.2.0"},
+    "qualification": "Prepared installed-byte process evidence is preserved. It does not establish ordinary installation of the selected release floor."
+  },
+  "gates": [
+    {"gate": "RCS integration document review and proposed contribution boundaries", "status": "Rosen decision pending", "owner": "Rosen maintainers"},
+    {"gate": "Exact producer releases, full Changesets version, normal lock resolution and clean consumer install/build", "status": "Pending intended registry availability; recorded 2026-10-05 exact extractor7.2.0/scanner2.1.0/AvalancheRPC0.1.0 lookups returned404", "owner": "Package maintainers for releases; contributor for local qualification after availability", "noInventedResolution": true},
+    {"gate": "Dashboard token explorer component input and thin validated data join", "status": "Proposal prepared; accepted input contract and component implementation/version pending", "owner": "Rosen UI maintainers for contract/component release; contributor for accepted consumer join and focused browser/build checks", "manifest": "operation/contribution/avalanche-token-explorer-port-20261005/manifest.json", "manifestSha256": "018a1c008178f5b788d3d1c511e6ecfcbd7427cb84e37818009e8ad36cafb3c6", "inspectedPackage": "@rosen-bridge/ui-kit", "inspectedVersion": "6.1.0", "preferredAlternative": "Optional token item href, forwarded Card-to-List; retain native precedence and existing card See All href", "alternative": "Explicit chainId forwarding if Rosen chooses that contract"},
+    {"gate": "Assigned contract/token IDs, custody ceremony, production parameters and endpoint acceptance", "status": "Synthetic preparation and parameterized acceptance exist; actual deployment inputs/actions remain external", "owner": "Rosen and operators"},
+    {"gate": "Public contribution, signing, broadcast, deployment and funds", "status": "Separate explicit authorization and exact promotion checks required; this source selection activates nothing", "owner": "User and responsible operators"}
+  ],
+  "publicActions": 0,
+  "activated": false
+}

@@ -1,0 +1,67 @@
+{
+  "qualification": {
+    "command": "npm run test:avalanche",
+    "node": "22.18.0",
+    "versions": {
+      "node": "22.18.0",
+      "vitest": "3.2.4",
+      "tsx": "4.20.6"
+    },
+    "jobs": 15,
+    "specs": 33,
+    "passed": 1176,
+    "failed": 0,
+    "cleanInstallation": true,
+    "fixtureRecipe": true,
+    "packageManifestLockUnchanged": true,
+    "receipt": {
+      "bytes": 6079,
+      "sha256": "997bf56929a97dc4fc58e4cbf7c36486fac1625b108ff8f7f6cd913d70c002cd"
+    },
+    "feeLock": {
+      "bytes": 340151,
+      "sha256": "51a76fb5342f4b13b77464a78e7711d3b540db060951b867c511c647476b91ca"
+    },
+    "utilsLock": {
+      "bytes": 397892,
+      "sha256": "a2f5a0575bb2f53f52b469d43fa8994eca46807eed3bee23dba4121d8b18e2e6"
+    },
+    "fixtureLock": {
+      "bytes": 139723,
+      "sha256": "b89f8e3450720796f356afe035e1bc58a60ce18bef195cd17882167293930713"
+    }
+  },
+  "corrections": [
+    {
+      "path": "services/frontend/vitest.avalancheExistingUiPresentation.config.ts",
+      "before": "ae93e789ed02d62811459a195537f7a33c8fdb2ee5293e6c24a3e46c2a2bb579",
+      "after": "a32a494dcecc918e7e5fc51ee5c17358cd233a6e54323d87109e6fc6ba3977a2"
+    },
+    {
+      "path": "services/frontend/tests/testUtils/existingUiReact.cjs",
+      "before": "79c117a3aa4d04705a0eebe623085226b5a6f65bdddac35131df1bed9c289924",
+      "after": "b99e30ce79da97f7e24ee0aa6fc89eb48b68360f441786cbfec68065b1134e34"
+    },
+    {
+      "path": "services/backend/vitest.avalancheFeePublication.config.ts",
+      "before": "e80dee1c29180eb380fc33aa45d7c61b72a5fbe6e8d8793a8abec0bb41c83e98",
+      "after": "4616470afcc4c3138c12a20c2a6e4d4b5e15eaf0a5811179fa08728307e9e378"
+    }
+  ],
+  "combinedPreviousCorrectiveReview": {
+    "bytes": 38172,
+    "sha256": "f66219fe599759d730b32a66ef1570e9f91dc884bd58a50c819249294c25b73c"
+  },
+  "installedFixesIndependentReview": {
+    "sha256": "11f0d4325fbaa44b5741ec096901d27d5e125b231aac89aeec88e0cffad19ad6",
+    "controlsPassed": 4,
+    "blockingFindings": 0,
+    "assertionsPreserved": true,
+    "scope": "App React identity, renderer cache binding and bounded publication deadline; complete unchanged test results reused"
+  },
+  "pending": [
+    "Publish or select the reviewed Utils successor and regenerate any release-selected dependency graph through ordinary installation.",
+    "Rosen production contract/token/economic authority outputs, operator deployment, upstream review and release remain external."
+  ],
+  "fullIntegrationCompliance": false
+}

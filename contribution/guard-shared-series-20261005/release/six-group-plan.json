@@ -1,0 +1,530 @@
+{
+  "changesets": [
+    {
+      "releases": [
+        {
+          "name": "@rosen-chains/abstract-chain",
+          "type": "patch"
+        }
+      ],
+      "summary": "Reorder `verifyEvent` to run `verifyLockTransactionExtraConditions` before extracting rosen data from the lock transaction",
+      "id": "abstract-chain-verify-event-order"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-chains/bitcoin",
+          "type": "minor"
+        },
+        {
+          "name": "@rosen-chains/bitcoin-runes",
+          "type": "minor"
+        }
+      ],
+      "summary": "Add `txMaxFee` config to cap the absolute tx fee allowed during verification, and reject transactions whose fee exceeds it regardless of slippage",
+      "id": "bitcoin-tx-max-fee-cap"
+    },
+    {
+      "releases": [
+        {
+          "name": "guard-service",
+          "type": "patch"
+        }
+      ],
+      "summary": "Increase the default `txFeeSlippage` tolerance for Bitcoin and Bitcoin Runes transactions",
+      "id": "brave-nails-greet"
+    },
+    {
+      "releases": [
+        {
+          "name": "guard-service",
+          "type": "patch"
+        }
+      ],
+      "summary": "Store cached asset balances as exact decimal text and migrate existing integer\nvalues without passing them through JavaScript floating-point numbers.",
+      "id": "cached-balance-precision"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-chains/cardano-blockfrost-network",
+          "type": "patch"
+        }
+      ],
+      "summary": "Stop throwing `FailedError` on failed on-chain transactions in `getTransaction` and return the transaction with `isValid: false` instead\nFix `getUtxo` and `isBoxUnspentAndValid` to look up the requested output by its actual `output_index` instead of its position in the `txsUtxos` response array",
+      "id": "cardano-blockfrost-tx-failed-on-chain"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-chains/cardano-koios-network",
+          "type": "patch"
+        }
+      ],
+      "summary": "Stop throwing `FailedError` on failed on-chain transactions in `getTransaction` and return the transaction with `isValid: false` instead\nFix `getUtxo` and `isBoxUnspentAndValid` to account for the effective on-chain outcome of a failed transaction",
+      "id": "cardano-koios-tx-failed-on-chain"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-chains/cardano",
+          "type": "patch"
+        }
+      ],
+      "summary": "Fix `verifyLockTransactionExtraConditions` to correctly detect and reject lock transactions that failed on-chain instead of always returning true. `CardanoTx` gains an `isValid` field reflecting whether the transaction succeeded on-chain.",
+      "id": "cardano-lock-tx-failed-on-chain"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-chains/ergo",
+          "type": "minor"
+        },
+        {
+          "name": "@rosen-chains/ergo-explorer-network",
+          "type": "patch"
+        },
+        {
+          "name": "@rosen-chains/ergo-node-network",
+          "type": "patch"
+        }
+      ],
+      "summary": "Add explicit Ergo transaction submission authorization at the final transport\nadapter boundary, preserving legacy submissions and refusing unsupported networks.",
+      "id": "ergo-authorized-submission"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-chains/ergo",
+          "type": "minor"
+        }
+      ],
+      "summary": "Check signed Ergo transaction accounting and payment consistency against exact\nserialized input identities, and release fetched WASM transaction ownership.",
+      "id": "ergo-signed-accounting"
+    },
+    {
+      "releases": [
+        {
+          "name": "guard-service",
+          "type": "patch"
+        }
+      ],
+      "summary": "Add exact reduced-to-signed Ergo body and auxiliary-box consistency checks for\nauthorization consumers.",
+      "id": "ergo-signed-semantics"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-chains/evm",
+          "type": "patch"
+        }
+      ],
+      "summary": "Remove `maxPriorityFeePerGas` verification from `EvmChain.verifyTransactionFee`",
+      "id": "evm-remove-max-priority-fee-verification"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-chains/firo-electrumx",
+          "type": "patch"
+        }
+      ],
+      "summary": "Update dependencies\n\n- @rosen-bridge/firo-scanner@1.0.1",
+      "id": "few-pandas-count"
+    },
+    {
+      "releases": [
+        {
+          "name": "guard-service",
+          "type": "minor"
+        }
+      ],
+      "summary": "Add `extractors.initializeCommitments` config to enable initial sync for the commitment extractor, alongside the existing `extractors.initializeEventTriggers` (both disabled by default)",
+      "id": "gentle-items-sing"
+    },
+    {
+      "releases": [
+        {
+          "name": "guard-service",
+          "type": "major"
+        }
+      ],
+      "summary": "Integrate Handshake guard service",
+      "id": "hip-badgers-sell"
+    },
+    {
+      "releases": [
+        {
+          "name": "guard-service",
+          "type": "patch"
+        }
+      ],
+      "summary": "Set `lastCheck` to the current chain height when a transaction is inserted into the database, instead of leaving it at `0`, and update it whenever a sign-failed transaction is revalidated and resent for signing\n`lastCheck` is no longer updated when a transaction is signed, since signing doesn't verify anything on-chain.",
+      "id": "lastcheck-height-tracking"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-chains/evm-rpc",
+          "type": "patch"
+        }
+      ],
+      "summary": "Update dependencies\n\n- @rosen-bridge/evm-address-tx-extractor@4.0.0",
+      "id": "mean-bugs-wave"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-chains/bitcoin-runes",
+          "type": "patch"
+        },
+        {
+          "name": "@rosen-chains/handshake",
+          "type": "patch"
+        },
+        {
+          "name": "@rosen-chains/abstract-chain",
+          "type": "patch"
+        },
+        {
+          "name": "@rosen-chains/bitcoin",
+          "type": "patch"
+        },
+        {
+          "name": "@rosen-chains/cardano",
+          "type": "patch"
+        },
+        {
+          "name": "@rosen-chains/doge",
+          "type": "patch"
+        },
+        {
+          "name": "@rosen-chains/ergo",
+          "type": "patch"
+        },
+        {
+          "name": "@rosen-chains/firo",
+          "type": "patch"
+        },
+        {
+          "name": "@rosen-chains/evm",
+          "type": "patch"
+        }
+      ],
+      "summary": "Update dependencies\n\n- @rosen-bridge/rosen-extractor@12.1.2",
+      "id": "nasty-candles-deliver"
+    },
+    {
+      "releases": [
+        {
+          "name": "guard-service",
+          "type": "patch"
+        }
+      ],
+      "summary": "Update dependencies\n\n- @rosen-bridge/abstract-scanner@4.0.0\n- @rosen-bridge/ergo-scanner@2.0.1\n- @rosen-bridge/evm-address-tx-extractor@4.0.0\n- @rosen-bridge/evm-scanner@2.0.1\n- @rosen-bridge/watcher-data-extractor@16.0.0",
+      "id": "nine-cats-sort"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-chains/handshake-rpc",
+          "type": "patch"
+        }
+      ],
+      "summary": "Fix hsd compatibility issues in the Handshake RPC network:\n\n- raise failed RPC calls, which hsd reports with HTTP 200 and an `error` object in the body rather than with an error status\n- read the confirmation count from the `confirmations` field, as hsd does not report a `blockheight` for a transaction, which made every transaction look unconfirmed\n- stop converting the values of the `/coin/address` endpoint from HNS, as it already reports them in dollarydoos, which inflated address balances and box values by a factor of a million\n- exclude mempool coins from address boxes and assets, as hsd merges them into the `/coin/address` endpoint\n- never return a fee ratio below the relay minimum of one dollarydoo per virtual byte, as a node estimating under it produced transactions the network rejects as underpaying",
+      "id": "olive-donkeys-shave"
+    },
+    {
+      "releases": [
+        {
+          "name": "guard-service",
+          "type": "patch"
+        }
+      ],
+      "summary": "Add bounded TSS signer adapters and a local digest authorization registry for\nexplicitly qualified signing consumers.",
+      "id": "qualified-tss-authorization"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-chains/base",
+          "type": "minor"
+        }
+      ],
+      "summary": "Initialize package",
+      "id": "rich-planes-jump"
+    },
+    {
+      "releases": [
+        {
+          "name": "guard-service",
+          "type": "minor"
+        }
+      ],
+      "summary": "Add `firo.electrumx.useTls` config to toggle between SSL and plain TCP ElectrumX connections (defaults to `true`, preserving current behavior)",
+      "id": "slow-avocados-behave"
+    },
+    {
+      "releases": [
+        {
+          "name": "guard-service",
+          "type": "minor"
+        }
+      ],
+      "summary": "Add `scanners.blockCleanup.isActiveForErgoChain` and `scanners.blockCleanup.isActiveForNonErgoChains` config to enable periodic pruning of old scanned blocks",
+      "id": "spicy-toys-clean"
+    },
+    {
+      "releases": [],
+      "summary": "",
+      "id": "three-pigs-itch"
+    },
+    {
+      "releases": [
+        {
+          "name": "guard-service",
+          "type": "patch"
+        }
+      ],
+      "summary": "Release the token update semaphore when token validation or a callback throws.",
+      "id": "token-map-update-release"
+    }
+  ],
+  "releases": [
+    {
+      "name": "@rosen-chains/abstract-chain",
+      "type": "patch",
+      "oldVersion": "17.0.0",
+      "changesets": [
+        "abstract-chain-verify-event-order",
+        "nasty-candles-deliver"
+      ],
+      "newVersion": "17.0.1"
+    },
+    {
+      "name": "@rosen-chains/bitcoin",
+      "type": "minor",
+      "oldVersion": "11.0.0",
+      "changesets": [
+        "bitcoin-tx-max-fee-cap",
+        "nasty-candles-deliver"
+      ],
+      "newVersion": "11.1.0"
+    },
+    {
+      "name": "@rosen-chains/bitcoin-runes",
+      "type": "minor",
+      "oldVersion": "5.0.0",
+      "changesets": [
+        "bitcoin-tx-max-fee-cap",
+        "nasty-candles-deliver"
+      ],
+      "newVersion": "5.1.0"
+    },
+    {
+      "name": "guard-service",
+      "type": "major",
+      "oldVersion": "11.0.1",
+      "changesets": [
+        "brave-nails-greet",
+        "cached-balance-precision",
+        "ergo-signed-semantics",
+        "gentle-items-sing",
+        "hip-badgers-sell",
+        "lastcheck-height-tracking",
+        "nine-cats-sort",
+        "qualified-tss-authorization",
+        "slow-avocados-behave",
+        "spicy-toys-clean",
+        "token-map-update-release"
+      ],
+      "newVersion": "12.0.0"
+    },
+    {
+      "name": "@rosen-chains/cardano-blockfrost-network",
+      "type": "patch",
+      "oldVersion": "10.0.4",
+      "changesets": [
+        "cardano-blockfrost-tx-failed-on-chain"
+      ],
+      "newVersion": "10.0.5"
+    },
+    {
+      "name": "@rosen-chains/cardano-koios-network",
+      "type": "patch",
+      "oldVersion": "13.0.4",
+      "changesets": [
+        "cardano-koios-tx-failed-on-chain"
+      ],
+      "newVersion": "13.0.5"
+    },
+    {
+      "name": "@rosen-chains/cardano",
+      "type": "patch",
+      "oldVersion": "17.0.0",
+      "changesets": [
+        "cardano-lock-tx-failed-on-chain",
+        "nasty-candles-deliver"
+      ],
+      "newVersion": "17.0.1"
+    },
+    {
+      "name": "@rosen-chains/ergo",
+      "type": "minor",
+      "oldVersion": "15.0.0",
+      "changesets": [
+        "ergo-authorized-submission",
+        "ergo-signed-accounting",
+        "nasty-candles-deliver"
+      ],
+      "newVersion": "15.1.0"
+    },
+    {
+      "name": "@rosen-chains/ergo-explorer-network",
+      "type": "patch",
+      "oldVersion": "10.0.5",
+      "changesets": [
+        "ergo-authorized-submission"
+      ],
+      "newVersion": "10.0.6"
+    },
+    {
+      "name": "@rosen-chains/ergo-node-network",
+      "type": "patch",
+      "oldVersion": "10.0.5",
+      "changesets": [
+        "ergo-authorized-submission"
+      ],
+      "newVersion": "10.0.6"
+    },
+    {
+      "name": "@rosen-chains/evm",
+      "type": "patch",
+      "oldVersion": "10.0.2",
+      "changesets": [
+        "evm-remove-max-priority-fee-verification",
+        "nasty-candles-deliver"
+      ],
+      "newVersion": "10.0.3"
+    },
+    {
+      "name": "@rosen-chains/firo-electrumx",
+      "type": "patch",
+      "oldVersion": "0.1.2",
+      "changesets": [
+        "few-pandas-count"
+      ],
+      "newVersion": "0.1.3"
+    },
+    {
+      "name": "@rosen-chains/evm-rpc",
+      "type": "patch",
+      "oldVersion": "4.0.6",
+      "changesets": [
+        "mean-bugs-wave"
+      ],
+      "newVersion": "4.0.7"
+    },
+    {
+      "name": "@rosen-chains/handshake",
+      "type": "patch",
+      "oldVersion": "1.0.0",
+      "changesets": [
+        "nasty-candles-deliver"
+      ],
+      "newVersion": "1.0.1"
+    },
+    {
+      "name": "@rosen-chains/doge",
+      "type": "patch",
+      "oldVersion": "5.0.0",
+      "changesets": [
+        "nasty-candles-deliver"
+      ],
+      "newVersion": "5.0.1"
+    },
+    {
+      "name": "@rosen-chains/firo",
+      "type": "patch",
+      "oldVersion": "1.0.0",
+      "changesets": [
+        "nasty-candles-deliver"
+      ],
+      "newVersion": "1.0.1"
+    },
+    {
+      "name": "@rosen-chains/handshake-rpc",
+      "type": "patch",
+      "oldVersion": "0.0.1",
+      "changesets": [
+        "olive-donkeys-shave"
+      ],
+      "newVersion": "0.0.2"
+    },
+    {
+      "name": "@rosen-chains/base",
+      "type": "minor",
+      "oldVersion": "0.0.0",
+      "changesets": [
+        "rich-planes-jump"
+      ],
+      "newVersion": "0.1.0"
+    },
+    {
+      "name": "@rosen-chains/bitcoin-esplora",
+      "type": "patch",
+      "oldVersion": "5.0.5",
+      "changesets": [],
+      "newVersion": "5.0.6"
+    },
+    {
+      "name": "@rosen-chains/bitcoin-runes-rpc",
+      "type": "patch",
+      "oldVersion": "2.0.7",
+      "changesets": [],
+      "newVersion": "2.0.8"
+    },
+    {
+      "name": "@rosen-chains/doge-blockcypher",
+      "type": "patch",
+      "oldVersion": "1.0.5",
+      "changesets": [],
+      "newVersion": "1.0.6"
+    },
+    {
+      "name": "@rosen-chains/doge-esplora",
+      "type": "patch",
+      "oldVersion": "2.0.5",
+      "changesets": [],
+      "newVersion": "2.0.6"
+    },
+    {
+      "name": "@rosen-chains/doge-rpc",
+      "type": "patch",
+      "oldVersion": "1.0.5",
+      "changesets": [],
+      "newVersion": "1.0.6"
+    },
+    {
+      "name": "@rosen-chains/evm-op-stack-rpc",
+      "type": "patch",
+      "oldVersion": "0.0.1",
+      "changesets": [],
+      "newVersion": "0.0.2"
+    },
+    {
+      "name": "@rosen-chains/binance",
+      "type": "patch",
+      "oldVersion": "4.0.2",
+      "changesets": [],
+      "newVersion": "4.0.3"
+    },
+    {
+      "name": "@rosen-chains/ethereum",
+      "type": "patch",
+      "oldVersion": "4.0.2",
+      "changesets": [],
+      "newVersion": "4.0.3"
+    }
+  ]
+}

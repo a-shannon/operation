@@ -1,0 +1,1777 @@
+{
+  "schema": "rosen-producer-contribution-series.v1",
+  "author": "A. Shannon",
+  "rcs": "7b9784dae9d8d5b66b80de7a6043d1ba36a3a4bf",
+  "repositories": [
+    {
+      "repo": "guard-service",
+      "head": "b1f5ab6f81435053a979e8078eb098d8ec1f5a47"
+    }
+  ],
+  "groups": [
+    {
+      "id": "G02",
+      "repo": "guard-service",
+      "purpose": "Explicit final-adapter Ergo submission authorization",
+      "dependencies": [],
+      "externalReleasePrerequisites": [],
+      "beforeTree": "1fe15e93b4f4ef5d94032050d020bab0ea0c0076",
+      "tree": "0279b618a0a33e5340915bb7a124fe67c45b7e6a",
+      "patch": {
+        "path": "patches/G02.patch",
+        "bytes": 117560,
+        "sha256": "a3a1268ab08b2007bc2d454258006ce00403f835fe076b8ca1074eb7a3acdc3e"
+      },
+      "files": [
+        {
+          "path": ".changeset/ergo-authorized-submission.md",
+          "bytes": 284,
+          "sha256": "b5707b47d01e7ce18390a745ed2e6fe0dcf4d9c2fa7f9dceccff57ba4536ccea"
+        },
+        {
+          "path": "packages/chains/ergo/lib/ergoChain.ts",
+          "bytes": 42845,
+          "sha256": "b12f8860bf25907a1dcbeaae964780cc2489048f7130e24b616b71282fa6174a"
+        },
+        {
+          "path": "packages/chains/ergo/lib/index.ts",
+          "bytes": 345,
+          "sha256": "71df45a62f1c602589f2ac55fb6e426d519b9ccacad119e6e44af51924f13457"
+        },
+        {
+          "path": "packages/chains/ergo/lib/network/abstractErgoNetwork.ts",
+          "bytes": 1628,
+          "sha256": "a9f893378eabaf7a4358cc3cf592857fd7b058cb84a2699a8b1586387789ecb0"
+        },
+        {
+          "path": "packages/chains/ergo/lib/network/authorizedSubmission.ts",
+          "bytes": 7518,
+          "sha256": "5cec1933185aa927524a705f062e7ba26a43e7776e436cee6c994c6f8f903b8f"
+        },
+        {
+          "path": "packages/chains/ergo/package.json",
+          "bytes": 1600,
+          "sha256": "9b07db82c9dfe757c076a540c6604672eb2e97a45c6b8627b90418dd29dc5891"
+        },
+        {
+          "path": "packages/chains/ergo/tests/ergoChain.spec.ts",
+          "bytes": 114077,
+          "sha256": "151b989bed9c960b34b414e8798af224aafeb2f7ed9be73752a584078acb3186"
+        },
+        {
+          "path": "packages/chains/ergo/tests/network/authorizedSubmission.spec.ts",
+          "bytes": 30226,
+          "sha256": "10b1e286287dd97f7a9b3b45716697d2241047be6af8d445eea0bde3689b94b6"
+        },
+        {
+          "path": "packages/chains/ergo/tests/network/mocked/axios.mock.ts",
+          "bytes": 274,
+          "sha256": "fc474eac78c13f650eb1fc0dd133f3650f7e5c122525c4f642a09490beb8385f"
+        },
+        {
+          "path": "packages/chains/ergo/tests/testUtils/authorizedSubmission.ts",
+          "bytes": 1793,
+          "sha256": "fc1b326562aa80c195e1607676c0eeac27c0821f66ade474586692141cada00b"
+        },
+        {
+          "path": "packages/networks/ergo-explorer/lib/ergoExplorerNetwork.ts",
+          "bytes": 17148,
+          "sha256": "ed53773f4801b0f6672a036d8fcf57e3cf64111260c240463c555f66d4fe5c6e"
+        },
+        {
+          "path": "packages/networks/ergo-explorer/tests/ergoExplorerNetwork.spec.ts",
+          "bytes": 27981,
+          "sha256": "f1b9f81c5b4c309d04ace45d91fc2659a4e9a4681813c022ff1006ae30bfb354"
+        },
+        {
+          "path": "packages/networks/ergo-explorer/tests/testUtils/authorizedSubmission.ts",
+          "bytes": 1882,
+          "sha256": "ff8a5bb83116351b6bdc198e3c05666478ff90c0b3f57cad4313c9aefef77787"
+        },
+        {
+          "path": "packages/networks/ergo-node/lib/ergoNodeNetwork.ts",
+          "bytes": 16231,
+          "sha256": "8f09191f1dd4b6fcd3a55ad03931da281d4528bdc3b9c0dffcacd8499402b747"
+        },
+        {
+          "path": "packages/networks/ergo-node/tests/ergoNodeNetwork.spec.ts",
+          "bytes": 26283,
+          "sha256": "ae8fa23364b19a5b304a7f891d39c7b8d53c6b74509977f46f913a2e6008a82f"
+        },
+        {
+          "path": "packages/networks/ergo-node/tests/testUtils/authorizedSubmission.ts",
+          "bytes": 1846,
+          "sha256": "5ede83fd54c6912b3193c6bd87bcd7c1007656438a1cf8cc9c557c6c9b9f5008"
+        }
+      ]
+    },
+    {
+      "id": "G03",
+      "repo": "guard-service",
+      "purpose": "Signed Ergo accounting, payment consistency and fetched WASM lifetime",
+      "dependencies": [],
+      "externalReleasePrerequisites": [],
+      "beforeTree": "0279b618a0a33e5340915bb7a124fe67c45b7e6a",
+      "tree": "0a1cbb73da6b7d4756504f6f6f6f760ed7490316",
+      "patch": {
+        "path": "patches/G03.patch",
+        "bytes": 277345,
+        "sha256": "0357afccd5c28be7ebedabe22d6c576df55a38f00aff4eb299de522b7c5e1152"
+      },
+      "files": [
+        {
+          "path": ".changeset/ergo-signed-accounting.md",
+          "bytes": 193,
+          "sha256": "86dee0c9f782a1e05a5428befc964332fa0bc524b01821d819df528c4b0f2b64"
+        },
+        {
+          "path": "packages/chains/ergo/lib/ergoChain.ts",
+          "bytes": 46496,
+          "sha256": "1eb54a1c78169221588d23b32c0694d65c6d516abb825420da3358f07c584a72"
+        },
+        {
+          "path": "packages/chains/ergo/tests/ergoChain.spec.ts",
+          "bytes": 187574,
+          "sha256": "66de2f23059f1e959724be8a2fd8ff47f08d277013a6cde081c84fbf712c5dee"
+        },
+        {
+          "path": "packages/chains/ergo/tests/mocked/transactionLifetime.mock.ts",
+          "bytes": 776,
+          "sha256": "32006de90ec386f54a67d8f9b613fe8b9db4953feba91f536c6138f6aeee19bb"
+        },
+        {
+          "path": "packages/chains/ergo/tests/testUtils/signedAccounting.ts",
+          "bytes": 1888,
+          "sha256": "207386f4e4e08d9b67d5e17fb975e7b2224a82f370d8687eb10a1f9157be1154"
+        },
+        {
+          "path": "packages/chains/ergo/tests/testUtils/signedPaymentConsistency.ts",
+          "bytes": 1865,
+          "sha256": "54fd76cfeb1a584c638028fc6fd570a1915a40d09ad4112d0a37e4ee88e5e946"
+        }
+      ]
+    },
+    {
+      "id": "G06",
+      "repo": "guard-service",
+      "purpose": "Release TokenMap update semaphore after malformed input or callback failure",
+      "dependencies": [],
+      "externalReleasePrerequisites": [],
+      "beforeTree": "0a1cbb73da6b7d4756504f6f6f6f760ed7490316",
+      "tree": "724bc0f3a6da73c494f1896272b1e686b1414bf2",
+      "patch": {
+        "path": "patches/G06.patch",
+        "bytes": 7746,
+        "sha256": "8948e0957e2e6f562d6f9d808232139c5d44e259e63f338af113b867479659bf"
+      },
+      "files": [
+        {
+          "path": ".changeset/token-map-update-release.md",
+          "bytes": 111,
+          "sha256": "a7309fc7b015660f2ba1b3a9237a25b5439033a23fab10619a92bbeb96bcaa8e"
+        },
+        {
+          "path": "services/guard-service/src/handlers/tokenHandler.ts",
+          "bytes": 2676,
+          "sha256": "f4e64cb37f4acc6c34e0b63b6d52ed997a7851e8220d9311b35a8a9a90023fb3"
+        },
+        {
+          "path": "services/guard-service/tests/handlers/mocked/tokenHandler.mock.ts",
+          "bytes": 370,
+          "sha256": "ddca7df457c2b5f9d11ef66e45a34b35f3c7fa667bddee89beffc69f9c0217da"
+        },
+        {
+          "path": "services/guard-service/tests/handlers/tokenHandler.spec.ts",
+          "bytes": 3014,
+          "sha256": "6007302ece48c5084cd4d8d14ee704d0ee6252cda19d2c5fed537d9562ffc1ee"
+        },
+        {
+          "path": "services/guard-service/tests/handlers/tokenHandlerTestUtils.ts",
+          "bytes": 658,
+          "sha256": "5d66111106bf865d6dcaf7a258d67ad6d7dd3e5f01fa9778120e35ab3ee6a3f1"
+        }
+      ]
+    },
+    {
+      "id": "G05",
+      "repo": "guard-service",
+      "purpose": "Preserve cached asset balance precision through database migrations",
+      "dependencies": [],
+      "externalReleasePrerequisites": [
+        "U01"
+      ],
+      "beforeTree": "724bc0f3a6da73c494f1896272b1e686b1414bf2",
+      "tree": "8e2f2a09e36ffd87445b62a64a1d9e1e930a67b8",
+      "patch": {
+        "path": "patches/G05.patch",
+        "bytes": 28333,
+        "sha256": "01d887e88107c271f16d5eeb997a153e99f7753982745dc7cf7486044a4dde9e"
+      },
+      "files": [
+        {
+          "path": ".changeset/cached-balance-precision.md",
+          "bytes": 182,
+          "sha256": "8d4487acf4f84e6801685687b9ebb18c70d6d5aaaf0f3d1b53042be6f8f3947e"
+        },
+        {
+          "path": "services/guard-service/src/db/entities/chainAddressBalanceEntity.ts",
+          "bytes": 524,
+          "sha256": "bbd9fca468670c5255b1a28ae1c6ee9af318fb594ee47e12c0e401a46178a17d"
+        },
+        {
+          "path": "services/guard-service/src/db/migrations/index.ts",
+          "bytes": 4594,
+          "sha256": "797c3aad9eccf24117f0bc8bbd399fba4b09d5dfd8c55970536efdaf448549f3"
+        },
+        {
+          "path": "services/guard-service/src/db/migrations/postgres/1790812800000-migration.ts",
+          "bytes": 1081,
+          "sha256": "4e1093c09327d6397f7a6d1b3061cf4eb1d5c9bcbaab938305cab7dfbfbe6df8"
+        },
+        {
+          "path": "services/guard-service/src/db/migrations/sqlite/1790812800000-migration.ts",
+          "bytes": 2371,
+          "sha256": "448caeb69a4a12698221e6ed46b91aa5b5defc5e13772acc5c66611fe2162d11"
+        },
+        {
+          "path": "services/guard-service/tests/db/balancePrecisionMigrations.spec.ts",
+          "bytes": 9552,
+          "sha256": "7048aacd5c878888d39a84cebb5807b27c3f081e122ae26af410fcb3e839e80d"
+        },
+        {
+          "path": "services/guard-service/tests/db/entities/chainAddressBalanceEntity.spec.ts",
+          "bytes": 2786,
+          "sha256": "690acdadc2d95f1ae996edda6845cac9e2a611cca3ce1a34c1234d1894a7dfbb"
+        },
+        {
+          "path": "services/guard-service/tests/db/migrations/index.spec.ts",
+          "bytes": 1114,
+          "sha256": "b254533b4a7e6c8c49651bf74dfa453e4ed8b5e06e97021c1de4f461c811ecc1"
+        },
+        {
+          "path": "services/guard-service/tests/db/migrations/postgres/1790812800000-migration.spec.ts",
+          "bytes": 2219,
+          "sha256": "52b320c1793bc68906a41905d5bf5ca51e3fe556441a639942ded0cfe8609c9d"
+        },
+        {
+          "path": "services/guard-service/tests/db/migrations/postgres/mocked/queryRunner.mock.ts",
+          "bytes": 364,
+          "sha256": "903abf451fef8cc2577e62c96a0d50a7769816eb5b976e117a73d11f85286742"
+        },
+        {
+          "path": "services/guard-service/tests/db/migrations/sqlite/1790812800000-migration.spec.ts",
+          "bytes": 2223,
+          "sha256": "c30be25e0ed9096512c0f716afe9df84276e61e14d98c6f21049672ea05559df"
+        },
+        {
+          "path": "services/guard-service/tests/db/migrations/sqlite/mocked/queryRunner.mock.ts",
+          "bytes": 364,
+          "sha256": "903abf451fef8cc2577e62c96a0d50a7769816eb5b976e117a73d11f85286742"
+        }
+      ]
+    },
+    {
+      "id": "G04-TSS",
+      "repo": "guard-service",
+      "purpose": "Qualified TSS transport and local digest authorization registry",
+      "dependencies": [],
+      "externalReleasePrerequisites": [
+        "S01"
+      ],
+      "beforeTree": "8e2f2a09e36ffd87445b62a64a1d9e1e930a67b8",
+      "tree": "0180586f3bef141a4a2892309c58b61735c798b0",
+      "patch": {
+        "path": "patches/G04-TSS.patch",
+        "bytes": 94073,
+        "sha256": "c634d9f9c3b2af2440c1c70b0f598e0270ec4b490330484b167cbbdab347996c"
+      },
+      "files": [
+        {
+          "path": ".changeset/qualified-tss-authorization.md",
+          "bytes": 150,
+          "sha256": "d0370b95183a762107f7019b3656639116a6336982431500fae169f1f9c9189f"
+        },
+        {
+          "path": "services/guard-service/src/signing/qualifiedTssSigner.ts",
+          "bytes": 19322,
+          "sha256": "85b711abbd0c5500f8b723a2a0eab27b9806053dfb9f199eefb122178ae7d415"
+        },
+        {
+          "path": "services/guard-service/src/signing/tssAuthorizationRegistry.ts",
+          "bytes": 5312,
+          "sha256": "7796cab713d224d2366dd68caa84c0f844b9f2ef019284c2aaad767591ca1dcc"
+        },
+        {
+          "path": "services/guard-service/tests/signing/mocked/qualifiedTssSigner.mock.ts",
+          "bytes": 1091,
+          "sha256": "191d6ffd3af9ba0e7aa29ae15260c79f5229ddba3483b3802669ddb5adc234d5"
+        },
+        {
+          "path": "services/guard-service/tests/signing/qualifiedTssSigner.spec.ts",
+          "bytes": 38569,
+          "sha256": "99e339ec653324a911efe448916392a983cf77dfb9572e0bf90743a007de87ee"
+        },
+        {
+          "path": "services/guard-service/tests/signing/qualifiedTssSignerTestUtils.ts",
+          "bytes": 1744,
+          "sha256": "bf5cc88ac2c38b5949d40db7b7e2e4dd5803ee1fcaae4c2d361808178d9c62dd"
+        },
+        {
+          "path": "services/guard-service/tests/signing/signingTestData.ts",
+          "bytes": 1060,
+          "sha256": "89d42444400c36fa4905b6b4f49fba8311e4d7a771bf4bd554f0cf0826bc5c02"
+        },
+        {
+          "path": "services/guard-service/tests/signing/signingTestUtils.ts",
+          "bytes": 1328,
+          "sha256": "a3d12ee8affa8009457b22b18820a8bfb1f3be065a472e932573067d068437c4"
+        },
+        {
+          "path": "services/guard-service/tests/signing/tssAuthorizationRegistry.spec.ts",
+          "bytes": 20848,
+          "sha256": "695c1902eb0f2215094546fbc4c576e55cab17d1c427e77c93acad137c12c843"
+        }
+      ]
+    },
+    {
+      "id": "G04-SEMANTICS",
+      "repo": "guard-service",
+      "purpose": "Canonical reduced/signed Ergo semantic identity checks",
+      "dependencies": [
+        "G03"
+      ],
+      "externalReleasePrerequisites": [],
+      "beforeTree": "0180586f3bef141a4a2892309c58b61735c798b0",
+      "tree": "ed9a63e4fe770f2c229e96a27f2efcbabeacc1fe",
+      "patch": {
+        "path": "patches/G04-SEMANTICS.patch",
+        "bytes": 65305,
+        "sha256": "e10d4643c7fb86d9f6a95fc72daf311dc84364507eb7ba9321322051708208ac"
+      },
+      "files": [
+        {
+          "path": ".changeset/ergo-signed-semantics.md",
+          "bytes": 136,
+          "sha256": "12dff8d0129f5b2ce6f0e8bbd1539105a11c75f110d91375ee876f215eedb018"
+        },
+        {
+          "path": "services/guard-service/src/verification/ergoSignedSemantics.ts",
+          "bytes": 6576,
+          "sha256": "ff17a6ae4f99e62172b46988e3b976da690edfffec8855b81d2a59d4ecb8f82e"
+        },
+        {
+          "path": "services/guard-service/tests/signing/fixtures/recoveryMultiInput.ts",
+          "bytes": 17102,
+          "sha256": "932fdcf35d2881b36b7f40d85e32e5e6efef500b6201c128360744a5a3b5718b"
+        },
+        {
+          "path": "services/guard-service/tests/verification/ergoSignedSemantics.spec.ts",
+          "bytes": 36323,
+          "sha256": "f1604fede080284a347b5418c0ff360777ce47c60b0067b9fee5015694166f5f"
+        },
+        {
+          "path": "services/guard-service/tests/verification/ergoSignedSemanticsTestUtils.ts",
+          "bytes": 2706,
+          "sha256": "3c4f8ab35a57ebf2e176f0ba17f97673dc37074c6db2d835bfbe022a411dcf64"
+        }
+      ]
+    },
+    {
+      "id": "G04-CAS",
+      "repo": "guard-service",
+      "purpose": "Existing preimage ports and atomic generic DAO transitions",
+      "dependencies": [],
+      "externalReleasePrerequisites": [
+        "U01"
+      ],
+      "beforeTree": "ed9a63e4fe770f2c229e96a27f2efcbabeacc1fe",
+      "tree": "913033a588523df6c377e072972c93b3fc3bf9b3",
+      "patch": {
+        "path": "patches/G04-CAS.patch",
+        "bytes": 297402,
+        "sha256": "da9649de0e07a90fe251c88184cd4d0cba136c9b66329b3d2b1c48e3f8db23bd"
+      },
+      "files": [
+        {
+          "path": ".changeset/generic-transaction-cas.md",
+          "bytes": 166,
+          "sha256": "99a2051791c317ba245b60f285cd606fdb4ef96f89bcede0fb8512202b30237a"
+        },
+        {
+          "path": "services/guard-service/src/db/databaseAction.ts",
+          "bytes": 65386,
+          "sha256": "f3b6e32b74a57a7d60d1d71c2ecef045e697e761fca445298973673419ece559"
+        },
+        {
+          "path": "services/guard-service/src/signing/transactionSigningContext.ts",
+          "bytes": 818,
+          "sha256": "4a54dda0bea7afdedf5128fe4c84eadbc3b763125787bbe970cd6b8d5e7b701a"
+        },
+        {
+          "path": "services/guard-service/tests/db/databaseAction.spec.ts",
+          "bytes": 209638,
+          "sha256": "0425088a5dd8f4584a78116b55d3d59cd0763b1118636eb151d6c702b4fb92d2"
+        }
+      ]
+    },
+    {
+      "id": "G04-SYNC",
+      "repo": "guard-service",
+      "purpose": "Generic full-model quorum, signed EVM identity and DAO CAS join",
+      "dependencies": [
+        "G03",
+        "G04-CAS"
+      ],
+      "externalReleasePrerequisites": [],
+      "beforeTree": "913033a588523df6c377e072972c93b3fc3bf9b3",
+      "tree": "24ecaa6ff5206ad5d2117033d4614b95f4f6ea5f",
+      "patch": {
+        "path": "patches/G04-SYNC.patch",
+        "bytes": 176753,
+        "sha256": "2e7b77c777fcbdd7b6034f982b24f6c2467e5841457ac5f118f645139df6306c"
+      },
+      "files": [
+        {
+          "path": ".changeset/generic-synchronization-binding.md",
+          "bytes": 165,
+          "sha256": "55317f4f155c3fece87e2ba7793fec72396b2d6f33ae17d877df44b0b421fe3f"
+        },
+        {
+          "path": "services/guard-service/src/synchronization/eventSynchronization.ts",
+          "bytes": 22490,
+          "sha256": "c43c0305b906a41717820f096a9b727b71c14cf8529881727825a2765abbdbd5"
+        },
+        {
+          "path": "services/guard-service/tests/synchronization/eventSynchronization.spec.ts",
+          "bytes": 94297,
+          "sha256": "bed393a3738fdf2eefae638ee445e7abea57672f876b3389da2a2865c0053dcc"
+        },
+        {
+          "path": "services/guard-service/tests/synchronization/eventSynchronizationTestData.ts",
+          "bytes": 106,
+          "sha256": "78b3ed6a957e4e297ea8d322a8a2bf259b6ff64f9a6a691a6be5e45e790b82a4"
+        },
+        {
+          "path": "services/guard-service/tests/synchronization/eventSynchronizationTestUtils.ts",
+          "bytes": 4303,
+          "sha256": "35ac7b597bcf85dae346ba823bdaa41634d37bd1fcdbf1cd7cead05b0d49476c"
+        },
+        {
+          "path": "services/guard-service/tests/synchronization/testEventSynchronization.ts",
+          "bytes": 1106,
+          "sha256": "37659e459980c5796ab2932e6218bad945f38729d35f4ed34dd0cda998835808"
+        }
+      ]
+    },
+    {
+      "id": "G01",
+      "repo": "guard-service",
+      "purpose": "Generic EVM gas policy prerequisite",
+      "dependencies": [
+        "G04-SYNC"
+      ],
+      "beforeTree": "24ecaa6ff5206ad5d2117033d4614b95f4f6ea5f",
+      "tree": "4473c4c7bf95c0d6c1b52ea145ee7d3d40559c67",
+      "patch": {
+        "path": "patches/G01.patch",
+        "bytes": 5079,
+        "sha256": "f9f3d7bd0ae8c374579e819525145468cbdfd01438657fd0d8a282de3273b03b"
+      },
+      "files": [
+        {
+          "path": ".changeset/evm-chain-gas-policy.md",
+          "bytes": 122,
+          "sha256": "1934f7358d1318165ff1f162eb1666a8c8ca4bd1ad8830417d20dcb07fb6f964"
+        },
+        {
+          "path": "packages/chains/evm/lib/evmChain.ts",
+          "bytes": 31962,
+          "sha256": "6f5e2f5cd076ffd3af11becc24de5de0ead3ad3d9cab0db76c2092617623c66f"
+        }
+      ]
+    },
+    {
+      "id": "G07",
+      "repo": "guard-service",
+      "purpose": "Generic RPC bounded transport prerequisite",
+      "dependencies": [
+        "G01"
+      ],
+      "beforeTree": "4473c4c7bf95c0d6c1b52ea145ee7d3d40559c67",
+      "tree": "cecbe115724daf243b2dafe6c4132a988cebbea2",
+      "patch": {
+        "path": "patches/G07.patch",
+        "bytes": 10272,
+        "sha256": "d894bcc587a9706fa4644d7f1cc6ec0757907affa14c8935403b62ea71f272ec"
+      },
+      "files": [
+        {
+          "path": ".changeset/evm-rpc-bounded-transport.md",
+          "bytes": 116,
+          "sha256": "eb8808d9342b8b917e8f0917d7c070efd42ca8ecc07b40f24cf9d6534348fbfb"
+        },
+        {
+          "path": "packages/networks/evm-rpc/lib/evmRpcNetwork.ts",
+          "bytes": 16243,
+          "sha256": "c7d1f973c452b67dd185752bb9b992181f1ebf84119594ed8a8d6c6e3d1bf995"
+        },
+        {
+          "path": "packages/networks/evm-rpc/tests/evmRpcNetwork.spec.ts",
+          "bytes": 30475,
+          "sha256": "07e6460c00f396ad0d07a98e8b6fb83d9a163b972e5cd48b903be1efd35ce22c"
+        },
+        {
+          "path": "packages/networks/evm-rpc/tests/mocked/realRpcProvider.mock.ts",
+          "bytes": 866,
+          "sha256": "f34b63b230d167519c540e3ced37c54f75dd2dfd1c2a7f7e5c699311aca84286"
+        },
+        {
+          "path": "packages/networks/evm-rpc/tests/testData.ts",
+          "bytes": 4117,
+          "sha256": "d06c49d609585250d3aa1a5c728608447fc117c9693ba8bdd97affda469ffb88"
+        }
+      ]
+    },
+    {
+      "id": "C-GUARD-SOURCE",
+      "repo": "guard-service",
+      "purpose": "Avalanche core, runtime, configuration and source-owned test joins",
+      "dependencies": [
+        "G01",
+        "G07",
+        "G04-SYNC"
+      ],
+      "beforeTree": "cecbe115724daf243b2dafe6c4132a988cebbea2",
+      "tree": "f297c44f906bf0681eadd0f89e935a3694b7ab15",
+      "patch": {
+        "path": "patches/C-GUARD-SOURCE.patch",
+        "bytes": 3316761,
+        "sha256": "a38d5c83134bcac8767d383912d6d47f8a5a2915ec142d98b80f8323d152635d"
+      },
+      "files": [
+        {
+          "path": ".changeset/avalanche-chain-initialization.md",
+          "bytes": 65,
+          "sha256": "1d4a257c0602c60ae5de517067be7db6e3d3e3b0e0881c1383f3dca43bf962e8"
+        },
+        {
+          "path": ".changeset/avalanche-guard-integration.md",
+          "bytes": 227,
+          "sha256": "cbfba2adee7f514fc3cc987a97217e22944855ad3e4cb1da2f585506b3e7da75"
+        },
+        {
+          "path": ".changeset/avalanche-rpc-initialization.md",
+          "bytes": 69,
+          "sha256": "813d8bbd5ea42830877a898a76ec0d06f9535ea2a120b6bab1dd7cedfb242cf5"
+        },
+        {
+          "path": "packages/chains/avalanche/README.md",
+          "bytes": 3060,
+          "sha256": "f56ccce823e71071af6e173c902e00b587d80e0b7de0a42623df6d33f224090e"
+        },
+        {
+          "path": "packages/chains/avalanche/lib/avalancheAssets.ts",
+          "bytes": 6765,
+          "sha256": "da7bca11f65bb951a593812f9e26a11d4cfb243191aaa658169a836101598ded"
+        },
+        {
+          "path": "packages/chains/avalanche/lib/avalancheChain.ts",
+          "bytes": 52056,
+          "sha256": "1e4e2a3421bae3f1a29426d2ed7f49d7e2df5dc7778e3f9377a4ee6df7c0d223"
+        },
+        {
+          "path": "packages/chains/avalanche/lib/avalancheTransferProof.ts",
+          "bytes": 3154,
+          "sha256": "d7fb5a361ac1cb1dbb7fca1c70bc616f22c0f73cdf2513e0da417bed1d6b8e2d"
+        },
+        {
+          "path": "packages/chains/avalanche/lib/constants.ts",
+          "bytes": 169,
+          "sha256": "ebd659384633176ccb22b5b73745dfe1d3ae87fc3adda419e8909925a1326bc8"
+        },
+        {
+          "path": "packages/chains/avalanche/lib/index.ts",
+          "bytes": 140,
+          "sha256": "03e6687750dab59b7247580429ecf423e30f38f7d7e285986e40bb9d213c4eff"
+        },
+        {
+          "path": "packages/chains/avalanche/package.json",
+          "bytes": 1452,
+          "sha256": "ce5bf133e9165a378809ee6657357801506d529fcb38bd0f561b71cd22855bc8"
+        },
+        {
+          "path": "packages/chains/avalanche/tests/avalancheAssets.spec.ts",
+          "bytes": 4338,
+          "sha256": "2934cce30febfd177122a4d4eb4c3b631503dcdfa7c1a624ddf454ad3dad59a2"
+        },
+        {
+          "path": "packages/chains/avalanche/tests/avalancheChain.spec.ts",
+          "bytes": 38957,
+          "sha256": "a0183fd63e10f65cef10a62998588760046e2e6b0acc9714b6ded009091e2c76"
+        },
+        {
+          "path": "packages/chains/avalanche/tests/avalancheErc20Chain.spec.ts",
+          "bytes": 20540,
+          "sha256": "cbd6222df78e265f9e393e642f3bbc8d275cc5ea4f83878a38944d24b8eff6cf"
+        },
+        {
+          "path": "packages/chains/avalanche/tests/avalancheErc20Management.spec.ts",
+          "bytes": 11850,
+          "sha256": "6534894503942aa488f4b208261d4bb88dfbfed4235101393a5d14453a88acdd"
+        },
+        {
+          "path": "packages/chains/avalanche/tests/avalancheErc20TestData.ts",
+          "bytes": 2584,
+          "sha256": "9e1f292251faf822e13648254bfbd5e6d3dbc743c830ab95a65976f9a080c313"
+        },
+        {
+          "path": "packages/chains/avalanche/tests/avalancheErc20TestUtils.ts",
+          "bytes": 3085,
+          "sha256": "5372b167a0bc2f204307eb11b87dc2822cf0dca3e5cca3ada1524cb8ae16c699"
+        },
+        {
+          "path": "packages/chains/avalanche/tests/avalancheManagementChain.spec.ts",
+          "bytes": 58381,
+          "sha256": "0a54d6d1b67d629b37cfdffd4e92cc677a03bcfff26e547fe83ae21d88539010"
+        },
+        {
+          "path": "packages/chains/avalanche/tests/avalancheManagementReads.spec.ts",
+          "bytes": 31523,
+          "sha256": "be663c9289a09969802e3b2ebcd0255f555d2654f6d1439dd763e6e07233aaf5"
+        },
+        {
+          "path": "packages/chains/avalanche/tests/avalancheManagementSigning.spec.ts",
+          "bytes": 14248,
+          "sha256": "f6c4feec6f96662f116f1cdd4b2349bc6acdccd8c93c888561632a7e1d2ccdde"
+        },
+        {
+          "path": "packages/chains/avalanche/tests/avalancheManagementTestData.ts",
+          "bytes": 526,
+          "sha256": "1250f5b7750d55124eceb7383ee47a320be241769e4483ea58a990c5914205ed"
+        },
+        {
+          "path": "packages/chains/avalanche/tests/avalancheManagementTestUtils.ts",
+          "bytes": 2505,
+          "sha256": "d3dffbdc755606f3e2c807691587c5f16a20e6366eb7045dc6a636481472c5b5"
+        },
+        {
+          "path": "packages/chains/avalanche/tests/avalancheTestData.ts",
+          "bytes": 740,
+          "sha256": "d30c56d644ad772c4c854f57b4edaf2d2b0dd40b5e12edc2b33232307e946c3f"
+        },
+        {
+          "path": "packages/chains/avalanche/tests/avalancheTestUtils.ts",
+          "bytes": 3482,
+          "sha256": "d8ba487cd2d54c37de4758d3f2c40872993e321889ebfbc5a167c4cdd6ddc903"
+        },
+        {
+          "path": "packages/chains/avalanche/tests/avalancheTransferProof.spec.ts",
+          "bytes": 5554,
+          "sha256": "c6fc03af4ee5bd5cd7e8c2dcb16dab74055f8364daf7de4a2b7540f91cdc8469"
+        },
+        {
+          "path": "packages/chains/avalanche/tests/avalancheTransferProofTestUtils.ts",
+          "bytes": 2073,
+          "sha256": "2e1fc97ddac1205cfbd589d2b602be504117260de2d539d391e85cbca5d680a6"
+        },
+        {
+          "path": "packages/chains/avalanche/tests/mocked/avalancheChain.mock.ts",
+          "bytes": 1728,
+          "sha256": "3f9d7ba54397acbb067f74f1a733e5c3bbe07af4c0ec6b2d357dc7160bd1a5d9"
+        },
+        {
+          "path": "packages/chains/avalanche/tests/mocked/avalancheErc20.mock.ts",
+          "bytes": 790,
+          "sha256": "eaf4e555f09f86a00c2d1fdb36248661ba8f06253e4fb1639ddc03e90315a26d"
+        },
+        {
+          "path": "packages/chains/avalanche/tests/mocked/avalancheManagement.mock.ts",
+          "bytes": 711,
+          "sha256": "c10ec5ffe322becca868ed276fe41f727ddf2f5c2c6c87513312ace1937eed5a"
+        },
+        {
+          "path": "packages/chains/avalanche/tsconfig.build.json",
+          "bytes": 320,
+          "sha256": "cbd1b84f3ad2ba258503465c2ed95fc7cfa4c7927c5be787f4e0967ce3665bd8"
+        },
+        {
+          "path": "packages/chains/avalanche/tsconfig.json",
+          "bytes": 306,
+          "sha256": "741442cbbc8d5c7d30e30eee3b93fb52e303007c451dc2f98a483db3839eb220"
+        },
+        {
+          "path": "packages/chains/avalanche/vitest.config.ts",
+          "bytes": 174,
+          "sha256": "bc95b7e1569273ad6df6c61687672213db21aafc8edd19cd0277e3d0db6b3869"
+        },
+        {
+          "path": "packages/networks/avalanche-rpc/README.md",
+          "bytes": 2813,
+          "sha256": "96482ee71778f8623bc834f5310826efb121bfb7e6d90f461841043e0e485ac8"
+        },
+        {
+          "path": "packages/networks/avalanche-rpc/lib/authorizedSubmission.ts",
+          "bytes": 6501,
+          "sha256": "6e799b600f91b6f3393b3a780540084e4e60d581f1222ce40ae411ce53980df5"
+        },
+        {
+          "path": "packages/networks/avalanche-rpc/lib/avalancheRpcNetwork.ts",
+          "bytes": 27509,
+          "sha256": "f4bccf587f80ec831028d1e88dd9b59e7e53de981917ef2d07170e1c4be61471"
+        },
+        {
+          "path": "packages/networks/avalanche-rpc/lib/avalancheTransport.ts",
+          "bytes": 4574,
+          "sha256": "68d95a78bf087042098fa98ca151c9d2623c76b7fd841474210a844e2cd7854e"
+        },
+        {
+          "path": "packages/networks/avalanche-rpc/lib/index.ts",
+          "bytes": 367,
+          "sha256": "9f1534e1fa96677a9db853384557ba2d0d6a3a22f13bf3e4f05fe96661b3c368"
+        },
+        {
+          "path": "packages/networks/avalanche-rpc/package.json",
+          "bytes": 1462,
+          "sha256": "77ba526c6ae23b8f1672c5f28cc25979560988155fdfc1342fe6b8917b714346"
+        },
+        {
+          "path": "packages/networks/avalanche-rpc/tests/authorizedSubmission.spec.ts",
+          "bytes": 13189,
+          "sha256": "eed013dda38dceba0eb4725526837740950dfcd62b5510de265842fe357eff8e"
+        },
+        {
+          "path": "packages/networks/avalanche-rpc/tests/authorizedSubmissionTestUtils.ts",
+          "bytes": 3154,
+          "sha256": "247d10edbe610d90c8ccf5273ffd8eb1500fa3eecac975a16736450120c2f0b9"
+        },
+        {
+          "path": "packages/networks/avalanche-rpc/tests/avalancheRpcNetwork.spec.ts",
+          "bytes": 147890,
+          "sha256": "7f37bb404581bc07b25449fc862f27a8b0f97bb8dcb6bd40ae892d40d3cb063d"
+        },
+        {
+          "path": "packages/networks/avalanche-rpc/tests/avalancheRpcTestUtils.ts",
+          "bytes": 3497,
+          "sha256": "7029c0bd4bdc49fde2d17766ea94fe429204c7ab51e98c1d087315386ebb6e6e"
+        },
+        {
+          "path": "packages/networks/avalanche-rpc/tests/avalancheTestData.ts",
+          "bytes": 653,
+          "sha256": "ee4b05a8768f5e373f43dfc33eca56f4380fd82ad98e16f351672670c63ce662"
+        },
+        {
+          "path": "packages/networks/avalanche-rpc/tests/avalancheTransport.spec.ts",
+          "bytes": 14193,
+          "sha256": "94c239479dd00aed1785881ed837c62307514f3752cdd1042dd63ddafbd00e5c"
+        },
+        {
+          "path": "packages/networks/avalanche-rpc/tests/avalancheTransportTestUtils.ts",
+          "bytes": 1134,
+          "sha256": "1e130c9a953a580d7f7e0439917e6e18ec4251249ede8632478558011fa76d5e"
+        },
+        {
+          "path": "packages/networks/avalanche-rpc/tests/mocked/authorizedHttp.mock.ts",
+          "bytes": 1752,
+          "sha256": "d508fcc403fb72dde1459c798bd95accf289b2da300a1a3d660328aa07a8586d"
+        },
+        {
+          "path": "packages/networks/avalanche-rpc/tests/mocked/authorizedTransport.mock.ts",
+          "bytes": 227,
+          "sha256": "fbfcb3af53fbc662bdd09d1f6fd564832ca6a9368ff7e71cf8e0b19f68bad071"
+        },
+        {
+          "path": "packages/networks/avalanche-rpc/tests/mocked/avalancheHttp.mock.ts",
+          "bytes": 1538,
+          "sha256": "68dc35f21e4ca76faaa8f407c3e233d07c57ec1e4c19ff3a9119d7bb1c1adb18"
+        },
+        {
+          "path": "packages/networks/avalanche-rpc/tests/mocked/constructorDatabase.mock.ts",
+          "bytes": 365,
+          "sha256": "22afc54db0f801dbedff6cd9417818202f1b37f143c389307b178f1556e00a30"
+        },
+        {
+          "path": "packages/networks/avalanche-rpc/tests/mocked/evidenceRpc.mock.ts",
+          "bytes": 927,
+          "sha256": "5da046436f35f13f0f7424f2d8bdd565e1cd8f4323a32b7e1dbda2f9d06db11d"
+        },
+        {
+          "path": "packages/networks/avalanche-rpc/tests/mocked/networkRpc.mock.ts",
+          "bytes": 1688,
+          "sha256": "72b96ddc24e775fa59cdb7de5b3671e84e6fd766ca2b86da4d755a66f95910f8"
+        },
+        {
+          "path": "packages/networks/avalanche-rpc/tests/mocked/stateRpc.mock.ts",
+          "bytes": 954,
+          "sha256": "9fbb61b6c403c5c8b002a66433e9742567a5660b2640e42a0319ee0e9ecda5d6"
+        },
+        {
+          "path": "packages/networks/avalanche-rpc/tests/settledReceiptTestUtils.ts",
+          "bytes": 1698,
+          "sha256": "e4a7095ac7759737d8e4a4739520b2f007f4c49d74290dbcdecf784fe77e44ba"
+        },
+        {
+          "path": "packages/networks/avalanche-rpc/tests/settledStateTestUtils.ts",
+          "bytes": 1846,
+          "sha256": "49f73eb199876b4be59305ab3dca7f58b87276c6ac72fb40740a9ac4b01d9775"
+        },
+        {
+          "path": "packages/networks/avalanche-rpc/tests/settledTransactionTestUtils.ts",
+          "bytes": 2594,
+          "sha256": "d853c846002f4098e2d79d9e132af4d1f7c185678a896adf4f480e6bf42b7dd0"
+        },
+        {
+          "path": "packages/networks/avalanche-rpc/tsconfig.build.json",
+          "bytes": 312,
+          "sha256": "2cec1c0ecd780dfbc485968d6e4d07d64683ad97bb0ab5af42d0c0a04a43671c"
+        },
+        {
+          "path": "packages/networks/avalanche-rpc/tsconfig.json",
+          "bytes": 298,
+          "sha256": "3fb5653a95e0b1b7588fb183dcb2bf9e054b643bec5e33bf0dccac257e49200a"
+        },
+        {
+          "path": "packages/networks/avalanche-rpc/vitest.config.ts",
+          "bytes": 174,
+          "sha256": "bc95b7e1569273ad6df6c61687672213db21aafc8edd19cd0277e3d0db6b3869"
+        },
+        {
+          "path": "services/guard-service/config/default.yaml",
+          "bytes": 17254,
+          "sha256": "2133765036346dcec559ec29e66c3e86235c6a9503c65a0fec01ffd607af2825"
+        },
+        {
+          "path": "services/guard-service/docker/custom-environment-variables.yaml",
+          "bytes": 1131,
+          "sha256": "11181638194df08999cb4fada67f8078304620178a5a0bd132e9df87654cae37"
+        },
+        {
+          "path": "services/guard-service/package.json",
+          "bytes": 4622,
+          "sha256": "fb98c2214334b9d5f55642a28e672ed0bd613ada4338d79cb25b802fffbe4ff1"
+        },
+        {
+          "path": "services/guard-service/src/agreement/avalancheOrderRecovery.ts",
+          "bytes": 11211,
+          "sha256": "5088be79c4c890daeb47291bd42e458d9faae676982c5cf06eadbbfe484184ae"
+        },
+        {
+          "path": "services/guard-service/src/agreement/avalancheRewardAdmission.ts",
+          "bytes": 13934,
+          "sha256": "dce0a5c9cc29b218580847a206aa4222688199939fa5616663213ab7fb2172c0"
+        },
+        {
+          "path": "services/guard-service/src/agreement/txAgreement.ts",
+          "bytes": 36809,
+          "sha256": "f278e411e867457dc17a713b11b3b585ae9c6215d676224699f144729e5e6ebe"
+        },
+        {
+          "path": "services/guard-service/src/api/arbitrary.ts",
+          "bytes": 4902,
+          "sha256": "45eca5a05c50980cd361e744f4647760619f10c4963a3400009d36d921e0f710"
+        },
+        {
+          "path": "services/guard-service/src/api/balance.ts",
+          "bytes": 2106,
+          "sha256": "2799cd9e24b30e38bb98baee3f4bd2ffb0790001824cbb9c0e3ec1a007bbe0a0"
+        },
+        {
+          "path": "services/guard-service/src/api/schemas.ts",
+          "bytes": 7548,
+          "sha256": "6e18c7f63c4b2f43b0efe6733161400bb2446ae70e3b86f2f1fc567522c8a4a5"
+        },
+        {
+          "path": "services/guard-service/src/api/signTx.ts",
+          "bytes": 3147,
+          "sha256": "235ad71d2a7576a603ea36e30b4df179528284f82bf965060b507d5deb8a4264"
+        },
+        {
+          "path": "services/guard-service/src/coldStorage/avalancheColdAssets.ts",
+          "bytes": 4626,
+          "sha256": "994302f9d1370aad09a7591ce80159d3b50d6eb0a77dd4b75a4b8705452afc54"
+        },
+        {
+          "path": "services/guard-service/src/coldStorage/coldStorage.ts",
+          "bytes": 8960,
+          "sha256": "a01107aa61db83cef363b214129cd31f08e5c6e5ef8b333eb25657cd485d3702"
+        },
+        {
+          "path": "services/guard-service/src/configs/avalancheBalanceConfig.ts",
+          "bytes": 1485,
+          "sha256": "f5386f22a78eff862af7a64d2ddc15a81f04a79b7c1944bcd1e670aff2b76359"
+        },
+        {
+          "path": "services/guard-service/src/configs/avalancheHealthConfig.ts",
+          "bytes": 4220,
+          "sha256": "66d4fb11250b6cb2d324ef8ad651c355b70e28b51c885eb447003d8507c9d7d6"
+        },
+        {
+          "path": "services/guard-service/src/configs/configs.ts",
+          "bytes": 16787,
+          "sha256": "f1afe6033c9e3c7431010fc3f90227bffb66e785378611c6537dd07dceaa66a6"
+        },
+        {
+          "path": "services/guard-service/src/configs/guardsAvalancheConfigs.ts",
+          "bytes": 10075,
+          "sha256": "71cd51ac8784089a639b690d2e43caf34125e17820b22bfaa3984f4a679ce32b"
+        },
+        {
+          "path": "services/guard-service/src/configs/guardsErgoConfigs.ts",
+          "bytes": 6739,
+          "sha256": "94775833af9b547502640882a9e947f69976fb6e1caac1891c50f2528a9130e1"
+        },
+        {
+          "path": "services/guard-service/src/configs/rosenConfig.ts",
+          "bytes": 4248,
+          "sha256": "e0b732ae6eefd81e5f47cfc15d612bbc52531f4cf9ceaaadc0adc5ed67f21188"
+        },
+        {
+          "path": "services/guard-service/src/db/dataSource.ts",
+          "bytes": 2501,
+          "sha256": "b2fa08e4775fb243f1d6de61eab8e22997be38e47e339297ed092b92dd716f1f"
+        },
+        {
+          "path": "services/guard-service/src/db/databaseAction.ts",
+          "bytes": 69413,
+          "sha256": "3dd78dcacacc59e84235ff4ed70a5a59ba3e8dee3b8ec7bfd66ecd82d04f8b23"
+        },
+        {
+          "path": "services/guard-service/src/event/eventProcessor.ts",
+          "bytes": 20623,
+          "sha256": "da13ae5dcbc78eb24739aeae71944d52208831b3eeba41a6c48fb580409f0e97"
+        },
+        {
+          "path": "services/guard-service/src/guard/avalancheHealthCheck.ts",
+          "bytes": 7553,
+          "sha256": "5944095bd4159dcbe263d09797d9dddfc45273c2b449c416928860016970f6ac"
+        },
+        {
+          "path": "services/guard-service/src/guard/healthCheck.ts",
+          "bytes": 19418,
+          "sha256": "24ff77fe403b1328fdd05ca7b115379f7a9976be673a011ac50098aad87bd7c0"
+        },
+        {
+          "path": "services/guard-service/src/handlers/balanceHandler.ts",
+          "bytes": 19049,
+          "sha256": "0e425233b1855d671d79ddc81327d9c24f134ca1dbb97d656dcc78221838ee5e"
+        },
+        {
+          "path": "services/guard-service/src/handlers/chainHandler.ts",
+          "bytes": 21584,
+          "sha256": "e60112253bed0cf21884c9e152b51daf1b5461ca47129bc5ca8e79398f7841b9"
+        },
+        {
+          "path": "services/guard-service/src/handlers/tokenHandler.ts",
+          "bytes": 4593,
+          "sha256": "25448548cb3622f1e20d0c65d4a72562682484fac77527dbd2f65da1dec43ebc"
+        },
+        {
+          "path": "services/guard-service/src/jobs/avalancheScannerStartup.ts",
+          "bytes": 7169,
+          "sha256": "2af11f801a6c9790194cf590f76a5a0a5c93048cfef8408e5ea866fd4ebdf5f8"
+        },
+        {
+          "path": "services/guard-service/src/jobs/initScanner.ts",
+          "bytes": 21638,
+          "sha256": "28771d8875cec3db175862751e468267fb3af67ffe9eec2d3fc4abc617c362b8"
+        },
+        {
+          "path": "services/guard-service/src/jobs/runProcessors.ts",
+          "bytes": 5937,
+          "sha256": "dffca063ebce13838669d1a0685a6f74bc5468e86768be55f0e3db55cee82ffe"
+        },
+        {
+          "path": "services/guard-service/src/signing/signingRuntime.ts",
+          "bytes": 10030,
+          "sha256": "957aae9282899f57a2b4d6d3eb5aaa2a0a5ed974728da1cce52efe887ca2527a"
+        },
+        {
+          "path": "services/guard-service/src/signing/transactionSigningContext.ts",
+          "bytes": 55405,
+          "sha256": "a90d41e0aa51b343534821930ba03e962f508864a7322741e37e36bb14e1e9ef"
+        },
+        {
+          "path": "services/guard-service/src/synchronization/eventSynchronization.ts",
+          "bytes": 23203,
+          "sha256": "4b79910ffb4c24fadf44e7a9f9a0915a60c15d624ba8cdcf2855f52da9e00173"
+        },
+        {
+          "path": "services/guard-service/src/transaction/transactionProcessor.ts",
+          "bytes": 31704,
+          "sha256": "4428b448ad32c1a0311597754ef796fc834bcec873879c179ba7053a4fe56f62"
+        },
+        {
+          "path": "services/guard-service/src/types/api.ts",
+          "bytes": 2330,
+          "sha256": "d078ef91205e052ff975b9f844a64762269093f0b92d722d103e20f6f77d4abe"
+        },
+        {
+          "path": "services/guard-service/src/types/contract.ts",
+          "bytes": 1028,
+          "sha256": "26f43ba69ea5cbefc1f09d63123374320dc5c37aaa39b01392e076280256c36c"
+        },
+        {
+          "path": "services/guard-service/src/utils/avalancheChain.ts",
+          "bytes": 7283,
+          "sha256": "008466316770c3a137cb4810029c7c08b533699853d8b7fa75c5465ed6dccfff"
+        },
+        {
+          "path": "services/guard-service/src/utils/avalancheManagementRoutes.ts",
+          "bytes": 539,
+          "sha256": "720fbff01885aea63a3cb384ff6d83c2e1a7845c73bbc0430c26898db8574706"
+        },
+        {
+          "path": "services/guard-service/src/utils/avalancheScanner.ts",
+          "bytes": 2905,
+          "sha256": "c3b2d860341d617f8b59ef0d266d6f4cb722c8c20096552328ae2d29bca88bf5"
+        },
+        {
+          "path": "services/guard-service/src/utils/avalancheTransactionSafety.ts",
+          "bytes": 10674,
+          "sha256": "7b7b5c10620f3e7a32046fb8d4faa00c5e0e60bf193be266c37039b05ffe7268"
+        },
+        {
+          "path": "services/guard-service/src/utils/constants.ts",
+          "bytes": 4502,
+          "sha256": "7d4e0c9acb48e6f1a6e25baaf12f8a3408d92e9fe44a4f21d014d467e629e75c"
+        },
+        {
+          "path": "services/guard-service/src/verification/avalancheManagementAuthorization.ts",
+          "bytes": 17447,
+          "sha256": "e7958006e384cad97784bf070fa6709498d61d87b0cbd49bc10172c373b8aa9b"
+        },
+        {
+          "path": "services/guard-service/src/verification/avalancheManagementDependencies.ts",
+          "bytes": 5311,
+          "sha256": "436bb3adad5171ca0cd1af8951f3ab45f52bafa0fd87cb128d347a4d424d5081"
+        },
+        {
+          "path": "services/guard-service/src/verification/avalancheManagementExecutionAuthorization.ts",
+          "bytes": 31580,
+          "sha256": "fb91b39e7f2803abd3731ee6bb9c33acdff287ce9102f6d8a01d3b50a1dd3c92"
+        },
+        {
+          "path": "services/guard-service/src/verification/avalancheManagementSigningPersistence.ts",
+          "bytes": 9308,
+          "sha256": "6ccc549bb4b75f1acf7b1c27242878a5768a3f553f6b993733a7a5b99e2d6726"
+        },
+        {
+          "path": "services/guard-service/src/verification/paymentRecoveryAuthorization.ts",
+          "bytes": 28877,
+          "sha256": "aa35889312e2e4f4b8b50fe383f0c19a5d7318835d88e53ab63b794ee6967007"
+        },
+        {
+          "path": "services/guard-service/src/verification/paymentSubmissionAuthorization.ts",
+          "bytes": 48324,
+          "sha256": "54e9a1bd649501ccbdb12fec1207b7ca888a59b90ae6d02a2e7c0514bc74fcff"
+        },
+        {
+          "path": "services/guard-service/src/verification/requestVerifier.ts",
+          "bytes": 7859,
+          "sha256": "61e8d80b5c2859a88119efdb385eb41bc7eca762a3b6a748e34fe980916d5c28"
+        },
+        {
+          "path": "services/guard-service/src/verification/rewardAuthorization.ts",
+          "bytes": 54487,
+          "sha256": "5ade6f6d44ff125642da6556978f98a847af836bf3a19f9c415da0cc5e160f4b"
+        },
+        {
+          "path": "services/guard-service/src/verification/transactionVerifier.ts",
+          "bytes": 17943,
+          "sha256": "6fbb2db8bb7e66dee08df229ff52bb582feab06631ea4a70e59b99de4bbfbbe8"
+        },
+        {
+          "path": "services/guard-service/tests/agreement/avalancheRewardAdmission.spec.ts",
+          "bytes": 78523,
+          "sha256": "3d632c49b9f8952c77cbdf8a7d08f6d2368ac989130fb8dc6df8ac74e5159238"
+        },
+        {
+          "path": "services/guard-service/tests/api/arbitrary.spec.ts",
+          "bytes": 20166,
+          "sha256": "42e4858bb7a90edf6e6da459fc93a6c3627b31bb0eb975f89954a9f0cffc3606"
+        },
+        {
+          "path": "services/guard-service/tests/api/avalancheBalanceTestData.ts",
+          "bytes": 922,
+          "sha256": "567a3b738c4282987fb1f28e063f275ea6eb4889ac09227706c673595e520429"
+        },
+        {
+          "path": "services/guard-service/tests/api/avalancheBalanceTestUtils.ts",
+          "bytes": 1236,
+          "sha256": "9e79fc82177dd06698e5d274ed9783035728a08d075567eb67be8595b1e676fb"
+        },
+        {
+          "path": "services/guard-service/tests/api/avalancheColdBalanceTestData.ts",
+          "bytes": 2452,
+          "sha256": "973a2c8f3bc311af87873038ed8bd2a2624509e5e74ca12f55ae23c8725cf718"
+        },
+        {
+          "path": "services/guard-service/tests/api/avalancheColdBalanceTestUtils.ts",
+          "bytes": 743,
+          "sha256": "75fd7ea3a21b70f14627533bb2d7665adf687505fd558ec5aa533083b4a9883c"
+        },
+        {
+          "path": "services/guard-service/tests/api/avalancheManagementApi.spec.ts",
+          "bytes": 11704,
+          "sha256": "9c2933a710ef4fa38cf66efc7efed31b7b173782ca892844bece30bac5b5f4bb"
+        },
+        {
+          "path": "services/guard-service/tests/api/avalancheNativeManual.spec.ts",
+          "bytes": 6381,
+          "sha256": "61b0c7369fd64939b533e2e8bdf2f0fd33675097e04ab029689955e1231d739c"
+        },
+        {
+          "path": "services/guard-service/tests/api/balance.spec.ts",
+          "bytes": 28876,
+          "sha256": "93ac2ec3cdb00095ea518675ce2d2ebfb38bd45380c94f0f68fddcf0c0a90141"
+        },
+        {
+          "path": "services/guard-service/tests/api/mocked/avalancheBalance.mock.ts",
+          "bytes": 904,
+          "sha256": "2ed10b77b30c8397002dec2b64d2d1daf8272e8e602cb29635dfb4f72dcdfbc6"
+        },
+        {
+          "path": "services/guard-service/tests/api/mocked/avalancheColdBalance.mock.ts",
+          "bytes": 1098,
+          "sha256": "df5f907cc4d7724224575ee9972ed84f30b1da904a497adbd9616ad1383a7ce0"
+        },
+        {
+          "path": "services/guard-service/tests/api/schemas.spec.ts",
+          "bytes": 18596,
+          "sha256": "1fd23da9f5899ca60e6e9b22345a18936537e5b9b6bc0f7ce7409070fd673e53"
+        },
+        {
+          "path": "services/guard-service/tests/avalancheRegistryTestData.ts",
+          "bytes": 264,
+          "sha256": "beb86b0b44c96252f252c0d4e86f8b3a4fe30f602f60176e90e05a73cf2d4f25"
+        },
+        {
+          "path": "services/guard-service/tests/coldStorage/avalancheColdProducerTestUtils.ts",
+          "bytes": 1451,
+          "sha256": "045689186f64176d8267d9a152092333372ddefb0881069c87c2605c6f17ac04"
+        },
+        {
+          "path": "services/guard-service/tests/coldStorage/avalancheColdRoutes.spec.ts",
+          "bytes": 6250,
+          "sha256": "a458086e81727d4d8b1cbd10af79fc16c9a7c070bbf4f8b2b189e3766f2873a8"
+        },
+        {
+          "path": "services/guard-service/tests/coldStorage/coldStorage.spec.ts",
+          "bytes": 44191,
+          "sha256": "52788e25bf51022df98856b370ba0810655e7a3229a0ee22931a3647c73476d3"
+        },
+        {
+          "path": "services/guard-service/tests/configs/avalancheBalanceConfig.spec.ts",
+          "bytes": 3147,
+          "sha256": "b4ccde6786c51f302a0ea1de1858b615d5b1d6365db76b02292a869ad59fd22b"
+        },
+        {
+          "path": "services/guard-service/tests/configs/avalancheConfigTestData.ts",
+          "bytes": 4023,
+          "sha256": "b2226c19ca84e7fb76476b2d4c7be1e37f87bed33a6ab15b5bc14fca1368e1bc"
+        },
+        {
+          "path": "services/guard-service/tests/configs/avalancheConfigTestUtils.ts",
+          "bytes": 2984,
+          "sha256": "d2376bb5ba63b56e64d20b26f809fd900f546c11100acc4bb32711427a23d9d1"
+        },
+        {
+          "path": "services/guard-service/tests/configs/avalancheHealthConfig.spec.ts",
+          "bytes": 7779,
+          "sha256": "7e070781b526360a6abbebb29776e1ce2a8391d88a01882a3e47fe3a18e92e84"
+        },
+        {
+          "path": "services/guard-service/tests/configs/avalancheManagementRoutes.spec.ts",
+          "bytes": 9695,
+          "sha256": "9f2f9848dcbc4abc6e73ff6330eb59818156134120fca8c1972bf305fe2981a8"
+        },
+        {
+          "path": "services/guard-service/tests/configs/avalancheManagementRoutesTestData.ts",
+          "bytes": 1306,
+          "sha256": "36acdc9423d73577805a74691a7cc5de14e556c5527af6b86c0b7c5efd5d8421"
+        },
+        {
+          "path": "services/guard-service/tests/configs/configs.spec.ts",
+          "bytes": 2405,
+          "sha256": "4a6c972ebf12bab9770213207bb4882393a5cfe2e0d844c500cda26957e67e8a"
+        },
+        {
+          "path": "services/guard-service/tests/configs/guardsAvalancheConfigs.spec.ts",
+          "bytes": 16161,
+          "sha256": "a595a700e18185247a993e5304324d873a59850756367399781509168ff7e8b4"
+        },
+        {
+          "path": "services/guard-service/tests/configs/guardsErgoConfigs.spec.ts",
+          "bytes": 7541,
+          "sha256": "31fb5575de4b93ea369bb68e55672af4130de8d44661a48f6abe7eeff3796210"
+        },
+        {
+          "path": "services/guard-service/tests/configs/rosenConfig.spec.ts",
+          "bytes": 5805,
+          "sha256": "e51653603b5acd97c95f882b7608dc3ce6bff6dffeeea3d081eef3533c3a142b"
+        },
+        {
+          "path": "services/guard-service/tests/db/avalancheDataSource.spec.ts",
+          "bytes": 9647,
+          "sha256": "38e5f461d36d8741b2df0801e51599479924a5a528d3994815f923ba4b202573"
+        },
+        {
+          "path": "services/guard-service/tests/db/avalancheFinalizationIsolation.spec.ts",
+          "bytes": 6076,
+          "sha256": "35faa46deef71d5d8f88976d242acc1b175518cd24aad2971bc2aea7da1d5aa1"
+        },
+        {
+          "path": "services/guard-service/tests/db/avalancheFinalizationPersistence.spec.ts",
+          "bytes": 23934,
+          "sha256": "ca271a37b118901fec825c6338d85277bb429b2759bd3af8fd4f3647a25a5bbb"
+        },
+        {
+          "path": "services/guard-service/tests/db/avalancheInvalidationPersistence.spec.ts",
+          "bytes": 31956,
+          "sha256": "a9b7c160a819e487a0ccb67093b9bf27c6d4ec34a6dca52f15a3e6ca6aaabe87"
+        },
+        {
+          "path": "services/guard-service/tests/db/avalancheLastCheckPersistence.spec.ts",
+          "bytes": 13393,
+          "sha256": "d6abbe97f1881f1e76747831c1994e94deef2ff1aec9c7ca03f3d536e5433af1"
+        },
+        {
+          "path": "services/guard-service/tests/db/avalancheNativeManagementPostgresRestart.spec.ts",
+          "bytes": 4474,
+          "sha256": "9dcb5a8fb47ce88f27a4b7cb3a06855f43f81a26a429cd293bb2ea27a08bf0ff"
+        },
+        {
+          "path": "services/guard-service/tests/db/avalanchePaymentRecoveryPersistence.spec.ts",
+          "bytes": 27056,
+          "sha256": "ce4bf3dbc29c8da99415a60fd6a121a99e22796d9be5a76a63960eda54463cf4"
+        },
+        {
+          "path": "services/guard-service/tests/db/avalancheSignedPersistence.spec.ts",
+          "bytes": 12436,
+          "sha256": "f01bad52d749824d434cd7741e91139efcf335b04d92da72f9f29789effdc0b3"
+        },
+        {
+          "path": "services/guard-service/tests/db/avalancheStatusPersistence.spec.ts",
+          "bytes": 15830,
+          "sha256": "7d30b7c7b46ac315c3e2782fa961e99a09cff05d1a87825251b8d96f684b2f15"
+        },
+        {
+          "path": "services/guard-service/tests/db/avalancheSynchronizationPersistence.spec.ts",
+          "bytes": 35353,
+          "sha256": "d377859e47c7f7e642e156fa4158175921e95d64bfed0301e3bb2d013e1af89c"
+        },
+        {
+          "path": "services/guard-service/tests/event/avalancheEventAdmission.spec.ts",
+          "bytes": 23454,
+          "sha256": "55b2297a9c8e82527df0d3b39226483b5eb5ff5ee845e77f1a31f020f55f7f0a"
+        },
+        {
+          "path": "services/guard-service/tests/event/avalancheEventFailureClassification.spec.ts",
+          "bytes": 16247,
+          "sha256": "7e600af827b8e974890cbbcdc8fc35c2a6f8c9c9ea36cb370daae94211184514"
+        },
+        {
+          "path": "services/guard-service/tests/guard/avalancheAssetHealth.spec.ts",
+          "bytes": 7413,
+          "sha256": "ec87ef048d9676a02eeb272406a124d8db4cabd526ef2bd06f24bf975b19570f"
+        },
+        {
+          "path": "services/guard-service/tests/guard/avalancheAssetHealthTestUtils.ts",
+          "bytes": 5773,
+          "sha256": "a26a12b9f57f5812b81395dafd70d08c1a81e2c12afda4edbe78d86e372ffed1"
+        },
+        {
+          "path": "services/guard-service/tests/guard/avalancheHealthCheck.spec.ts",
+          "bytes": 21971,
+          "sha256": "0c87a5edc9f7ac3b7a6e20811635637de5e207960eb10958a872bc75d8d32146"
+        },
+        {
+          "path": "services/guard-service/tests/guard/avalancheHealthTestUtils.ts",
+          "bytes": 629,
+          "sha256": "9087c85075d251707846e7bd7c073d00fd3067592e0133cc73f1b42b991420b9"
+        },
+        {
+          "path": "services/guard-service/tests/guard/healthCheck.spec.ts",
+          "bytes": 15162,
+          "sha256": "5cab8b4d0645b7dc8ffc2609a6ba797506715a43f7b8dad29fbc2e16771c841c"
+        },
+        {
+          "path": "services/guard-service/tests/guard/mocked/avalancheHealthWiring.mock.ts",
+          "bytes": 2533,
+          "sha256": "a0600bd4a4b2dfda86e8443376b06adea2e9f1d91d9517c4fe9286bde9db9edd"
+        },
+        {
+          "path": "services/guard-service/tests/handlers/avalancheBalanceTestUtils.ts",
+          "bytes": 829,
+          "sha256": "cdc4795eb3fe6c1dbc223666fdde7d87aa996a0a80d53b4a152c9dc6c7426ca3"
+        },
+        {
+          "path": "services/guard-service/tests/handlers/avalancheTokenMapTestUtils.ts",
+          "bytes": 1034,
+          "sha256": "a91baa0e6ea20a5f934242f42e007bbe989b4d74eb9564aa85ecd8f8fb5a84af"
+        },
+        {
+          "path": "services/guard-service/tests/handlers/balanceHandler.spec.ts",
+          "bytes": 70737,
+          "sha256": "cb1045fb2b1936a38aabd5d3f57023268e82be0f41ddf25bde9fe2fbe97fee94"
+        },
+        {
+          "path": "services/guard-service/tests/handlers/chainHandler.spec.ts",
+          "bytes": 12689,
+          "sha256": "2b2b694ebecad3536afbe827ecc8e7420607db09fa17588641fbf4e4685c7b71"
+        },
+        {
+          "path": "services/guard-service/tests/handlers/mocked/avalancheBalance.mock.ts",
+          "bytes": 1139,
+          "sha256": "7ee5737668dda3c3e8fd2522e9a994f607dbc749f34f20ac81837eb913d2a85a"
+        },
+        {
+          "path": "services/guard-service/tests/handlers/mocked/avalancheChainRegistration.mock.ts",
+          "bytes": 3483,
+          "sha256": "a2e62179c1c9f666896ff8f3d2c0feb38fb128745d7d8f4f48aba8772dcc8611"
+        },
+        {
+          "path": "services/guard-service/tests/handlers/tokenHandler.spec.ts",
+          "bytes": 17538,
+          "sha256": "ea7235909ac985a94d1c9785458922a6edf83e7ef6a29d89ae5b2b873b81c7ee"
+        },
+        {
+          "path": "services/guard-service/tests/jobs/avalancheScannerRegistration.spec.ts",
+          "bytes": 8034,
+          "sha256": "8c554d729175ab4221a1787cef6e73b3ef7f56e0a000c646f70a86965eb957f5"
+        },
+        {
+          "path": "services/guard-service/tests/jobs/avalancheScannerStartup.spec.ts",
+          "bytes": 25630,
+          "sha256": "ec758c3f83fd98615191d34c2bca2734191ca21105216fe901a71eacb0bd793e"
+        },
+        {
+          "path": "services/guard-service/tests/jobs/avalancheScannerWiring.spec.ts",
+          "bytes": 4358,
+          "sha256": "8b12dcbedd7413d0e913b03a46d40f0f00f0e1312bbd3cbd2e1b9e59e2aa24aa"
+        },
+        {
+          "path": "services/guard-service/tests/jobs/avalancheStartupOrdering.spec.ts",
+          "bytes": 13288,
+          "sha256": "995b9a92a3258fb673a16acab07247dfd232caaff755f2eab8aee04128383f87"
+        },
+        {
+          "path": "services/guard-service/tests/jobs/mocked/avalancheBalanceScheduling.mock.ts",
+          "bytes": 868,
+          "sha256": "72536d22098211ede750adf98f1cab8ed680c1a65f7848d77937c9a99ee42e82"
+        },
+        {
+          "path": "services/guard-service/tests/jobs/mocked/avalancheScannerRegistration.mock.ts",
+          "bytes": 2754,
+          "sha256": "15b00b2751b1a98d3ce4b6631cc98f565d5efd93b620c38001f07b01c3a77387"
+        },
+        {
+          "path": "services/guard-service/tests/jobs/mocked/avalancheScannerWiring.mock.ts",
+          "bytes": 1022,
+          "sha256": "7856938e04cb6635021ea16530173fbf9b94cdadf6bcc494356fa2c4ee61e6b4"
+        },
+        {
+          "path": "services/guard-service/tests/jobs/mocked/avalancheStartupOrdering.mock.ts",
+          "bytes": 7414,
+          "sha256": "6dbf4d9bb1c2e8a7ee127e054f595fe38a7eee5d0e9351c3693c53f3cc38f9db"
+        },
+        {
+          "path": "services/guard-service/tests/jobs/runProcessors.spec.ts",
+          "bytes": 1571,
+          "sha256": "fe9600549ee62bbf36639b6cba7cd37d458cb2e4db2b9d1c0c1661d757cd872b"
+        },
+        {
+          "path": "services/guard-service/tests/jobs/testData.ts",
+          "bytes": 1762,
+          "sha256": "a4739519bce40f8596911cc7148c36f36b9d6b7c023edaca29156579ecf6d91e"
+        },
+        {
+          "path": "services/guard-service/tests/mocked/registryScope.mock.ts",
+          "bytes": 1081,
+          "sha256": "8d8181e5d6132c3409f9f9e39a77110d10cd081fb59b034042c5114e2fd2b456"
+        },
+        {
+          "path": "services/guard-service/tests/setup/setupNativeManagementPostgres.ts",
+          "bytes": 2383,
+          "sha256": "7d3e522861d29504af4b8f089854f711b8417fe10e2208e7643a1dcd26127a09"
+        },
+        {
+          "path": "services/guard-service/tests/signing/avalancheManagementPersistence.spec.ts",
+          "bytes": 15709,
+          "sha256": "39124ece50391b0c50cdfb7f19220a337fda0195817201364fc067bf48aba089"
+        },
+        {
+          "path": "services/guard-service/tests/signing/avalancheManagementPostgresPersistence.spec.ts",
+          "bytes": 6121,
+          "sha256": "a36d063459f99b63257af4796952e4c859037cd7007d89d92e16051ecdbcc55f"
+        },
+        {
+          "path": "services/guard-service/tests/signing/avalancheManagementSigning.spec.ts",
+          "bytes": 13785,
+          "sha256": "7664f8743d7fbc0e4be253c7210d19fbc23babec612a2083194595db56e6cb83"
+        },
+        {
+          "path": "services/guard-service/tests/signing/avalancheManagementSigningTestUtils.ts",
+          "bytes": 3014,
+          "sha256": "08c3319ba740006df0a774550d977fe8a9c93638f674f74f48483c334c89d1ca"
+        },
+        {
+          "path": "services/guard-service/tests/signing/avalanchePaymentInvalidation.spec.ts",
+          "bytes": 62347,
+          "sha256": "0cfef9f9d3a72321ce0695ae830df53fe94eaccc2a1ac71672aecf9d109aba56"
+        },
+        {
+          "path": "services/guard-service/tests/signing/avalanchePaymentRecovery.spec.ts",
+          "bytes": 50112,
+          "sha256": "ae84ced93f7252d377d53a7811e3e2866556918389f78b7f5c56e34d0c547082"
+        },
+        {
+          "path": "services/guard-service/tests/signing/avalanchePaymentSubmission.spec.ts",
+          "bytes": 85604,
+          "sha256": "8867ab70de2b9995ba2f79bb8949c5dc0f5de21e3fd0322c97ac60b26037ba5f"
+        },
+        {
+          "path": "services/guard-service/tests/signing/avalancheRewardCompletion.spec.ts",
+          "bytes": 35125,
+          "sha256": "60b8a67ab4d5e0c7be4273dc26e282f9afe4578c04e830467756473ce7ac42ee"
+        },
+        {
+          "path": "services/guard-service/tests/signing/avalancheRewardInvalidation.spec.ts",
+          "bytes": 41033,
+          "sha256": "1975a71cd688ab854f75c9aca50d22ed8db9257b437bb72ecc7db7e6d53530fc"
+        },
+        {
+          "path": "services/guard-service/tests/signing/avalancheRewardRecovery.spec.ts",
+          "bytes": 36242,
+          "sha256": "27a346aabaf9298f4bbc7cfa3de15825dd5da3e4654d3221f0aec314df71550a"
+        },
+        {
+          "path": "services/guard-service/tests/signing/avalancheRewardSigning.spec.ts",
+          "bytes": 63519,
+          "sha256": "3acd3b6c53b28e60344f9b453e5be43a9692b61e0094fcbc22a6cc33d3854f67"
+        },
+        {
+          "path": "services/guard-service/tests/signing/avalancheRewardSubmission.spec.ts",
+          "bytes": 57866,
+          "sha256": "138e0767e70551eeef29219442b4dbb851d630b8e091e237cfbe8e1bcf3fb31a"
+        },
+        {
+          "path": "services/guard-service/tests/signing/avalancheSigningSafety.spec.ts",
+          "bytes": 14849,
+          "sha256": "3c1292f0b60b4bb0cc05747b29d81ccf192718d5ac8aef30df9d5037d98a9874"
+        },
+        {
+          "path": "services/guard-service/tests/synchronization/avalancheSynchronizationActions.spec.ts",
+          "bytes": 36316,
+          "sha256": "d867b2ee2f9b8a4efca7c5fb40614b6b6de6aa8192430e500611552c512cb9a8"
+        },
+        {
+          "path": "services/guard-service/tests/synchronization/avalancheSynchronizationTestData.ts",
+          "bytes": 3976,
+          "sha256": "d91f2f6b7592baf67f231f62c84729aec4c0133e94f60950ca9d1d1edde9391c"
+        },
+        {
+          "path": "services/guard-service/tests/synchronization/avalancheSynchronizationTestUtils.ts",
+          "bytes": 1912,
+          "sha256": "6d9b914cd38cf49bae5a84afc6bb1c316c30e1a5b3da7a57cef52c78c2f322e0"
+        },
+        {
+          "path": "services/guard-service/tests/transaction/avalancheLastCheck.spec.ts",
+          "bytes": 14382,
+          "sha256": "55a7f3eb1da0093261a633ce763885777492cbfb08a67b9019e2e21fbe65e2ba"
+        },
+        {
+          "path": "services/guard-service/tests/transaction/avalancheManagementProcessor.spec.ts",
+          "bytes": 37172,
+          "sha256": "c4956a8066c683b1f995007bb01fdc61200a598504e39bb6cb743ac0dd6865c2"
+        },
+        {
+          "path": "services/guard-service/tests/transaction/avalancheManagementProcessorTestUtils.ts",
+          "bytes": 5800,
+          "sha256": "77f6fe013921232e8f8edff9efae4af88577181c8eb12116a11aad6b4beba181"
+        },
+        {
+          "path": "services/guard-service/tests/transaction/avalancheSigningProcessor.spec.ts",
+          "bytes": 32951,
+          "sha256": "6957b938120a8b59da04510db72c0283d0acf59f81db09d991b1149822cfdba4"
+        },
+        {
+          "path": "services/guard-service/tests/transaction/avalancheTransactionActions.spec.ts",
+          "bytes": 39090,
+          "sha256": "797a6960fb23f2f7bed470c556129a0dc70941fafb661d1b6a4d2be19c418993"
+        },
+        {
+          "path": "services/guard-service/tests/transaction/avalancheTransactionTestUtils.ts",
+          "bytes": 1351,
+          "sha256": "831b4d8c3ebaef6a165f9ef7d5b00447345282426a82e79b3492fc419ad9489f"
+        },
+        {
+          "path": "services/guard-service/tests/utils/avalancheChain.spec.ts",
+          "bytes": 27580,
+          "sha256": "0cc4f974eca0fac9616c72c59f9404df0de6c49a2ea39e4b041821bb957cb3e0"
+        },
+        {
+          "path": "services/guard-service/tests/utils/avalancheChainTestUtils.ts",
+          "bytes": 2318,
+          "sha256": "e0be97f3bfd98dd48097202536f8537ed650105b7fcc7bf055f86cd810129c47"
+        },
+        {
+          "path": "services/guard-service/tests/utils/avalancheManagementRoutes.spec.ts",
+          "bytes": 2556,
+          "sha256": "ffb2598a9e81a5974f7888747ce4487d03e1202178e157565e0871d1d529f068"
+        },
+        {
+          "path": "services/guard-service/tests/utils/avalancheManagementSafety.spec.ts",
+          "bytes": 10512,
+          "sha256": "a2d8c0bf4fd6ae8d116333a607fed0da387323f0617f0a87819bce902559e0c8"
+        },
+        {
+          "path": "services/guard-service/tests/utils/avalancheManagementSafetyTestUtils.ts",
+          "bytes": 2777,
+          "sha256": "405b6f9ec8eb77ed1fd9621c3f6e6b99fc95bfe23ae0c9ea54d0ffe8191cad2b"
+        },
+        {
+          "path": "services/guard-service/tests/utils/avalancheScanner.spec.ts",
+          "bytes": 12593,
+          "sha256": "6185cae70c1d88103ec13c08a26e2126d48a26b2419448f9cfbd8479372fe7c9"
+        },
+        {
+          "path": "services/guard-service/tests/utils/avalancheScannerTestUtils.ts",
+          "bytes": 532,
+          "sha256": "12c826373d25f96b0d22378abae80ebfbabf63f395d9017ed06cf8372c5e8c1f"
+        },
+        {
+          "path": "services/guard-service/tests/utils/avalancheTransactionSafety.spec.ts",
+          "bytes": 31006,
+          "sha256": "b9076ee675276c6a4d86c85f3b9d8533a2f28909b92194d8d726a6e54e76a529"
+        },
+        {
+          "path": "services/guard-service/tests/utils/constants.spec.ts",
+          "bytes": 2207,
+          "sha256": "3c0d580fe9b39f32b9ab7a091b6707a3c0510b663425e877c41dd96228078885"
+        },
+        {
+          "path": "services/guard-service/tests/utils/contractTokensTestData.json",
+          "bytes": 947,
+          "sha256": "9a3d3214f38dd3daef175db7e2e5fb40fec2c82e1e500d31b6527cdb119c0aad"
+        },
+        {
+          "path": "services/guard-service/tests/utils/mocked/avalancheChain.mock.ts",
+          "bytes": 1337,
+          "sha256": "92cd00dffda11c50ec84a88f927e5dbc4caab7b2088a9e913633b86c5dfb89ad"
+        },
+        {
+          "path": "services/guard-service/tests/utils/mocked/avalancheManagementSafety.mock.ts",
+          "bytes": 562,
+          "sha256": "4f92cb3fe3e96778e17aea44346805b70cf0241f757978b05003ddae538bca76"
+        },
+        {
+          "path": "services/guard-service/tests/utils/mocked/avalancheScanner.mock.ts",
+          "bytes": 2709,
+          "sha256": "cb22ec2a12d173896de36f13b0907e21d242e3afaef192b9bf6da8e4f2005799"
+        },
+        {
+          "path": "services/guard-service/tests/verification/avalancheManagementAdmission.spec.ts",
+          "bytes": 17494,
+          "sha256": "4ce35718068441f00b9320deffb3656756fa5ac79814ddaa2e9f9d406c13c275"
+        },
+        {
+          "path": "services/guard-service/tests/verification/avalancheManagementAdmissionTestUtils.ts",
+          "bytes": 4858,
+          "sha256": "52fd667f8eac10db82dce441f1b25dccdc608d5c3819ef1e6ad83e0065654796"
+        },
+        {
+          "path": "services/guard-service/tests/verification/avalancheManagementAuthorization.spec.ts",
+          "bytes": 17857,
+          "sha256": "b170955f53fe1175a25aac1cc1a03aa5d3ee81d52426e9bab81062fd065a7a1a"
+        },
+        {
+          "path": "services/guard-service/tests/verification/avalancheManagementAuthorizationTestUtils.ts",
+          "bytes": 5980,
+          "sha256": "b02c58f643c129d04593b110cbfeb5ac25fa525052d104906ab1814c3f046183"
+        },
+        {
+          "path": "services/guard-service/tests/verification/avalancheManagementDependencies.spec.ts",
+          "bytes": 7624,
+          "sha256": "476ae4728c488bb4507076f27224d5f7b46ec1d0107bb4cd85d315a0e70bb191"
+        },
+        {
+          "path": "services/guard-service/tests/verification/avalancheManagementExecutionAuthorization.spec.ts",
+          "bytes": 43329,
+          "sha256": "e8e1f5649c896fed17f9721f8991525f6a49833b27345de7c7e719e4c6b3b7d8"
+        },
+        {
+          "path": "services/guard-service/tests/verification/avalancheManagementExecutionAuthorizationTestUtils.ts",
+          "bytes": 10482,
+          "sha256": "99a4e58d6cf0dc2dc837b9ac3abae2f25bd7e948ef0424ddb5fadc2b2661341d"
+        },
+        {
+          "path": "services/guard-service/tests/verification/avalancheManagementSigningPersistence.spec.ts",
+          "bytes": 12896,
+          "sha256": "c65be94b8d77129c67e1a4e84832794ce1de4e9c5cf4b6b9770b50244d4f10df"
+        },
+        {
+          "path": "services/guard-service/tests/verification/avalancheTokenExecutionTestUtils.ts",
+          "bytes": 12218,
+          "sha256": "77d41dd6b5b78638067925d8f09f9e216b112ba74805635c04557da8cacaf34f"
+        },
+        {
+          "path": "services/guard-service/tests/verification/avalancheTokenRecoveryAuthorization.spec.ts",
+          "bytes": 4722,
+          "sha256": "4462e696c92dba0c4fe7bdbbb57e8c7a4d072f0205ef90c7c6e555169166a5cc"
+        },
+        {
+          "path": "services/guard-service/tests/verification/avalancheTokenSubmissionAuthorization.spec.ts",
+          "bytes": 5744,
+          "sha256": "e353753dfdcc6b9539c82ee4faa93d0e2a05cc06d8564b47e870f9b38bc0a332"
+        },
+        {
+          "path": "services/guard-service/tests/verification/paymentRecoveryAuthorization.spec.ts",
+          "bytes": 59318,
+          "sha256": "27e48b18ab405414ba9eb89b9bc54f492d3a154455c7e6a2a6b908d951513432"
+        },
+        {
+          "path": "services/guard-service/tests/verification/paymentSubmissionAuthorization.spec.ts",
+          "bytes": 172950,
+          "sha256": "048c51b39f6e0b91eb17ddf1640a417178ed251b4ebf3f7103a1327f27f092e5"
+        },
+        {
+          "path": "services/guard-service/tests/verification/requestVerifier.spec.ts",
+          "bytes": 31064,
+          "sha256": "8d57aad1ce126251f764749f94fb0720df25d2638a27f7b3e715c233e0e1dbb3"
+        },
+        {
+          "path": "services/guard-service/tests/verification/rewardAuthorization.spec.ts",
+          "bytes": 57393,
+          "sha256": "539de6cd5d85651e6e4cf41519b63a8ab807f1072b00b2033e9cbfd56a69d455"
+        },
+        {
+          "path": "services/guard-service/tests/verification/transactionVerifier.spec.ts",
+          "bytes": 66877,
+          "sha256": "47ccba16c32de41b67c661246415e33f8fbc8b656144510c35e37edbdc471ce1"
+        },
+        {
+          "path": "services/guard-service/tsconfig.json",
+          "bytes": 1754,
+          "sha256": "547ae8cf5d1e7ed31b79fc858439957362b30dd29a72f0698b19bcd966a9b7f1"
+        },
+        {
+          "path": "services/guard-service/vitest.avalanche-token-postgres.config.mts",
+          "bytes": 862,
+          "sha256": "6694ae8dad1ef2609d6851d528557471aac897152252cbd90eb2476be6e6575d"
+        },
+        {
+          "path": "services/guard-service/vitest.avalanche.config.ts",
+          "bytes": 109,
+          "sha256": "30630a203b8f269b73cf852782938ba35427a678e8d17d10b79986c6c601b6ce"
+        },
+        {
+          "path": "services/guard-service/vitest.config.ts",
+          "bytes": 719,
+          "sha256": "a94fb5f37a873c3cd636d6a9bdd8c853e728406f3b296d55dbba3c6d044cb2d4"
+        },
+        {
+          "path": "services/guard-service/vitest.native-management-postgres.config.mts",
+          "bytes": 838,
+          "sha256": "ec17a8ab82cfb6737c314b8f10fc1ffdc09c5fec788e950194cdc9ac0aa64460"
+        }
+      ]
+    },
+    {
+      "id": "G04-CONSUMERS",
+      "repo": "guard-service",
+      "purpose": "Proposed generic qualified TSS and Ergo signing consumers of the existing Guard context",
+      "dependencies": [
+        "C-GUARD-SOURCE"
+      ],
+      "beforeTree": "f297c44f906bf0681eadd0f89e935a3694b7ab15",
+      "tree": "c02491e7392ddef3e619e3a2a94fb692fab517ab",
+      "patch": {
+        "path": "patches/G04-CONSUMERS.patch",
+        "bytes": 16492,
+        "sha256": "df433b6e1fb8d95f2055d5302747473c31f51db6be8efb7ca6bea81d8db874a5"
+      },
+      "files": [
+        {
+          "path": ".changeset/guard-qualified-signing-consumers.md",
+          "bytes": 153,
+          "sha256": "1d43f65cf655fa02c624e9abb5260dbb95341633f7d2071c934d32219f4e2057"
+        },
+        {
+          "path": "services/guard-service/src/handlers/multiSigHandler.ts",
+          "bytes": 3097,
+          "sha256": "2cd1fc4ba3d2ea6515859612123e44fc23472c4c665b289ebca47ee24003bcb2"
+        },
+        {
+          "path": "services/guard-service/src/handlers/tssHandler.ts",
+          "bytes": 10582,
+          "sha256": "e61875e415184e63265f4828a9b98cca47bc3bbbfff8c948af48c1d3af98af5a"
+        },
+        {
+          "path": "services/guard-service/src/signing/ergoSigningAuthorization.ts",
+          "bytes": 1492,
+          "sha256": "950b43e6f48dfc337fb4bb8aec541852de13a0f0830b4238f1f6839420394d93"
+        },
+        {
+          "path": "services/guard-service/src/index.ts",
+          "bytes": 5596,
+          "sha256": "46f5df5ca34a53f48831e1bcc82eae61069e50077b2034e33db89939153f91f3"
+        }
+      ]
+    },
+    {
+      "id": "C-GUARD-WIRING",
+      "repo": "guard-service",
+      "purpose": "Avalanche startup wiring after qualified signing consumer installation",
+      "dependencies": [
+        "C-GUARD-SOURCE",
+        "G04-CONSUMERS"
+      ],
+      "beforeTree": "c02491e7392ddef3e619e3a2a94fb692fab517ab",
+      "tree": "68496f6b1bad18617d16bc4a3d3032c78dd3fa33",
+      "patch": {
+        "path": "patches/C-GUARD-WIRING.patch",
+        "bytes": 3528,
+        "sha256": "c22bc8f258d84312d84e3f4658f7d798066e715a17f3438e10705e44f7f2e0e3"
+      },
+      "files": [
+        {
+          "path": "services/guard-service/src/index.ts",
+          "bytes": 6172,
+          "sha256": "ee09d2dda0571b0a65ac186fced97af7a0d0c069efd37c51698993d37d9625ad"
+        }
+      ]
+    }
+  ],
+  "predecessor": {
+    "groups": 8,
+    "manifestSha256": "3b57e35510935d68b4b77794f42c23b7941fe72b0710b0f48958776fc72b5f97",
+    "tree": "24ecaa6ff5206ad5d2117033d4614b95f4f6ea5f"
+  },
+  "proposal": {
+    "status": "Dependency-ordered contributor proposal; Rosen acceptance pending",
+    "genericConsumerBoundary": "G04-CONSUMERS uses the existing GuardSigningRuntime/TransactionSigningContext after C core; no new generic interface. Intermediate stages are source inventories, not separately qualified operational deployments. Necessary unchanged runtime-capture statements and MultiSig/Tss init caller arguments are included in the same G04 stage; remaining startup scheduling/activation remains last."
+  },
+  "externalSourcePrerequisites": [
+    {
+      "repo": "scanner",
+      "release": "@rosen-bridge/evm-scanner planned 2.1.0",
+      "freezeSha256": "861efd6f64c9d34034ae560aeb152e5acb4406d1f1003a3b5e68219b7be14bff",
+      "sourceSha256": "4dbf507f516c7b132077b5a198dae209754b8ac50e08e3be44ffeb86c62ea16a",
+      "export": "AvalancheRpcScanner.withHealthRead",
+      "independentReview": {
+        "status": "PASS bounded no findings",
+        "receipt": {
+          "path": "artifacts/avalanche-health-queue-independent-20261005/review.json",
+          "sha256": "d257fcabb7d517560e308716d18de44f75007f0193e8495bb70d9cbc2770ed2c"
+        },
+        "seal": {
+          "path": "artifacts/avalanche-health-queue-independent-20261005/seal.json",
+          "sha256": "15042c1f8f02069ffb5a90eac8f2d2c1edf86926a695f6894cf63499fee54988"
+        },
+        "scope": "Deadline queue and qualified read only; outer shared-asset assertNetwork transport bounds remain separate.",
+        "evidence": "59 scanner, 18 Guard and 4 private controls passed; five isolated mutants detected."
+      }
+    }
+  ],
+  "finalTree": "68496f6b1bad18617d16bc4a3d3032c78dd3fa33"
+}

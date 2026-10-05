@@ -1,0 +1,191 @@
+{
+  "schema": "rosen-producer-contribution-series.v1",
+  "author": "A. Shannon",
+  "rcs": "7b9784dae9d8d5b66b80de7a6043d1ba36a3a4bf",
+  "repositories": [
+    {
+      "repo": "guard-service",
+      "head": "b1f5ab6f81435053a979e8078eb098d8ec1f5a47"
+    },
+    {
+      "repo": "health-check",
+      "head": "8612db85d00db32651a5fbaa9bde7dd075a651e3"
+    },
+    {
+      "repo": "contract",
+      "head": "4302d8d34020b0012c3fcb25d7484aa602813cab"
+    }
+  ],
+  "groups": [
+    {
+      "id": "G01",
+      "repo": "guard-service",
+      "purpose": "Generic EVM gas policy hooks",
+      "dependencies": [],
+      "beforeTree": "1fe15e93b4f4ef5d94032050d020bab0ea0c0076",
+      "tree": "025a50a6a6211226c23c536178ce690ca4d87dc5",
+      "patch": {
+        "path": "patches/G01.patch",
+        "bytes": 5079,
+        "sha256": "f9f3d7bd0ae8c374579e819525145468cbdfd01438657fd0d8a282de3273b03b"
+      },
+      "files": [
+        {
+          "path": ".changeset/evm-chain-gas-policy.md",
+          "bytes": 122,
+          "sha256": "1934f7358d1318165ff1f162eb1666a8c8ca4bd1ad8830417d20dcb07fb6f964"
+        },
+        {
+          "path": "packages/chains/evm/lib/evmChain.ts",
+          "bytes": 31962,
+          "sha256": "6f5e2f5cd076ffd3af11becc24de5de0ead3ad3d9cab0db76c2092617623c66f"
+        }
+      ]
+    },
+    {
+      "id": "G07",
+      "repo": "guard-service",
+      "purpose": "Generic EVM RPC bounded transport",
+      "dependencies": [],
+      "beforeTree": "025a50a6a6211226c23c536178ce690ca4d87dc5",
+      "tree": "199a4da119398aed4d3e7f988db94bc981c45161",
+      "patch": {
+        "path": "patches/G07.patch",
+        "bytes": 10272,
+        "sha256": "d894bcc587a9706fa4644d7f1cc6ec0757907affa14c8935403b62ea71f272ec"
+      },
+      "files": [
+        {
+          "path": ".changeset/evm-rpc-bounded-transport.md",
+          "bytes": 116,
+          "sha256": "eb8808d9342b8b917e8f0917d7c070efd42ca8ecc07b40f24cf9d6534348fbfb"
+        },
+        {
+          "path": "packages/networks/evm-rpc/lib/evmRpcNetwork.ts",
+          "bytes": 16243,
+          "sha256": "c7d1f973c452b67dd185752bb9b992181f1ebf84119594ed8a8d6c6e3d1bf995"
+        },
+        {
+          "path": "packages/networks/evm-rpc/tests/evmRpcNetwork.spec.ts",
+          "bytes": 30475,
+          "sha256": "07e6460c00f396ad0d07a98e8b6fb83d9a163b972e5cd48b903be1efd35ce22c"
+        },
+        {
+          "path": "packages/networks/evm-rpc/tests/mocked/realRpcProvider.mock.ts",
+          "bytes": 866,
+          "sha256": "f34b63b230d167519c540e3ced37c54f75dd2dfd1c2a7f7e5c699311aca84286"
+        },
+        {
+          "path": "packages/networks/evm-rpc/tests/testData.ts",
+          "bytes": 4117,
+          "sha256": "d06c49d609585250d3aa1a5c728608447fc117c9693ba8bdd97affda469ffb88"
+        }
+      ]
+    },
+    {
+      "id": "C-HEALTH",
+      "repo": "health-check",
+      "purpose": "Avalanche finalized native and mapped ERC20 health",
+      "dependencies": [],
+      "beforeTree": "c543b667bf657dd7f5c92685b7767af2ff7ae4dd",
+      "tree": "b3e3886498c597ebb7214e16e44c4a21d8aa7d4f",
+      "patch": {
+        "path": "patches/C-HEALTH.patch",
+        "bytes": 43853,
+        "sha256": "36c3736b4c268bfd243682977ca740a5ff0ba44b00b15469061aa843c2fd2901"
+      },
+      "files": [
+        {
+          "path": ".changeset/avalanche-native-asset-health.md",
+          "bytes": 226,
+          "sha256": "caba591f2ba74475d5680a9b7da5d16bfb57b6b59b4cd93e3beeed1e69fcea1b"
+        },
+        {
+          "path": "packages/asset-check/lib/avalanche/README.md",
+          "bytes": 2642,
+          "sha256": "e87277c087f5abbbbe858b71a1b46beae40bd6f0dd89846279b9dd8b2141e71e"
+        },
+        {
+          "path": "packages/asset-check/lib/avalanche/index.ts",
+          "bytes": 23,
+          "sha256": "105624b27eb24b9a821db2ae89578ac8669dfa6b1db03de9eb2f979df8babe7b"
+        },
+        {
+          "path": "packages/asset-check/lib/avalanche/rpc.ts",
+          "bytes": 8307,
+          "sha256": "8914ac367ded16f9b75c4338f62aef88b6054cc21ca262a32b2c6be1722d6361"
+        },
+        {
+          "path": "packages/asset-check/lib/index.ts",
+          "bytes": 207,
+          "sha256": "0415885293a7e63ffc41412e5028c6c0f1d340a3db0ecf24340d326a3e15a5c9"
+        },
+        {
+          "path": "packages/asset-check/package.json",
+          "bytes": 1540,
+          "sha256": "e3389c9e9f3e81d6574301a9a5d41321c3dacc73b593a24e10df7876a2fe89a0"
+        },
+        {
+          "path": "packages/asset-check/tests/avalanche/avalancheRpcTestUtils.ts",
+          "bytes": 947,
+          "sha256": "772b5b42f64775238c5446f2a6a6705c2d315156622cec5132a7ca20cfeabb0d"
+        },
+        {
+          "path": "packages/asset-check/tests/avalanche/avalancheTestUtils.ts",
+          "bytes": 1022,
+          "sha256": "8f8167198aab345870eae8d3a67e658e6a6e8bd11fd3297a2ca1cbe59bdc810a"
+        },
+        {
+          "path": "packages/asset-check/tests/avalanche/mocked/avalancheAssetSource.mock.ts",
+          "bytes": 344,
+          "sha256": "31b231505f7349881a0dce57345dec95bcac7c25ca592b601e13b28fd7330f66"
+        },
+        {
+          "path": "packages/asset-check/tests/avalanche/mocked/avalancheGuardRpc.mock.ts",
+          "bytes": 720,
+          "sha256": "effb7ab19c4256b15e2b7798ca56e67cd1af3ac2fadbae6ba5d6368903bf06d3"
+        },
+        {
+          "path": "packages/asset-check/tests/avalanche/rpc.spec.ts",
+          "bytes": 24887,
+          "sha256": "3a5e4f50709d9660f119012f359469dd9fce455040869113cf40f66f32ca78e7"
+        }
+      ]
+    },
+    {
+      "id": "C-CONTRACT",
+      "repo": "contract",
+      "purpose": "Avalanche assigned-value contract/token generation and merge",
+      "dependencies": [],
+      "beforeTree": "853b52f9838b3c280c897636ff52f77924ff3fa3",
+      "tree": "5038fafe79ecfc200ee004c7bcb6123c24493629",
+      "patch": {
+        "path": "patches/C-CONTRACT.patch",
+        "bytes": 36832,
+        "sha256": "8dd84d411bc6bef8df1994b545f76c8beec45924fdde3c050b13d74a4babf447"
+      },
+      "files": [
+        {
+          "path": "src/main/scala/rosen/bridge/AvalancheOverlayMerge.scala",
+          "bytes": 8479,
+          "sha256": "75afed9bd4dc51a0b158f61b9410008845dae438601e681bc523a3c972f069a2"
+        },
+        {
+          "path": "src/main/scala/rosen/bridge/AvalanchePreparation.scala",
+          "bytes": 9046,
+          "sha256": "78c5da418726c1523039ef51f9daf8c2201475a983c455c8b7d07409c208c497"
+        },
+        {
+          "path": "src/test/scala/contracts/AvalancheOverlayMergeSpec.scala",
+          "bytes": 10628,
+          "sha256": "9b3510cee3ba05d57bb7058d7025698e985784930ec74d6bdd8a7c54d0588f84"
+        },
+        {
+          "path": "src/test/scala/contracts/AvalanchePreparationSpec.scala",
+          "bytes": 6815,
+          "sha256": "f6636fae10b7331dd0e41773e3bebdf32054fb0d561140d638ea72df2f148e88"
+        }
+      ]
+    }
+  ]
+}

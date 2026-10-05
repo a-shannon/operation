@@ -1,0 +1,130 @@
+{
+  "sourceCandidate": {
+    "bytes": 46319,
+    "sha256": "5608244f6301651625f77be8ef152642d17480b653a13c0579d15ab8a8b35f22"
+  },
+  "exactApplications": [
+    {
+      "id": "S01",
+      "beforeTree": "be2cf16cf5e97769581bcc8cabe8f174ac199c69",
+      "tree": "b2154f397d225af0f1a4e8a2c3dd96762d7a7d56",
+      "exactFiles": 11
+    },
+    {
+      "id": "S02",
+      "beforeTree": "b2154f397d225af0f1a4e8a2c3dd96762d7a7d56",
+      "tree": "1658a9e4b648bea9c26d80cf3420b08ade514f01",
+      "exactFiles": 9
+    },
+    {
+      "id": "U01",
+      "beforeTree": "4adddf1d517718b6e8b83c1a31205da21726ea9c",
+      "tree": "306c6436257ba11ad21c592cdc652eeb8149122e",
+      "exactFiles": 10
+    },
+    {
+      "id": "C-UTILS",
+      "beforeTree": "306c6436257ba11ad21c592cdc652eeb8149122e",
+      "tree": "0b8395cd457768879a48681e3213f2dc1fb04742",
+      "exactFiles": 12
+    },
+    {
+      "id": "SC01",
+      "beforeTree": "ff3f885f5ed6be1c19d2778b7f6a33ebd7f78ba3",
+      "tree": "be5d069694b9f32ed8b5bd2be84f2df86d5778f3",
+      "exactFiles": 3
+    },
+    {
+      "id": "SC02",
+      "beforeTree": "be5d069694b9f32ed8b5bd2be84f2df86d5778f3",
+      "tree": "3c4990497aadd50f3ed7ff5036b4348afac15752",
+      "exactFiles": 16
+    },
+    {
+      "id": "SC03",
+      "beforeTree": "3c4990497aadd50f3ed7ff5036b4348afac15752",
+      "tree": "850d37fdfbd879cc6bee6c1005479e85fbfbc28f",
+      "exactFiles": 4
+    },
+    {
+      "id": "C-SCANNER",
+      "beforeTree": "850d37fdfbd879cc6bee6c1005479e85fbfbc28f",
+      "tree": "317b1ed12de528b413ece41b018f129d2a46c626",
+      "exactFiles": 25
+    }
+  ],
+  "replay": [
+    {
+      "group": "SC02",
+      "passed": 41,
+      "report": {
+        "bytes": 18706,
+        "sha256": "5edd61f4596264ce007e5a33c1f107a56544c34a8ecba9d9d5179e2798bc0ac4"
+      },
+      "builds": [
+        {
+          "kind": "extractor",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "kind": "raw",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    {
+      "group": "C-SCANNER",
+      "passed": 43,
+      "report": {
+        "bytes": 31959,
+        "sha256": "4ca47a6c85b19c05c2e54969121b12f1724ab7bf4a3203fb8114b7ce112a316f"
+      },
+      "builds": [
+        {
+          "kind": "extractor",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "kind": "raw",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    }
+  ],
+  "negativeControls": [
+    "wrong base",
+    "corrupt patch"
+  ],
+  "independentContentReview": {
+    "receipt": {
+      "bytes": 16783,
+      "sha256": "f1ae534f7324ab4decfa54f94c55f63fc6061e7bb69c54949c45a6c24ca9a530"
+    },
+    "scope": "Exact eight patches, shared/chain separation, changesets and changed-path closure; runtime rerun is covered by the author replay, not this content review"
+  },
+  "portableApplication": {
+    "groups": 8,
+    "receiptSha256": "89c9e31c1090a50872001efcdec000256cb515274069e6a95e76c16a2fb1c7e9",
+    "verifierSha256": "d49aefa6167f6e425160c8ea3f4abb368562a30c9667d350714240424f54ecc6",
+    "isolatedRefusals": [
+      "scratch inside original repository",
+      "wrong baseline",
+      "corrupt patch"
+    ],
+    "refusalReceiptSha256": "eb9254e00bfe6e7a0576da2dbd0691783b9f44e98b64107ee0e9bfa757071285",
+    "originalIndexWrites": 0
+  },
+  "limits": "Tests and builds use existing local compiled dependencies. Ordinary registry installation, release, Rosen acceptance and activation remain pending.",
+  "independentPortableVerifierReview": {
+    "receipt": {
+      "bytes": 24740,
+      "sha256": "9ef6d0af7f5a084f802b99e9ae7d048f24d40efc31aa0ad601177d5feb732b90"
+    },
+    "verifierSha256": "d49aefa6167f6e425160c8ea3f4abb368562a30c9667d350714240424f54ecc6",
+    "scope": "Bounded source review of the exact portable verifier and linked eight applications/three isolated refusals. No runtime consumer or registry claim."
+  }
+}

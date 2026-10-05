@@ -1,0 +1,924 @@
+{
+  "schema": "rosen-producer-contribution-series.v1",
+  "author": "A. Shannon",
+  "rcs": "7b9784dae9d8d5b66b80de7a6043d1ba36a3a4bf",
+  "repositories": [
+    {
+      "repo": "minimum-fee-job",
+      "head": "de706245e439506ef55697b64caf6605cadf5171"
+    }
+  ],
+  "groups": [
+    {
+      "id": "F01",
+      "repo": "minimum-fee-job",
+      "purpose": "Independent backend Docker packaging correction",
+      "dependencies": [],
+      "beforeTree": "d7ccc449f0f93e2bfdc7a9607420cc69be2156c7",
+      "tree": "112e37bfc6d44c56aa92b5b20be6c1ab68c49069",
+      "patch": {
+        "path": "patches/F01.patch",
+        "bytes": 1158,
+        "sha256": "5f9a6badb0cf591aec49c37cd2aff73c95007fe0e05e4cfc2d3e7ab15fae1851"
+      },
+      "files": [
+        {
+          "path": ".changeset/backend-docker-runtime.md",
+          "bytes": 154,
+          "sha256": "b0610996ae0a1631c0df7fd3cff0299bdc06de5cc171c1527a945112c00cb26a"
+        },
+        {
+          "path": "services/backend/Dockerfile",
+          "bytes": 797,
+          "sha256": "0147dcf8b19825d3fa9e3ec2ac7f8dd3406e4a189cf60be3e76a4db91c9bbfaa"
+        }
+      ]
+    },
+    {
+      "id": "F02",
+      "repo": "minimum-fee-job",
+      "purpose": "Declared Avalanche test selector and reproducible fixtures",
+      "dependencies": [],
+      "beforeTree": "112e37bfc6d44c56aa92b5b20be6c1ab68c49069",
+      "tree": "6dd1dcb7b611db637aa7504474215df894664fbc",
+      "patch": {
+        "path": "patches/F02.patch",
+        "bytes": 29851,
+        "sha256": "54b768cfc624479b85d66ee18d97c95be40613d7e39581c7a09cb16a73fda911"
+      },
+      "files": [
+        {
+          "path": ".changeset/avalanche-test-entry.md",
+          "bytes": 199,
+          "sha256": "f1e88263829c3324dfa95dfc283bef04b82067eb127db8990de92b53687a847b"
+        },
+        {
+          "path": "docs/avalanche-tests.md",
+          "bytes": 8554,
+          "sha256": "edfc7e7961a5719d2f8a6d1e86ae2a03eb0871e5c98cba3bc4a77df72acbf81a"
+        },
+        {
+          "path": "package.json",
+          "bytes": 1817,
+          "sha256": "eacb4977f5aa09dc74482bef247a292284a0913a610430fe35e6bc9774b65e54"
+        },
+        {
+          "path": "scripts/prepare-avalanche-fixtures.mjs",
+          "bytes": 7910,
+          "sha256": "258a9c8aecf962e1e8f9d5ecb4b440c49d9589919b218f652d8719d1d89222a3"
+        },
+        {
+          "path": "scripts/test-avalanche.mjs",
+          "bytes": 11198,
+          "sha256": "3061d7f16c56f218699f8d043af58501cfc0d1000d81309b1d6a37adc96ac4aa"
+        }
+      ]
+    },
+    {
+      "id": "C-FEE",
+      "repo": "minimum-fee-job",
+      "purpose": "Avalanche backend fee proposal and publication sources",
+      "dependencies": [
+        "F01",
+        "F02"
+      ],
+      "beforeTree": "6dd1dcb7b611db637aa7504474215df894664fbc",
+      "tree": "660dc0e26a2a75c9db2d3b692bc29b6a1ee882c2",
+      "patch": {
+        "path": "patches/C-FEE.patch",
+        "bytes": 522190,
+        "sha256": "15a09f2e0b9f1b446b816d6030f4d078ce3e070905723612b60590f25daaf7e5"
+      },
+      "files": [
+        {
+          "path": ".changeset/avalanche-fee-proposals.md",
+          "bytes": 236,
+          "sha256": "d3769bab0bd265c576ba309f99788b30283f36985a440bdd030531ecb184a9d6"
+        },
+        {
+          "path": "services/backend/package.json",
+          "bytes": 2468,
+          "sha256": "0989495bca5c41064daaa4443a3e37ebe50eccd8453cfe42508b9cbd8f494bb8"
+        },
+        {
+          "path": "services/backend/src/configs/avalancheFee.ts",
+          "bytes": 3211,
+          "sha256": "b9281ee74888c9c16fc516e51d0f25717cc8bcff91bac4a8a623a4b5d48a8844"
+        },
+        {
+          "path": "services/backend/src/index.ts",
+          "bytes": 8734,
+          "sha256": "c73629577598e33fbc0da57bd614080d3ca3bf14fb42973cfd36e6771c29f015"
+        },
+        {
+          "path": "services/backend/src/minimum-fee/avalancheChainFee.ts",
+          "bytes": 9979,
+          "sha256": "ce511d4017d5ae23604f9dcbeb570b6f8361295054bc3c546dbbcfd773a14336"
+        },
+        {
+          "path": "services/backend/src/minimum-fee/avalancheFee.ts",
+          "bytes": 2373,
+          "sha256": "694d15e469441840191a4945cd16c458130d2b7112cbead2dcf5c62339d7096e"
+        },
+        {
+          "path": "services/backend/src/minimum-fee/avalancheFeeIntegration.ts",
+          "bytes": 32747,
+          "sha256": "b172248ca8471245028ca58f7c722dfdfed7c2f4d93ed2123a548e203eaa9960"
+        },
+        {
+          "path": "services/backend/src/minimum-fee/avalancheFeePlan.ts",
+          "bytes": 1845,
+          "sha256": "7b03935d98596a4298d80990db61b5b4bec93386b38c30e0ed6c00240b70473c"
+        },
+        {
+          "path": "services/backend/src/minimum-fee/newConfig.ts",
+          "bytes": 17694,
+          "sha256": "435555165b0747764e5b438ed6485edbc42dbf2aaddac10c94c1b37160859aff"
+        },
+        {
+          "path": "services/backend/src/minimum-fee/publication.ts",
+          "bytes": 2184,
+          "sha256": "9563f096401d9b79e3bf153d29e2db3b30897575f448ff574f5d2933c981c25c"
+        },
+        {
+          "path": "services/backend/src/minimum-fee/transaction.ts",
+          "bytes": 2493,
+          "sha256": "2ae0cdf3123f5c8c5ff366dbab1dd640075d9af86cc399f7fd5b7dbf7ab9327f"
+        },
+        {
+          "path": "services/backend/src/minimum-fee/updateConfig.ts",
+          "bytes": 9662,
+          "sha256": "a72a0446049ff6aa2fbb98cd126ad0fee063f420475d6244be306f78a2c18fad"
+        },
+        {
+          "path": "services/backend/src/network/avalancheFeeRuntime.ts",
+          "bytes": 7410,
+          "sha256": "6a852fee562ea40e5a9bab1b3f5718f6265afa2ed8f7946761402a0e8d55e64e"
+        },
+        {
+          "path": "services/backend/src/network/avalancheRpc.ts",
+          "bytes": 3679,
+          "sha256": "600db0932ea4be31ecb9fded00b6ed61995e806ece6b1612867e7a4c5f4573ee"
+        },
+        {
+          "path": "services/backend/src/store.ts",
+          "bytes": 1908,
+          "sha256": "9ccdba1f6acfb28770114fafabc2b7947bc96266f41a3d72c42a8acbb47bc7bc"
+        },
+        {
+          "path": "services/backend/src/tokenMap/tokenHandler.ts",
+          "bytes": 3429,
+          "sha256": "c579eb7d112b03bde6cd3d95a2691b5ce807102971b67e10ffb7e19fbf045df9"
+        },
+        {
+          "path": "services/backend/src/transaction/generate.ts",
+          "bytes": 9088,
+          "sha256": "1f593d32d705d40099fc8dc3b72cf8118d8a44b8ea74ffa387ef3c13ab68309f"
+        },
+        {
+          "path": "services/backend/tests/configs/avalancheFee.spec.ts",
+          "bytes": 8477,
+          "sha256": "8b9278a257010e2e107e41093ecb02dc47b1c7ba9dcc3c1a643efde9a03f0ec5"
+        },
+        {
+          "path": "services/backend/tests/fixtures/pinnedFeeDependencies.ts",
+          "bytes": 3694,
+          "sha256": "89d680f5295383b5fbdb20b6ef781d9c624c900ea9616ce385e8143bd1f7fc6d"
+        },
+        {
+          "path": "services/backend/tests/index.spec.ts",
+          "bytes": 13384,
+          "sha256": "08a212c3ff9f7a0c1683f12edc406d535a0e9c0c1804f160efee58ccd95a1af9"
+        },
+        {
+          "path": "services/backend/tests/minimum-fee/avalancheChainFee.spec.ts",
+          "bytes": 29216,
+          "sha256": "7310297528532c2c59858487dd984080845b8ffaff46a916241159bcc48a41cf"
+        },
+        {
+          "path": "services/backend/tests/minimum-fee/avalancheFee.spec.ts",
+          "bytes": 10481,
+          "sha256": "e5bc1d8e7e07dc90e91f07c19f1e399ffce92096b235f1adeb05f9c0612fbeb7"
+        },
+        {
+          "path": "services/backend/tests/minimum-fee/avalancheFeeConsumerJoin.spec.ts",
+          "bytes": 23159,
+          "sha256": "2d1947559d3f2710aa46e1f590d2203d4fb17bb7ca89c11328b9667ffb5fa74b"
+        },
+        {
+          "path": "services/backend/tests/minimum-fee/avalancheFeeEconomicsJoin.spec.ts",
+          "bytes": 28295,
+          "sha256": "9d3d146d24224a40f882f053106b354934471b342b3bcb0f30cf7e4792692054"
+        },
+        {
+          "path": "services/backend/tests/minimum-fee/avalancheFeeIntegration.spec.ts",
+          "bytes": 24108,
+          "sha256": "ab2980a23282c1be6a5d89d286559d5b032e30f91326fe4d6f0a54f6266a5cb0"
+        },
+        {
+          "path": "services/backend/tests/minimum-fee/avalancheFeePlan.spec.ts",
+          "bytes": 6779,
+          "sha256": "92f4d6f3099234d261810fa20d9d18c944d36502443b17fd26b382661ca17711"
+        },
+        {
+          "path": "services/backend/tests/minimum-fee/newConfig.spec.ts",
+          "bytes": 3890,
+          "sha256": "2154d79f57f4633825d036a7110e62c3e5304a71588c2ed5d2a0b4c6d4b75dac"
+        },
+        {
+          "path": "services/backend/tests/minimum-fee/publication.spec.ts",
+          "bytes": 28554,
+          "sha256": "f3a4ac0b1406c03976d3dc4da8cec532d086aa0fde933a1dcb6a2e0adf044522"
+        },
+        {
+          "path": "services/backend/tests/minimum-fee/transaction.spec.ts",
+          "bytes": 10662,
+          "sha256": "c43fba16b58381437bb28fce2237ed2cf1f7c9dd745d31e53e73bf4c2064d369"
+        },
+        {
+          "path": "services/backend/tests/minimum-fee/updateConfig.spec.ts",
+          "bytes": 12644,
+          "sha256": "b78cbf960371df85556d97df41fbb459859f8dc595eb17a2c21177f00e1dbc91"
+        },
+        {
+          "path": "services/backend/tests/mocked/avalancheFeeConstruction.mock.ts",
+          "bytes": 3958,
+          "sha256": "c5fa507142be63c2a0ce06154729864fe298860128ca75616e43057aaed49eb8"
+        },
+        {
+          "path": "services/backend/tests/mocked/avalancheFeeEntry.mock.ts",
+          "bytes": 3517,
+          "sha256": "71a4a1e530f0d5655057af328dd8baa30d9cd9e651a8b8497a2e1187bbdb4c62"
+        },
+        {
+          "path": "services/backend/tests/mocked/avalancheFeeIntegration.mock.ts",
+          "bytes": 2417,
+          "sha256": "a970e077bebf3346422a44857e0afdefffa81dee2f6a8cd856112e485369b5e4"
+        },
+        {
+          "path": "services/backend/tests/mocked/avalancheFeeLifecycle.mock.ts",
+          "bytes": 3508,
+          "sha256": "f37896145efb293d5966f31cd8e9737bc521c6cfaa40a9cf8ca2e0f8967a661e"
+        },
+        {
+          "path": "services/backend/tests/mocked/avalancheFeePublication.mock.ts",
+          "bytes": 4732,
+          "sha256": "7abdc78f1adb786aa42a9ccb3cb90151597c42dccd6f1c3b80a7c59e74f878c7"
+        },
+        {
+          "path": "services/backend/tests/mocked/avalancheFeeRuntime.mock.ts",
+          "bytes": 440,
+          "sha256": "9522e4550cf30801c12b4da9275b3da1f79f46ded2939f4f6d350d5ac227df1a"
+        },
+        {
+          "path": "services/backend/tests/mocked/avalancheFeeRuntimePlan.mock.ts",
+          "bytes": 322,
+          "sha256": "cf144ad982276dd9cfa8f98ca4304d6eefadeb4a392b18b1d5039a593734899e"
+        },
+        {
+          "path": "services/backend/tests/mocked/avalancheFeeStore.mock.ts",
+          "bytes": 453,
+          "sha256": "34703082b02471c38f893b28129401357c48a4a471d6a95543a7c5ead658858e"
+        },
+        {
+          "path": "services/backend/tests/mocked/avalancheRpc.mock.ts",
+          "bytes": 422,
+          "sha256": "4e57dbcb1d452c163354d601dd80f59355d5e6e0d863b30ae5d90393656bc3af"
+        },
+        {
+          "path": "services/backend/tests/network/avalancheFeeRuntime.spec.ts",
+          "bytes": 40403,
+          "sha256": "f6e277985c754e89bb1481d3812bc34edcd6869e532c002528df13c84bb85f3d"
+        },
+        {
+          "path": "services/backend/tests/network/avalancheRpc.spec.ts",
+          "bytes": 17742,
+          "sha256": "97196e374a4db465fbdb24878827b1841639a2465754d7747a39239af90b385c"
+        },
+        {
+          "path": "services/backend/tests/store.spec.ts",
+          "bytes": 4637,
+          "sha256": "35f8bf26c113cca2b14b635c421de1ec416b704c80c948043c61b5c50126f39e"
+        },
+        {
+          "path": "services/backend/tests/testData/avalancheChainFee.ts",
+          "bytes": 9295,
+          "sha256": "cf814d7c2861e76bd8a495b6bf990a90ec53365c0c7220dd421cf6bae896b201"
+        },
+        {
+          "path": "services/backend/tests/testData/avalancheFee.ts",
+          "bytes": 3845,
+          "sha256": "8e80d29aad5148fd8a5e684f0275312e6c4cededf0f9557dae74d2d5700e4f3e"
+        },
+        {
+          "path": "services/backend/tests/testData/avalancheFeeConstruction.ts",
+          "bytes": 2118,
+          "sha256": "6ea9011748b7c433dd89adf28c7a77ad376db6350dcaa82f8e312c0a1af44f0f"
+        },
+        {
+          "path": "services/backend/tests/testData/avalancheFeeEntryCases.ts",
+          "bytes": 706,
+          "sha256": "f163091c435401dd81ca933904ceda9053ce155a182f32732b50a1d026540698"
+        },
+        {
+          "path": "services/backend/tests/testData/avalancheFeeIntegration.ts",
+          "bytes": 3560,
+          "sha256": "2443dba09c766645cb46c8868726a3bfd5546235a736ddf39b982f50b64f8510"
+        },
+        {
+          "path": "services/backend/tests/testData/avalancheFeeLifecycle.ts",
+          "bytes": 922,
+          "sha256": "95183e49351a853280b44a2b0122d3501f2940b532c40c4718dbf41e311c6893"
+        },
+        {
+          "path": "services/backend/tests/testData/avalancheFeeLifecycleCases.ts",
+          "bytes": 2282,
+          "sha256": "c0870dd4d7a972c13a039fd1fc3d82139ea623c8fdfe79ed9a76bf12e2f89224"
+        },
+        {
+          "path": "services/backend/tests/testData/avalancheFeeMath.ts",
+          "bytes": 2146,
+          "sha256": "1497b11b9a12da6d5f753b9a297cbde7c127bb1601263b1ffb59c2f43e41b385"
+        },
+        {
+          "path": "services/backend/tests/testData/avalancheFeePlan.ts",
+          "bytes": 898,
+          "sha256": "ea8f1b606575a0333c07dd7559e78b75394d3a49773c4337a8e44ad43153ba94"
+        },
+        {
+          "path": "services/backend/tests/testData/avalancheFeePublication.ts",
+          "bytes": 188,
+          "sha256": "9dcda6e9f9bbe9337f832eb1b5da7a8b5c58fd2a554a9bd712e48d7501c8352c"
+        },
+        {
+          "path": "services/backend/tests/testData/avalancheFeePublicationCases.ts",
+          "bytes": 2455,
+          "sha256": "9e64292a659e1eff2a389e394f3db09d2ab536e092868572d9c4de8d58779f20"
+        },
+        {
+          "path": "services/backend/tests/testData/avalancheFeeRuntime.ts",
+          "bytes": 1516,
+          "sha256": "e9a69b3df18db8abdcf7a3013335e2f388b64027433dbb31f4e61d8ac2e48b58"
+        },
+        {
+          "path": "services/backend/tests/testData/avalancheFeeRuntimePlan.ts",
+          "bytes": 2605,
+          "sha256": "4bb8dfff36758fb9890e7e0bf3805ead776ff34e1901a10e62a8b979216af4be"
+        },
+        {
+          "path": "services/backend/tests/testData/avalancheFeeStoreCases.ts",
+          "bytes": 344,
+          "sha256": "6b1f35b913bb620ae6fbf46b62cda3df62baf907b3e88694680672d1b88a1c8d"
+        },
+        {
+          "path": "services/backend/tests/testData/avalancheRpc.ts",
+          "bytes": 5956,
+          "sha256": "c0a6e235b91a87c4eb7c40e6f39a66de519b57e69022599eeb35ef78402379b6"
+        },
+        {
+          "path": "services/backend/tests/testData/generatedAvalancheTokens.json",
+          "bytes": 1354,
+          "sha256": "6c2106bfb0aef7b9f5c6ce5536338a59ece5b762b075d4c5b872cd9067ad7cfb"
+        },
+        {
+          "path": "services/backend/tests/testUtils/avalancheChainFee.ts",
+          "bytes": 1901,
+          "sha256": "a3de9a80b459e8709043d95cbe485995e7569089ff55955a86ca3a6d0571f794"
+        },
+        {
+          "path": "services/backend/tests/testUtils/avalancheChainFeeCases.ts",
+          "bytes": 7056,
+          "sha256": "8577bb1b1fb0792d6a92cd0bf4e5971814e25c9131f19960491a3a3823a13b8c"
+        },
+        {
+          "path": "services/backend/tests/testUtils/avalancheChainFeeCodec.ts",
+          "bytes": 4001,
+          "sha256": "049184b84e401f20a70b3212f37b9ec82bd8359277d8e001142a7e3cfc29d93e"
+        },
+        {
+          "path": "services/backend/tests/testUtils/avalancheFee.ts",
+          "bytes": 305,
+          "sha256": "d4516b74e1f0267ec09e8436bfba7248468f50ca3f2c10e9589be0b43686fefb"
+        },
+        {
+          "path": "services/backend/tests/testUtils/avalancheFeeConstruction.ts",
+          "bytes": 250,
+          "sha256": "50813cf0bedc2d0b31122f31cf658cf939197f362487a131c88dd5c79c471c74"
+        },
+        {
+          "path": "services/backend/tests/testUtils/avalancheFeeConstructionContext.ts",
+          "bytes": 7184,
+          "sha256": "94b49a02b4c3108e2e17206d9dd502814f19a553a8f40a5948a41e912a4fc213"
+        },
+        {
+          "path": "services/backend/tests/testUtils/avalancheFeeEntryContext.ts",
+          "bytes": 1901,
+          "sha256": "aea03e040f941cc8b3f6c00fbe764ffcf4c77d458363c260abf044545e7cff4a"
+        },
+        {
+          "path": "services/backend/tests/testUtils/avalancheFeeIntegration.ts",
+          "bytes": 8111,
+          "sha256": "7230a89d45618a00857cbfdc9d692c011aff63f78cbb74931045d1cb68fd98bd"
+        },
+        {
+          "path": "services/backend/tests/testUtils/avalancheFeeLifecycle.ts",
+          "bytes": 9302,
+          "sha256": "e788616835a898e24f8301619337eb211596aee7e9c2837935bc74dab2fccdd2"
+        },
+        {
+          "path": "services/backend/tests/testUtils/avalancheFeeLifecycleContext.ts",
+          "bytes": 6011,
+          "sha256": "c5c8dc27ea36fed486e1a2c38bf474ce31b33aced9182f333b7955c029974d8f"
+        },
+        {
+          "path": "services/backend/tests/testUtils/avalancheFeeMath.ts",
+          "bytes": 1576,
+          "sha256": "d4e3e21fcf9f5cfcd8afa2209c93ff8df37aebfc6b05a9ca723b1becfb5d1c68"
+        },
+        {
+          "path": "services/backend/tests/testUtils/avalancheFeePlan.ts",
+          "bytes": 888,
+          "sha256": "758ca56b4e02a5d97fc706affda8565778bf7f49880dbce71dac517a40a31917"
+        },
+        {
+          "path": "services/backend/tests/testUtils/avalancheFeePublication.ts",
+          "bytes": 7579,
+          "sha256": "591a66296c56855ad4ab64b44c108238776cba011cfaa5f5a5fdd9b2f2432a7d"
+        },
+        {
+          "path": "services/backend/tests/testUtils/avalancheFeeRuntime.ts",
+          "bytes": 935,
+          "sha256": "6f5179353545672f30fe6b5eb8752f01921bbfb998bbdfd06d00686d8cb83865"
+        },
+        {
+          "path": "services/backend/tests/testUtils/avalancheFeeRuntimeCases.ts",
+          "bytes": 660,
+          "sha256": "dd6eabf3d0d05cb5f6b6990e20db2d8f0420c26c175de2d87f7dde4167788450"
+        },
+        {
+          "path": "services/backend/tests/testUtils/avalancheFeeRuntimePlan.ts",
+          "bytes": 2316,
+          "sha256": "8cac153394aaa34c098eabca560d547e15b45815469db61830e2c3a00d870846"
+        },
+        {
+          "path": "services/backend/tests/testUtils/avalancheFeeStoreContext.ts",
+          "bytes": 1312,
+          "sha256": "d1cee8e4f84ecb93b79f5b533e86335bc53bd44cb4264ba147045d407ba62ae9"
+        },
+        {
+          "path": "services/backend/tests/testUtils/avalancheRpc.ts",
+          "bytes": 131,
+          "sha256": "3ab294f94166ac00f74a2d18b2ab22e0c7901d4c81ffe5631bdf249f154cbc52"
+        },
+        {
+          "path": "services/backend/tests/testUtils/avalancheRpcCases.ts",
+          "bytes": 267,
+          "sha256": "a561969bc3c13778b4edaa846d34e2f12a47951b5ad9ca638c8df3b1b48a06ad"
+        },
+        {
+          "path": "services/backend/tests/tokenMap/tokenHandler.spec.ts",
+          "bytes": 2321,
+          "sha256": "25c466726f37c4ba47c9668c4833f066859a4975ef8824e912891e40ebf50246"
+        },
+        {
+          "path": "services/backend/tests/transaction/generate.spec.ts",
+          "bytes": 3754,
+          "sha256": "8de7bcbc72c5c9cae8d6e531b2a38ad5bf21d78423ff72d76aa0d452b408087e"
+        },
+        {
+          "path": "services/backend/vitest.avalanche.config.ts",
+          "bytes": 168,
+          "sha256": "07130dd4bb7eaad48cf6416fe5ebed63da70ae01f46fe2747c595b20b2506876"
+        },
+        {
+          "path": "services/backend/vitest.avalancheChainFee.config.ts",
+          "bytes": 116,
+          "sha256": "cbc5f07d216f60231bff0d6cc14b483c40dfe14f4cf321cf11986b0bdf11628f"
+        },
+        {
+          "path": "services/backend/vitest.avalancheFeeConstruction.config.ts",
+          "bytes": 953,
+          "sha256": "bd4cf147eeb8e28220569a91dc5f1ee4384ecdfe6cf565e2580fc7bfec38b715"
+        },
+        {
+          "path": "services/backend/vitest.avalancheFeeConsumerJoin.config.ts",
+          "bytes": 195,
+          "sha256": "4f070fe358cd79fcaa485a1f092c796edc7000a3b22a304648e5e4d4cb0fc673"
+        },
+        {
+          "path": "services/backend/vitest.avalancheFeeEconomicsJoin.config.ts",
+          "bytes": 196,
+          "sha256": "8cf4e294f4af539964a91e48f123dd7cd6a9d73c327e81cf38a7ae678cb41c6d"
+        },
+        {
+          "path": "services/backend/vitest.avalancheFeeIntegration.config.ts",
+          "bytes": 863,
+          "sha256": "d03740deb3184ccc13bd8373c48f078f4c2f7dc4825f1a744d16432f1f184f03"
+        },
+        {
+          "path": "services/backend/vitest.avalancheFeeLifecycle.config.ts",
+          "bytes": 1239,
+          "sha256": "209403a25925ab47c89d9bb17da944e0102c0cde4902635fc708d0628c924f84"
+        },
+        {
+          "path": "services/backend/vitest.avalancheFeePlan.config.ts",
+          "bytes": 273,
+          "sha256": "7ebb38492a8bd1013db9355cddb75fbca527963123069dfb95a426a892c7fbb3"
+        },
+        {
+          "path": "services/backend/vitest.avalancheFeePublication.config.ts",
+          "bytes": 592,
+          "sha256": "4616470afcc4c3138c12a20c2a6e4d4b5e15eaf0a5811179fa08728307e9e378"
+        },
+        {
+          "path": "services/backend/vitest.avalancheFeeRuntime.config.ts",
+          "bytes": 477,
+          "sha256": "a2c447fd6c71cdc7de90573d40cfea337566049fcff9fc70b6ffc46163287a5c"
+        }
+      ]
+    },
+    {
+      "id": "C-FEE-UI",
+      "repo": "minimum-fee-job",
+      "purpose": "Avalanche publication review through existing Page/table/QR consumers",
+      "dependencies": [
+        "F02",
+        "C-FEE"
+      ],
+      "beforeTree": "660dc0e26a2a75c9db2d3b692bc29b6a1ee882c2",
+      "tree": "6312b8ab91defcab07f0869a0d8b3a0fc47a7967",
+      "patch": {
+        "path": "patches/C-FEE-UI.patch",
+        "bytes": 338068,
+        "sha256": "3bb2aa087b173206986099160312c9d6e38c8103665ab95ca27b98a5c10858cd"
+      },
+      "files": [
+        {
+          "path": ".changeset/avalanche-fee-review.md",
+          "bytes": 255,
+          "sha256": "90183aa59c4e76d258b6472b2114c1c0d5d3ca6039bd6b449796cc1e8fa32105"
+        },
+        {
+          "path": "services/frontend/package.json",
+          "bytes": 1656,
+          "sha256": "3e794227956341d2ba9311993c987e562f1117e7a485997f641afdca23a06102"
+        },
+        {
+          "path": "services/frontend/src/app/page.tsx",
+          "bytes": 1160,
+          "sha256": "6ee450833d04a39dfe9ef5d7c74ab724ef5e9323ea0971018415819e7190ac86"
+        },
+        {
+          "path": "services/frontend/src/avalanche/economicAuthority.ts",
+          "bytes": 11132,
+          "sha256": "1bbf858053d3bc027700d10d862e1b0a543c26e7be721d3eef0434f44f762908"
+        },
+        {
+          "path": "services/frontend/src/avalanche/economicReview.ts",
+          "bytes": 3193,
+          "sha256": "91157cf57f4232c6a2a7aa15d225e451441e6406ff3f2e55784540e3a3eb9fe8"
+        },
+        {
+          "path": "services/frontend/src/avalanche/economics.ts",
+          "bytes": 20203,
+          "sha256": "d041b2d610923c5f04258f06fec9da7ec38891781d8f0a3a8e2ac27171974e2d"
+        },
+        {
+          "path": "services/frontend/src/avalanche/existingUi.ts",
+          "bytes": 4404,
+          "sha256": "8dc80cf3fa7be3feb67a0946cd92bdc8588bf0ea5c8856ac0cc2be13d49f9965"
+        },
+        {
+          "path": "services/frontend/src/avalanche/publication.ts",
+          "bytes": 17263,
+          "sha256": "1aaa8bc6561465df994e783f3a8b223b0b5311b2d6ab12b7888c820bfbb0e748"
+        },
+        {
+          "path": "services/frontend/src/avalanche/review.ts",
+          "bytes": 2817,
+          "sha256": "19b6d6e095f8b66dd051fe4e4be43fd5f464b99423a88cd7d8103d85f6e00db1"
+        },
+        {
+          "path": "services/frontend/src/avalanche/transaction.ts",
+          "bytes": 5702,
+          "sha256": "95ceed335756179b1f1be3529dc35bcc79b88b5f5bbcc384f1f2e11f4688aa1a"
+        },
+        {
+          "path": "services/frontend/src/avalanche/validation.ts",
+          "bytes": 4930,
+          "sha256": "fe6f6d3c2a3d1c60e4f312e51a3a1eaf631333e1c58ae3fe63b7d7edf02825b2"
+        },
+        {
+          "path": "services/frontend/src/containers/Qr.tsx",
+          "bytes": 1622,
+          "sha256": "d52241e38356132180f026dc1964c77dfc83fd2c4438f67ce8f0a77280d241ba"
+        },
+        {
+          "path": "services/frontend/src/containers/TxOnBlockchainAlert.tsx",
+          "bytes": 993,
+          "sha256": "e543077edfbc1f5bd42546ab16e92bb81c765431fa457a63e30c643cf2cf5119"
+        },
+        {
+          "path": "services/frontend/src/containers/Validations.tsx",
+          "bytes": 4700,
+          "sha256": "c6f028d766219d9324336be207c080354419d6424767a55bcccd50adc7d5b74a"
+        },
+        {
+          "path": "services/frontend/src/queries/avalancheFeeUi.ts",
+          "bytes": 949,
+          "sha256": "721404ed3064efd9b2f21326b6f94c3c2051eba1c4d698d27d12185c5903c7bd"
+        },
+        {
+          "path": "services/frontend/src/queries/checkTxOnBlockchain.ts",
+          "bytes": 657,
+          "sha256": "e9edf43b654c5474838660fb5151fefe49ce2f5081f2a88c18605b6d3ba8af13"
+        },
+        {
+          "path": "services/frontend/src/queries/feesByToken.ts",
+          "bytes": 729,
+          "sha256": "60c35c1bc59359ab7463a7d691e7070cacc2eddbdb01f9b57b490fb3a09d783f"
+        },
+        {
+          "path": "services/frontend/src/queries/prices.ts",
+          "bytes": 696,
+          "sha256": "cad3a9c1cc82d76723b38e2fb40101e7d0360c33d05f759beb88f734e126acac"
+        },
+        {
+          "path": "services/frontend/src/queries/tokenMap.ts",
+          "bytes": 950,
+          "sha256": "a28f14650e35903ff53362439ff1bc0b57c08d981c5a1fdf9359d20ddd8501c7"
+        },
+        {
+          "path": "services/frontend/src/queries/tx.ts",
+          "bytes": 372,
+          "sha256": "11e37ddad46031a1d22bcc70613ea44d8ff235db9b1b92f4b475cb34ec6f4fc9"
+        },
+        {
+          "path": "services/frontend/src/store/avalanchePublication.ts",
+          "bytes": 3307,
+          "sha256": "591b2d88cfd0dd2386e67783f74fe7bd679d26d1ce5597e70c185a83a6d3f112"
+        },
+        {
+          "path": "services/frontend/src/store/index.ts",
+          "bytes": 3425,
+          "sha256": "09b5cb50fe19cbc006f30e71684e190a892f78109e30a423d2aa63d83f54fa2e"
+        },
+        {
+          "path": "services/frontend/src/utils/getFeesByToken.ts",
+          "bytes": 719,
+          "sha256": "47c393e77d06d098f87ee6e655bfaaff83440d7de5ca96c1ee771597a49108e5"
+        },
+        {
+          "path": "services/frontend/src/validations/index.ts",
+          "bytes": 2517,
+          "sha256": "3f825d73755d2260ab20fd92f259da214b31b5fa087ce7468b2504b0cbcafb20"
+        },
+        {
+          "path": "services/frontend/src/validations/validateAvalancheNetworkFee.ts",
+          "bytes": 519,
+          "sha256": "4ac0f4e569d03b143a46c691581bfb0b7f45c87ecf18dc5575d82b363d163d08"
+        },
+        {
+          "path": "services/frontend/tests/app/page.presentation.spec.tsx",
+          "bytes": 3212,
+          "sha256": "ed4da15c17d6fc6581dde5bc399e36389f785ffb8e157d0446e5214e621a5d7f"
+        },
+        {
+          "path": "services/frontend/tests/app/page.spec.ts",
+          "bytes": 5997,
+          "sha256": "88468db527cf59c3bae0fdc31835b118cfb71abdb7b9dd0974c6801003dd775d"
+        },
+        {
+          "path": "services/frontend/tests/avalanche/economicAuthority.spec.ts",
+          "bytes": 18988,
+          "sha256": "42c6dba4e23d3d49e7fdf27dd25afe3bae6f463b32424e7626985a295ed430f3"
+        },
+        {
+          "path": "services/frontend/tests/avalanche/economicReview.spec.ts",
+          "bytes": 13695,
+          "sha256": "b52b584e8da0946cabea9eea7e7f143451f24ae3b7ffb2af443c0cf0c9f8dec0"
+        },
+        {
+          "path": "services/frontend/tests/avalanche/economics.spec.ts",
+          "bytes": 38412,
+          "sha256": "a5d003481a453511db1e4f2a08d21e96d3af7f84e678ecdfc4f0260b9a31e936"
+        },
+        {
+          "path": "services/frontend/tests/avalanche/economicsFixture.ts",
+          "bytes": 68,
+          "sha256": "e2de590cd84c1284110453fcf1c501b2c335509549c8f3eaca04d58ec2794aeb"
+        },
+        {
+          "path": "services/frontend/tests/avalanche/existingUi.spec.ts",
+          "bytes": 1435,
+          "sha256": "d87cdf4f89e8b5be419f3e5d10f429814b4f994affae0428df411e107d56b9c5"
+        },
+        {
+          "path": "services/frontend/tests/avalanche/publication.spec.ts",
+          "bytes": 23466,
+          "sha256": "3de11e3823932195505dbc428543f830b54bc78d9dca335a0915c2f25b18ce0e"
+        },
+        {
+          "path": "services/frontend/tests/avalanche/review.spec.ts",
+          "bytes": 9014,
+          "sha256": "71c4d45c623807ca443380dd27de1bfabe14c57d3866e34f2caadd51d8a18d27"
+        },
+        {
+          "path": "services/frontend/tests/avalanche/structureFixture.ts",
+          "bytes": 79,
+          "sha256": "558b3f424a35369fab4689ccbd6dc3b98c3eb0b8c10d73ca8fedad50c0df67ec"
+        },
+        {
+          "path": "services/frontend/tests/avalanche/transaction.spec.ts",
+          "bytes": 10786,
+          "sha256": "f533eb4f33f59c3b229a65cfb776bb04c5aad6222f74c5ddba4dfc501e7e231a"
+        },
+        {
+          "path": "services/frontend/tests/avalanche/validation.spec.ts",
+          "bytes": 16975,
+          "sha256": "d31094529ea85105806db09ad583dd478e91d436b0c3c7bdf13b5dcbc59c26a1"
+        },
+        {
+          "path": "services/frontend/tests/containers/Qr.spec.tsx",
+          "bytes": 5432,
+          "sha256": "fef98a305cff617b934438d8e4a716c65d33df145e27f6ab2c72f11197bbfc65"
+        },
+        {
+          "path": "services/frontend/tests/queries/queryClient.spec.ts",
+          "bytes": 1756,
+          "sha256": "1195e4b77f8c78a058b7a3d10061a3ca874dc9a74583a0456e6326bfee3461e5"
+        },
+        {
+          "path": "services/frontend/tests/store/avalanchePublication.spec.ts",
+          "bytes": 15882,
+          "sha256": "32975ae789fb267e6332ff0f380bc5fc547f06d3b60cd0fdb274ef0b26dd3145"
+        },
+        {
+          "path": "services/frontend/tests/store/index.spec.ts",
+          "bytes": 9274,
+          "sha256": "3fa0e6f8428d84c384378572bede9d7fb1d6f72fde5b09edb5a9c4fc7b5136bb"
+        },
+        {
+          "path": "services/frontend/tests/testData/avalancheEconomics.ts",
+          "bytes": 3216,
+          "sha256": "f6a39fa4bcfb57cca0a41a4e3ce207733333367eed2ab1f983bfdfb94e332fdc"
+        },
+        {
+          "path": "services/frontend/tests/testData/avalanchePage.ts",
+          "bytes": 462,
+          "sha256": "4cb415845ad02b6de68bec03e0f5a7fe6eac6e395be78464ec1dea262c8090ed"
+        },
+        {
+          "path": "services/frontend/tests/testData/avalanchePublication.ts",
+          "bytes": 400,
+          "sha256": "666079663a9ce1badce02360d3e4e1407d676a7d89cd211a38dede6500b2cb05"
+        },
+        {
+          "path": "services/frontend/tests/testData/avalanchePublicationFixture.ts",
+          "bytes": 39,
+          "sha256": "546fa0ff56b4026048c49251a94675cb13e3cc5a6484239845391fdb9b655b6f"
+        },
+        {
+          "path": "services/frontend/tests/testData/avalanchePublicationReview.ts",
+          "bytes": 641,
+          "sha256": "3cb02cc7a62b6afc04ef859e021b1bff90435831d01c7ce5361ac0486db567cc"
+        },
+        {
+          "path": "services/frontend/tests/testData/avalanchePublicationSchema.ts",
+          "bytes": 8809,
+          "sha256": "1ff32e2a06f3e082958db7e1ce06712c8e3765e7fc3ee035b214ad2d84435a51"
+        },
+        {
+          "path": "services/frontend/tests/testData/avalancheStore.ts",
+          "bytes": 1783,
+          "sha256": "bba1200565dc2db358b02d03dc412ede2c21c6e7ef1010db5545ec69fb7b350e"
+        },
+        {
+          "path": "services/frontend/tests/testData/avalancheStructure.ts",
+          "bytes": 1489,
+          "sha256": "0948dd20cddd78a1b250ec45efa986c6fe5911a62537ce1056bf8a1ed0dc9c53"
+        },
+        {
+          "path": "services/frontend/tests/testData/economicAuthority.ts",
+          "bytes": 2280,
+          "sha256": "98a3b7e0d53046d46058e69ccc0ecc1da77bde2bd26ebfc03c527ede5468c578"
+        },
+        {
+          "path": "services/frontend/tests/testData/economicReview.ts",
+          "bytes": 1440,
+          "sha256": "1ba5597fe19bf33a2a8d0a0e9d19a7c5d2b4c5d7f151e0621f183181d4b6bc0b"
+        },
+        {
+          "path": "services/frontend/tests/testData/existingFeeUi.ts",
+          "bytes": 390,
+          "sha256": "b4862f87c620c17366f6541807c59bd5ec4666f4510dccee08fda8de48975ea0"
+        },
+        {
+          "path": "services/frontend/tests/testUtils/avalancheEconomics.ts",
+          "bytes": 5677,
+          "sha256": "63e6b267fadd4997d670320c309e05f8895abce166ca8681a07dee5bd304118e"
+        },
+        {
+          "path": "services/frontend/tests/testUtils/avalanchePage.tsx",
+          "bytes": 258,
+          "sha256": "1f89bb7a994172f727deb86e63815b498fac8d6465c9e92332793d4ce549ba24"
+        },
+        {
+          "path": "services/frontend/tests/testUtils/avalanchePublicationFixture.ts",
+          "bytes": 2166,
+          "sha256": "9983931a49379b3188d090d569d8b1af0b7c6c6363d3f0491fbe6f01ddf26150"
+        },
+        {
+          "path": "services/frontend/tests/testUtils/avalanchePublicationSchema.ts",
+          "bytes": 2058,
+          "sha256": "b2fd8593a131b95049f2d605c6d2523abd7b3b46c0c0a19b0d7895522ef415ea"
+        },
+        {
+          "path": "services/frontend/tests/testUtils/avalancheStore.ts",
+          "bytes": 1694,
+          "sha256": "44cac273d7050232d97752064df3685080dbb77366fc3cf07e20874b93502dd3"
+        },
+        {
+          "path": "services/frontend/tests/testUtils/avalancheStructure.ts",
+          "bytes": 5675,
+          "sha256": "fdcbf2fa782872d9d35e21911d7c61c5801bbf093a43fdd9fec5d7b3949bd8b3"
+        },
+        {
+          "path": "services/frontend/tests/testUtils/economicAuthority.ts",
+          "bytes": 456,
+          "sha256": "a50c6dbe5961f31a0802c49698765efa238253aae6d48eeb017242181b187f47"
+        },
+        {
+          "path": "services/frontend/tests/testUtils/economicReview.ts",
+          "bytes": 337,
+          "sha256": "0c0a741ca2c23a6067ddb807e3e15937cebe9a4ff0341209d192ff47e3e77731"
+        },
+        {
+          "path": "services/frontend/tests/testUtils/existingFeeUiPresentation.ts",
+          "bytes": 1773,
+          "sha256": "32ea2297ecba0023f82f57e6a938dc4ba734628ba0ef52bb5b51be3e5d2134ec"
+        },
+        {
+          "path": "services/frontend/tests/testUtils/existingFeeUiStore.ts",
+          "bytes": 1628,
+          "sha256": "44a9f727445b1c7d30eeebfec90f401bd373280b6babd15620378071cf4a674b"
+        },
+        {
+          "path": "services/frontend/tests/testUtils/existingUiReact.cjs",
+          "bytes": 564,
+          "sha256": "b99e30ce79da97f7e24ee0aa6fc89eb48b68360f441786cbfec68065b1134e34"
+        },
+        {
+          "path": "services/frontend/tests/utils/getFeesByToken.spec.ts",
+          "bytes": 1681,
+          "sha256": "31190411eb39f555b80cd1c439879b04a2937bf781c638c8e423bb4d0a2bb9ec"
+        },
+        {
+          "path": "services/frontend/tests/validations/validateAvalancheNetworkFee.spec.ts",
+          "bytes": 1862,
+          "sha256": "c78b9384b58ef53f0fa9e2373f3040756147e3fe520f696fa16ca521bd0b0304"
+        },
+        {
+          "path": "services/frontend/tsconfig.json",
+          "bytes": 614,
+          "sha256": "12f0b2a1d2558d52331e8238c110e0b7204b145c327e6c0191983dd0536a4d13"
+        },
+        {
+          "path": "services/frontend/vitest.avalancheEconomicReview.config.ts",
+          "bytes": 238,
+          "sha256": "91800e774f7c92b6872644567ecccfbbfce874c090922597dcb93ea7ea758966"
+        },
+        {
+          "path": "services/frontend/vitest.avalancheEconomics.config.ts",
+          "bytes": 176,
+          "sha256": "66172ab8336e0f1b7a0b4c6f7f73d1c7f249f750fb7af41d809f09075c7c59ea"
+        },
+        {
+          "path": "services/frontend/vitest.avalancheExistingUi.config.ts",
+          "bytes": 400,
+          "sha256": "35881a800968269a0c95462631793cd5a7eaeabf36b00b0f4e71e2367da2508e"
+        },
+        {
+          "path": "services/frontend/vitest.avalancheExistingUiPresentation.config.ts",
+          "bytes": 790,
+          "sha256": "a32a494dcecc918e7e5fc51ee5c17358cd233a6e54323d87109e6fc6ba3977a2"
+        },
+        {
+          "path": "services/frontend/vitest.avalanchePublication.config.ts",
+          "bytes": 1315,
+          "sha256": "b72287aba738b144e508fe514fc1faa450b4e7be7440c0d5f3c7e7984b1f4ca9"
+        },
+        {
+          "path": "services/frontend/vitest.avalancheReview.config.ts",
+          "bytes": 675,
+          "sha256": "1f1e266f6d0dccd5761c84858f90fbfd1c5a3fc4552fd480fae04712b8f08bc8"
+        },
+        {
+          "path": "services/frontend/vitest.avalancheStructure.config.ts",
+          "bytes": 642,
+          "sha256": "2c23950f1881071768c5bba437dac624505957b96e4a2e8a79b13d3f174a6039"
+        }
+      ]
+    }
+  ]
+}

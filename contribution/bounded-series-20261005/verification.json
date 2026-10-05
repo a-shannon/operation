@@ -1,0 +1,27 @@
+{
+  "status": "PASS exact source-series application",
+  "results": [
+    {
+      "id": "G01",
+      "tree": "025a50a6a6211226c23c536178ce690ca4d87dc5",
+      "exactChangedPaths": 2
+    },
+    {
+      "id": "G07",
+      "tree": "199a4da119398aed4d3e7f988db94bc981c45161",
+      "exactChangedPaths": 5
+    },
+    {
+      "id": "C-HEALTH",
+      "tree": "b3e3886498c597ebb7214e16e44c4a21d8aa7d4f",
+      "exactChangedPaths": 11
+    },
+    {
+      "id": "C-CONTRACT",
+      "tree": "5038fafe79ecfc200ee004c7bcb6123c24493629",
+      "exactChangedPaths": 4
+    }
+  ],
+  "originalIndexWrites": 0,
+  "publicActions": 0
+}

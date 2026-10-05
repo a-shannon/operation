@@ -1,0 +1,46 @@
+{
+  "sourceCandidate": {
+    "bytes": 22412,
+    "sha256": "82f49899ea67113000e79377347e8ebe3b8e5bd1edda98bdf4311d3dfa7833bc"
+  },
+  "initialIndependentReview": {
+    "bytes": 7642,
+    "sha256": "0cf2e29269eb47f24b1dd5fa7f5e26da1db06119dff5abec05977bd89f3ce7ae"
+  },
+  "commentFormattingCorrective": {
+    "bytes": 4098,
+    "sha256": "5e19fc031287be4a4012720f315396b0e61954c720a24e2ef7bd5b4be9fd1f3c"
+  },
+  "literalRegistrationCorrective": {
+    "bytes": 39653,
+    "sha256": "e2b91361a6e7714ed94d2e781267bf401ed50dbbcaadb6d8a6de63361dad887c"
+  },
+  "declaredNpmCommand": {
+    "evidence": {
+      "bytes": 18092,
+      "sha256": "fea3844e18d15129c09d1c6c3ec4c5fbafd410f8ab6ec16b5c64827ea71442bc"
+    },
+    "passed": {
+      "legacy": 185,
+      "shared": 5,
+      "avalanche": 116
+    },
+    "sourceScope": "Author-v5 has the final bounded worker configuration. Author-v6 changes only six test declarations to the exact separately tested literal outputs; runtime and remaining tests are unchanged."
+  },
+  "originalSourcesAndIndexWrites": 0,
+  "verifier": {
+    "bytes": 5483,
+    "sha256": "d49aefa6167f6e425160c8ea3f4abb368562a30c9667d350714240424f54ecc6"
+  },
+  "limits": "Exact source application and local installed dependency validation. Ordinary lockfiles/registry installation, approved releases, Rosen document review and operating deployment remain separate gates.",
+  "exactFourApplications": {
+    "path": "verification.json",
+    "bytes": 607,
+    "sha256": "e1d74677960237678eb8df9bb3eda199719c81405fdcaf0e25c44f67023f7295"
+  },
+  "completeReleasePreview": {
+    "path": "release-preview.json",
+    "bytes": 1945,
+    "sha256": "577e8e313be021e5b57d0ab8987d6184aff7bf7324d2e0d8dd652c88d7a7d88e"
+  }
+}

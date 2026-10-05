@@ -1,0 +1,4525 @@
+diff --git a/.changeset/avalanche-watcher-support.md b/.changeset/avalanche-watcher-support.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..0af4e9e6c2e19c42f57bc352b7e50b5d260393d4
+--- /dev/null
++++ b/.changeset/avalanche-watcher-support.md
+@@ -0,0 +1,5 @@
++---
++'@rosen-bridge/watcher': major
++---
++
++Add explicit Avalanche C-Chain configuration, finalized AVAX and mapped ERC20 scanning, scanner health and persisted observation leases for commitment creation, reveal and queue sends.
+diff --git a/.mocharc.json b/.mocharc.json
+index 884e9578ffa2ef643baa24165ea9c5e460a65856..37d4aa6c1258d120269f6d477b23f14fd228303c 100644
+--- a/.mocharc.json
++++ b/.mocharc.json
+@@ -1,11 +1,27 @@
+ {
+   "extensions": ["ts"],
+   "spec": ["tests/**/*.ts"],
+-  "node-option": ["import=tsx"],
+-  "require": ["src/bootstrap.ts", "tests/bootstrap.ts"],
+   "ignore": [
+     "tests/ergo/utils.spec.ts",
+     "tests/ergo/transaction/queue.spec.ts",
+-    "tests/sharedSetup.ts"
+-  ]
++    "tests/sharedSetup.ts",
++    "tests/config/avalancheConfig.spec.ts",
++    "tests/database/avalancheSafetyState.spec.ts",
++    "tests/utils/avalancheSafety.spec.ts",
++    "tests/utils/avalancheScanner.spec.ts",
++    "tests/transactions/avalancheCommitmentCreation.spec.ts",
++    "tests/transactions/avalancheCommitmentReveal.spec.ts",
++    "tests/ergo/transaction/avalancheQueue.spec.ts",
++    "tests/setup-tests.ts",
++    "tests/avalancheTestData.ts",
++    "tests/avalancheTestUtils.ts",
++    "tests/utils/mocked/avalancheScanner.mock.ts",
++    "tests/utils/avalancheScannerTestData.ts",
++    "tests/jobs/initScanner.spec.ts",
++    "tests/jobs/mocked/scanning.mock.ts",
++    "tests/jobs/testData.ts",
++    "tests/jobs/testUtils.ts"
++  ],
++  "node-option": ["import=tsx"],
++  "require": ["src/bootstrap.ts", "tests/bootstrap.ts"]
+ }
+diff --git a/config/dataSource.ts b/config/dataSource.ts
+index 6a3c76891d80c7bd81d7f53dfc8f0dce2e9bf71c..ee69acea21c43233923498c9d530d1b8dfe7e77f 100644
+--- a/config/dataSource.ts
++++ b/config/dataSource.ts
+@@ -19,6 +19,10 @@ import {
+   CollateralEntity,
+ } from '@rosen-bridge/watcher-data-extractor';
+ import { DataSource } from '@rosen-bridge/extended-typeorm';
++import {
++  AvalancheSafetyState,
++  AvalancheSafetyState1790769600000,
++} from '@rosen-bridge/evm-scanner';
+ import { getConfig } from '../src/config/config';
+ 
+ import { ObservationStatusEntity } from '../src/database/entities/observationStatusEntity';
+@@ -32,6 +36,7 @@ import migrations from '../src/database/migrations';
+ const dbType = getConfig().database.type as keyof typeof migrations;
+ const dbConfigs = {
+   entities: [
++    AvalancheSafetyState,
+     BlockEntity,
+     BoxEntity,
+     CommitmentEntity,
+@@ -48,6 +53,7 @@ const dbConfigs = {
+     RevenueChartDataView,
+   ],
+   migrations: [
++    AvalancheSafetyState1790769600000,
+     ...addressExtractorMigrations[dbType],
+     ...observationMigrations[dbType],
+     ...scannerMigrations[dbType],
+diff --git a/config/default.yaml b/config/default.yaml
+index 1c902583a879938824742229dcf049ff5e21b236..1eb4d4a474468e61309e5adcde3105242f89dfaf 100644
+--- a/config/default.yaml
++++ b/config/default.yaml
+@@ -3,6 +3,7 @@ network: '' # which scanner network used in this watcher ergo/cardano/bitcoin/et
+ observation:
+   # confirmation: 60 # number of required block confirmations to create the commitment after observing an event
+   validThreshold: 259200 # Observations that have not been triggered will not be processed after this period (in seconds, converted to block count based on selected network block time)
++  # validThresholdBlocks: # Required positive block count for network: avalanche; replaces the seconds-based threshold.
+   storeRawData: true # if set extractor will store observations raw data
+ bitcoin:
+   type: '' # options: esplora, rpc
+@@ -68,6 +69,19 @@ ethereum:
+     interval: 20 # rpc scanning interval (in seconds)
+     timeout: 10 # rpc request timeout (in seconds)
+     # authToken: # rpc auth token
++avalanche:
++  type: 'rpc'
++  # chainId: # Required: 43113 (Fuji) or 43114 (C-Chain mainnet).
++  # sourceId: # Required stable RPC source identifier, retained across restarts.
++  initial:
++    height: -1
++  interval: 20 # scanning interval (in seconds)
++  healthCheck:
++    # blockTime: # Required operational block-time estimate in seconds for health checks only; not finality or observation.validThresholdBlocks.
++  rpc:
++    url: '' # operator-selected C-Chain HTTP(S) RPC endpoint
++    timeout: 10 # RPC request timeout (in seconds)
++    # authToken: # RPC auth token
+ binance:
+   type: '' # options: rpc
+   initial:
+diff --git a/docker/custom-environment-variables.yaml b/docker/custom-environment-variables.yaml
+index 4e1ffe558512ff45ccc2e3b00bfac18969a24198..f18e2236f50fac6325b92f454e217e197f225e87 100644
+--- a/docker/custom-environment-variables.yaml
++++ b/docker/custom-environment-variables.yaml
+@@ -27,6 +27,32 @@ cardano:
+ ethereum:
+   rpc:
+     authToken: 'ETHEREUM_RPC_AUTH_TOKEN'
++avalanche:
++  chainId:
++    __name: 'AVALANCHE_CHAIN_ID'
++    __format: 'number'
++  sourceId: 'AVALANCHE_SOURCE_ID'
++  healthCheck:
++    blockTime:
++      __name: 'AVALANCHE_HEALTH_CHECK_BLOCK_TIME'
++      __format: 'number'
++  initial:
++    height:
++      __name: 'AVALANCHE_INITIAL_HEIGHT'
++      __format: 'number'
++  interval:
++    __name: 'AVALANCHE_SCANNER_INTERVAL'
++    __format: 'number'
++  rpc:
++    url: 'AVALANCHE_RPC_URL'
++    timeout:
++      __name: 'AVALANCHE_RPC_TIMEOUT'
++      __format: 'number'
++    authToken: 'AVALANCHE_RPC_AUTH_TOKEN'
++observation:
++  validThresholdBlocks:
++    __name: 'AVALANCHE_OBSERVATION_VALID_THRESHOLD_BLOCKS'
++    __format: 'number'
+ binance:
+   rpc:
+     authToken: 'BINANCE_RPC_AUTH_TOKEN'
+diff --git a/package.json b/package.json
+index db9b484208fafda6e69d5aafe5cc21b9e50d8745..b47ba53ed60d7deff9817140772f5e1d24744ac6 100644
+--- a/package.json
++++ b/package.json
+@@ -11,7 +11,7 @@
+     "prettify": "prettier --write . --ignore-path ./.gitignore",
+     "prepare": "husky || true",
+     "start": "tsx ./src/index.ts",
+-    "test": "npm run test:legacy && npm run test:shared",
++    "test": "npm run test:legacy && npm run test:shared && npm run test:avalanche",
+     "type-check": "tsc --noEmit",
+     "typeorm:generate:sqlite": "npm run typeorm migration:generate ./src/database/migrations/sqlite/watcherMigration -- -p -d ./config/dataSource.ts",
+     "typeorm:generate:postgres": "npm run typeorm migration:generate ./src/database/migrations/postgres/watcherMigration -- -p -d ./config/dataSource.ts",
+@@ -23,7 +23,9 @@
+     "postinstall": "patch-package",
+     "test:legacy": "cross-env NODE_ENV=test mocha --exit --slow 3000",
+     "test:shared": "node --import tsx node_modules/vitest/vitest.mjs run --config vitest.shared.config.ts --passWithNoTests",
+-    "type-check:shared": "tsc -p tsconfig.shared.json --noEmit"
++    "type-check:shared": "tsc -p tsconfig.shared.json --noEmit",
++    "test:avalanche": "node --import tsx node_modules/vitest/vitest.mjs run --config vitest.avalanche.config.ts",
++    "type-check:avalanche": "tsc -p tsconfig.avalanche.json --noEmit"
+   },
+   "repository": {
+     "type": "git",
+@@ -80,8 +82,8 @@
+   "dependencies": {
+     "@rosen-bridge/abstract-logger": "^4.0.0",
+     "@rosen-bridge/abstract-observation-extractor": "^2.0.0",
+-    "@rosen-bridge/abstract-scanner": "^4.0.0",
+-    "@rosen-bridge/address-codec": "^2.1.0",
++    "@rosen-bridge/abstract-scanner": "^4.0.1",
++    "@rosen-bridge/address-codec": "^2.2.0",
+     "@rosen-bridge/address-extractor": "^7.0.9",
+     "@rosen-bridge/address-manager": "^0.1.0",
+     "@rosen-bridge/asset-check": "^6.2.2",
+@@ -94,8 +96,8 @@
+     "@rosen-bridge/discord-notification": "^1.0.0",
+     "@rosen-bridge/ergo-observation-extractor": "^2.0.7",
+     "@rosen-bridge/ergo-scanner": "^2.0.1",
+-    "@rosen-bridge/evm-observation-extractor": "^7.0.7",
+-    "@rosen-bridge/evm-scanner": "^2.0.1",
++    "@rosen-bridge/evm-observation-extractor": "^7.2.0",
++    "@rosen-bridge/evm-scanner": "^2.1.0",
+     "@rosen-bridge/extended-typeorm": "1.1.1",
+     "@rosen-bridge/firo-observation-extractor": "^1.1.5",
+     "@rosen-bridge/firo-scanner": "^1.0.1",
+diff --git a/src/config/config.ts b/src/config/config.ts
+index 4623f098e2d0fe8bd2a5d3919a3f273d65e9b5ad..17fe5a6c81225c0a3f0b9769e26f13636ee902a1 100644
+--- a/src/config/config.ts
++++ b/src/config/config.ts
+@@ -20,6 +20,7 @@ const supportedNetworks: Array<NetworkType> = [
+   Constants.DOGE_CHAIN_NAME,
+   Constants.ETHEREUM_CHAIN_NAME,
+   Constants.BINANCE_CHAIN_NAME,
++  Constants.AVALANCHE_CHAIN_NAME,
+   Constants.HANDSHAKE_CHAIN_NAME,
+   Constants.FIRO_CHAIN_NAME,
+ ];
+@@ -31,6 +32,7 @@ interface ConfigType {
+   bitcoinRunes: BitcoinRunesConfig;
+   ethereum: EthereumConfig;
+   binance: BinanceConfig;
++  avalanche?: AvalancheConfig;
+   firo: FiroConfig;
+   doge: DogeConfig;
+   handshake: HandshakeConfig;
+@@ -48,17 +50,24 @@ interface ConnectionConfig {
+   password?: string;
+ }
+ 
+-const getRequiredNumber = (path: string) => {
+-  if (!config.has(path)) {
++interface ConfigReader {
++  has(path: string): boolean;
++  get<T>(path: string): T;
++}
++
++/** Reads a required configuration value and rejects values that convert to NaN. */
++const getRequiredNumber = (path: string, source: ConfigReader = config) => {
++  if (!source.has(path)) {
+     throw new Error(`ImproperlyConfigured. ${path} is not defined`);
+   }
+-  const value = config.get<number>(path);
++  const value = source.get<number>(path);
+   if (isNaN(value)) {
+     throw new Error(`ImproperlyConfigured. ${path} is not a number`);
+   }
+   return value;
+ };
+ 
++/** Reads an optional numeric value, using the supplied default when absent. */
+ const getOptionalNumber = (path: string, defaultValue: number) => {
+   if (config.has(path)) {
+     const value = config.get<number>(path);
+@@ -70,6 +79,43 @@ const getOptionalNumber = (path: string, defaultValue: number) => {
+   return defaultValue;
+ };
+ 
++/** Reads a required safe integer at or above the supplied minimum. */
++const getRequiredInteger = (
++  path: string,
++  minimum: number,
++  source: ConfigReader = config
++) => {
++  const value = getRequiredNumber(path, source);
++  if (
++    typeof value !== 'number' ||
++    !Number.isSafeInteger(value) ||
++    value < minimum
++  ) {
++    throw new Error(
++      `ImproperlyConfigured. ${path} must be a safe integer >= ${minimum}`
++    );
++  }
++  return value;
++};
++
++/** Reads a positive duration in seconds that fits the Node timer range. */
++const getRequiredDuration = (path: string, source: ConfigReader = config) => {
++  const value = getRequiredNumber(path, source);
++  // Durations are converted from seconds to Node timer milliseconds.
++  if (
++    typeof value !== 'number' ||
++    !Number.isFinite(value) ||
++    value <= 0 ||
++    value * 1000 > 2147483647
++  ) {
++    throw new Error(
++      `ImproperlyConfigured. ${path} must be positive and within the timer range`
++    );
++  }
++  return value;
++};
++
++/** Reads an optional numeric value and returns undefined when it is absent. */
+ const getOptionalNumberWithoutDefault = (path: string) => {
+   if (config.has(path)) {
+     const value = config.get<number>(path);
+@@ -81,13 +127,39 @@ const getOptionalNumberWithoutDefault = (path: string) => {
+   return undefined;
+ };
+ 
+-const getRequiredString = (path: string) => {
+-  if (!config.has(path)) {
++/** Reads a required string value from the selected configuration source. */
++const getRequiredString = (path: string, source: ConfigReader = config) => {
++  if (!source.has(path)) {
+     throw new Error(`ImproperlyConfigured. ${path} is not defined`);
+   }
+-  return config.get<string>(path);
++  return source.get<string>(path);
+ };
+ 
++/** Uses explicit Avalanche blocks or converts a legacy duration into blocks. */
++const getObservationValidThreshold = (
++  network: NetworkType,
++  source: ConfigReader = config
++): number => {
++  if (network === Constants.AVALANCHE_CHAIN_NAME) {
++    return getRequiredInteger('observation.validThresholdBlocks', 1, source);
++  }
++  const blockTime = {
++    [Constants.ERGO_CHAIN_NAME]: Constants.ERGO_BLOCK_TIME,
++    [Constants.BITCOIN_CHAIN_NAME]: Constants.BITCOIN_BLOCK_TIME,
++    [Constants.BITCOIN_RUNES_CHAIN_NAME]: Constants.BITCOIN_BLOCK_TIME,
++    [Constants.CARDANO_CHAIN_NAME]: Constants.CARDANO_BLOCK_TIME,
++    [Constants.BINANCE_CHAIN_NAME]: Constants.BINANCE_BLOCK_TIME,
++    [Constants.ETHEREUM_CHAIN_NAME]: Constants.ETHEREUM_BLOCK_TIME,
++    [Constants.DOGE_CHAIN_NAME]: Constants.DOGE_BLOCK_TIME,
++    [Constants.FIRO_CHAIN_NAME]: Constants.FIRO_BLOCK_TIME,
++    [Constants.HANDSHAKE_CHAIN_NAME]: Constants.HANDSHAKE_BLOCK_TIME,
++  }[network];
++  return Math.floor(
++    getRequiredNumber('observation.validThreshold', source) / blockTime
++  );
++};
++
++/** Reads an optional string, using the supplied default when absent. */
+ const getOptionalString = (path: string, defaultValue = '') => {
+   if (config.has(path)) {
+     return config.get<string>(path);
+@@ -144,6 +216,7 @@ class Config {
+     nonErgo: boolean;
+   };
+ 
++  /** Loads the Ergo wallet, observation policy and service scheduling settings. */
+   constructor() {
+     this.networkType = getRequiredString('ergo.network').toLowerCase();
+     if (['mainnet', 'testnet'].indexOf(this.networkType) === -1)
+@@ -242,19 +315,8 @@ class Config {
+     this.observationConfirmation = getRequiredNumber(
+       'observation.confirmation'
+     );
+-    const blockTime = {
+-      [Constants.ERGO_CHAIN_NAME]: Constants.ERGO_BLOCK_TIME,
+-      [Constants.BITCOIN_CHAIN_NAME]: Constants.BITCOIN_BLOCK_TIME,
+-      [Constants.BITCOIN_RUNES_CHAIN_NAME]: Constants.BITCOIN_BLOCK_TIME,
+-      [Constants.CARDANO_CHAIN_NAME]: Constants.CARDANO_BLOCK_TIME,
+-      [Constants.BINANCE_CHAIN_NAME]: Constants.BINANCE_BLOCK_TIME,
+-      [Constants.ETHEREUM_CHAIN_NAME]: Constants.ETHEREUM_BLOCK_TIME,
+-      [Constants.DOGE_CHAIN_NAME]: Constants.DOGE_BLOCK_TIME,
+-      [Constants.FIRO_CHAIN_NAME]: Constants.FIRO_BLOCK_TIME,
+-      [Constants.HANDSHAKE_CHAIN_NAME]: Constants.HANDSHAKE_BLOCK_TIME,
+-    }[this.networkWatcher];
+-    this.observationValidThreshold = Math.floor(
+-      getRequiredNumber('observation.validThreshold') / blockTime
++    this.observationValidThreshold = getObservationValidThreshold(
++      this.networkWatcher
+     );
+     this.observationStoreRawData = config.get<boolean>(
+       'observation.storeRawData'
+@@ -317,6 +379,7 @@ class Config {
+ class LoggerConfig {
+   transports: TransportOptions[];
+ 
++  /** Loads the configured logger transports. */
+   constructor() {
+     const logs = config.get<TransportOptions[]>('logs');
+     const clonedLogs = cloneDeep(logs);
+@@ -388,6 +451,7 @@ class CardanoConfig {
+     projectId: string;
+   };
+ 
++  /** Loads Cardano observation settings when Cardano is the selected network. */
+   constructor(network: string) {
+     this.type = config.get<string>('cardano.type');
+     if (network === Constants.CARDANO_CHAIN_NAME) {
+@@ -450,6 +514,7 @@ class BitcoinConfig {
+     password?: string;
+   };
+ 
++  /** Loads Bitcoin settings for Bitcoin and Bitcoin Runes observation. */
+   constructor(network: string) {
+     this.type = config.get<string>('bitcoin.type');
+     if (
+@@ -487,6 +552,7 @@ class BitcoinRunesConfig {
+     apiKey: string;
+   };
+ 
++  /** Loads Runes protocol settings when Bitcoin Runes observation is selected. */
+   constructor(network: string) {
+     this.type = config.get<string>('bitcoinRunes.type');
+     if (network === Constants.BITCOIN_RUNES_CHAIN_NAME) {
+@@ -515,6 +581,7 @@ class DogeConfig {
+   esplora: ConnectionConfig[];
+   rpc: ConnectionConfig[];
+ 
++  /** Loads Dogecoin observation settings when Dogecoin is selected. */
+   constructor(network: string) {
+     this.type = config.get<string>('doge.type');
+     if (network === Constants.DOGE_CHAIN_NAME) {
+@@ -586,6 +653,7 @@ class EthereumConfig {
+     authToken?: string;
+   };
+ 
++  /** Loads Ethereum observation settings when Ethereum is selected. */
+   constructor(network: string) {
+     this.type = config.get<string>('ethereum.type');
+     if (network === Constants.ETHEREUM_CHAIN_NAME) {
+@@ -608,6 +676,90 @@ class EthereumConfig {
+   }
+ }
+ 
++class AvalancheConfig {
++  readonly type = Constants.EVM_RPC_TYPE;
++  readonly chainId: 43113 | 43114;
++  readonly sourceId: string;
++  readonly initialHeight: number;
++  readonly interval: number;
++  readonly blockTime: number;
++  readonly rpc: {
++    url: string;
++    timeout: number;
++    authToken?: string;
++  };
++
++  /** Validates the explicit Avalanche chain, RPC source and scanner policy. */
++  constructor(source: ConfigReader = config) {
++    if (
++      getRequiredString('avalanche.type', source) !== Constants.EVM_RPC_TYPE
++    ) {
++      throw new Error('ImproperlyConfigured. avalanche.type must be rpc');
++    }
++    const chainId = getRequiredInteger('avalanche.chainId', 0, source);
++    if (chainId !== 43113 && chainId !== 43114) {
++      throw new Error(
++        'ImproperlyConfigured. avalanche.chainId must be 43113 or 43114'
++      );
++    }
++    this.chainId = chainId;
++    const sourceId = getRequiredString('avalanche.sourceId', source);
++    if (
++      typeof sourceId !== 'string' ||
++      !/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(sourceId)
++    ) {
++      throw new Error(
++        'ImproperlyConfigured. avalanche.sourceId must be a stable source identifier'
++      );
++    }
++    this.sourceId = sourceId;
++    this.initialHeight = getRequiredInteger(
++      'avalanche.initial.height',
++      -1,
++      source
++    );
++    this.interval = getRequiredDuration('avalanche.interval', source);
++    const blockTime = getRequiredNumber(
++      'avalanche.healthCheck.blockTime',
++      source
++    );
++    if (
++      typeof blockTime !== 'number' ||
++      !Number.isFinite(blockTime) ||
++      blockTime <= 0
++    ) {
++      throw new Error(
++        'ImproperlyConfigured. avalanche.healthCheck.blockTime must be positive and finite'
++      );
++    }
++    this.blockTime = blockTime;
++    const url = getRequiredString('avalanche.rpc.url', source);
++    let validUrl = false;
++    if (typeof url === 'string' && url.length > 0 && url.trim() === url) {
++      try {
++        validUrl = ['http:', 'https:'].includes(new URL(url).protocol);
++      } catch {
++        // Invalid URLs are rejected before constructing the provider.
++      }
++    }
++    if (!validUrl) {
++      throw new Error(
++        'ImproperlyConfigured. avalanche.rpc.url must be an HTTP(S) URL'
++      );
++    }
++    const timeout = getRequiredDuration('avalanche.rpc.timeout', source);
++    const authToken = source.has('avalanche.rpc.authToken')
++      ? source.get<unknown>('avalanche.rpc.authToken')
++      : undefined;
++    if (authToken !== undefined && typeof authToken !== 'string') {
++      throw new Error(
++        'ImproperlyConfigured. avalanche.rpc.authToken must be a string'
++      );
++    }
++    this.rpc = { url, timeout, authToken };
++  }
++}
++
+ class BinanceConfig {
+   type: string;
+   initialHeight: number;
+@@ -618,6 +770,7 @@ class BinanceConfig {
+     authToken?: string;
+   };
+ 
++  /** Loads Binance observation settings when Binance is selected. */
+   constructor(network: string) {
+     this.type = config.get<string>('binance.type');
+     if (network === Constants.BINANCE_CHAIN_NAME) {
+@@ -655,6 +808,7 @@ class FiroConfig {
+     timeout: number;
+   };
+ 
++  /** Loads Firo observation settings when Firo is selected. */
+   constructor(network: string) {
+     this.type = config.get<string>('firo.type');
+     if (network === Constants.FIRO_CHAIN_NAME) {
+@@ -695,6 +849,7 @@ class HandshakeConfig {
+     password?: string;
+   };
+ 
++  /** Loads Handshake observation settings when Handshake is selected. */
+   constructor(network: string) {
+     this.type = config.get<string>('handshake.type');
+     if (network === Constants.HANDSHAKE_CHAIN_NAME) {
+@@ -724,6 +879,7 @@ class DatabaseConfig {
+   password = '';
+   name = '';
+ 
++  /** Loads the database connection settings for the selected database engine. */
+   constructor() {
+     this.type = getRequiredString('database.type');
+     if (this.type === 'sqlite') {
+@@ -749,6 +905,7 @@ class NotificationConfig {
+   hasBeenUnknownForAWhileWindowDuration?: number;
+   isStillUnhealthyWindowDuration?: number;
+ 
++  /** Loads enabled notification channels and their service settings. */
+   constructor() {
+     this.discordWebHookUrl = getOptionalString(
+       'notification.discordWebhookUrl'
+@@ -783,6 +940,7 @@ class HealthCheckConfig {
+   errorLogAllowedCount: number;
+   warnLogAllowedCount: number;
+ 
++  /** Loads health assessment intervals and allowed log counts. */
+   constructor() {
+     this.ergWarnThreshold = BigInt(
+       getRequiredString('healthCheck.asset.ergWarnThreshold')
+@@ -815,6 +973,7 @@ class HealthCheckConfig {
+ 
+ let internalConfig: ConfigType | undefined;
+ 
++/** Initializes all service configuration once and returns the cached result. */
+ const getConfig = (): ConfigType => {
+   if (internalConfig == undefined) {
+     const general = new Config();
+@@ -825,6 +984,10 @@ const getConfig = (): ConfigType => {
+     const doge = new DogeConfig(general.networkWatcher);
+     const ethereum = new EthereumConfig(general.networkWatcher);
+     const binance = new BinanceConfig(general.networkWatcher);
++    const avalanche =
++      general.networkWatcher === Constants.AVALANCHE_CHAIN_NAME
++        ? new AvalancheConfig()
++        : undefined;
+     const handshake = new HandshakeConfig(general.networkWatcher);
+     const firo = new FiroConfig(general.networkWatcher);
+     const rosen = new RosenConfig(
+@@ -841,6 +1004,7 @@ const getConfig = (): ConfigType => {
+       doge,
+       ethereum,
+       binance,
++      avalanche,
+       handshake,
+       firo,
+       logger,
+@@ -855,15 +1019,18 @@ const getConfig = (): ConfigType => {
+ };
+ 
+ export {
++  AvalancheConfig,
+   BinanceConfig,
+   BitcoinConfig,
+   BitcoinRunesConfig,
+   CardanoConfig,
+   Config,
++  ConfigReader,
+   DogeConfig,
+   EthereumConfig,
+   FiroConfig,
+   getConfig,
++  getObservationValidThreshold,
+   HandshakeConfig,
+   RosenConfig,
+ };
+diff --git a/src/config/constants.ts b/src/config/constants.ts
+index 26a0bb1fb706417acafe0ac87debfbdd377e5f75..c84eec6fadaab56fdd3d50fd6dd4dccf22d7919d 100644
+--- a/src/config/constants.ts
++++ b/src/config/constants.ts
+@@ -19,6 +19,7 @@ export const BITCOIN_RUNES_CHAIN_NAME = 'bitcoin-runes';
+ export const DOGE_CHAIN_NAME = 'doge';
+ export const ETHEREUM_CHAIN_NAME = 'ethereum';
+ export const BINANCE_CHAIN_NAME = 'binance';
++export const AVALANCHE_CHAIN_NAME = 'avalanche';
+ export const HANDSHAKE_CHAIN_NAME = 'handshake';
+ export const FIRO_CHAIN_NAME = 'firo';
+ export const ERGO_NATIVE_ASSET = 'erg';
+diff --git a/src/ergo/transaction/queue.ts b/src/ergo/transaction/queue.ts
+index 21d07597f4556c3dfca6b4461362317a65fa9b55..aa3424817c54d826cacf0d8c84b72567ac6125a3 100644
+--- a/src/ergo/transaction/queue.ts
++++ b/src/ergo/transaction/queue.ts
+@@ -7,6 +7,7 @@ import { WatcherUtils } from '../../utils/watcherUtils';
+ import { getConfig } from '../../config/config';
+ import { Transaction } from '../../api/Transaction';
+ import { DefaultLogger } from '@rosen-bridge/abstract-logger';
++import { avalancheObservationSafety } from '../../utils/avalancheSafety';
+ 
+ const logger = DefaultLogger.getInstance().child(import.meta.url);
+ 
+@@ -140,35 +141,43 @@ export class Queue {
+     tx: TxEntity,
+     currentHeight: number
+   ) => {
+-    const signedTx = wasm.Transaction.sigma_parse_bytes(
+-      base64ToArrayBuffer(tx.txSerialized)
+-    );
+-    if (await this.verifyTx(tx)) {
+-      const result = await ErgoNetwork.sendTx(signedTx.to_json());
+-      if (result.success) {
+-        logger.debug(
+-          `Updating ${tx.type} transaction with txId [${tx.txId}] status to valid`
+-        );
+-        await this.database.setTxValidStatus(tx, true);
+-        await this.database.setTxUpdateHeight(tx, currentHeight);
+-        logger.info(
+-          `The ${tx.type} transaction with txId [${tx.txId}] sent successfully`
+-        );
+-      } else {
+-        if (!(await this.validateTxInputsAndOutputs(signedTx))) {
+-          await this.resetTxStatus(tx, currentHeight);
+-        } else {
+-          logger.warn(
+-            `Error occurred while sending ${tx.type} tx [${tx.txId}]`
++    const observationTransaction =
++      tx.type === TxType.COMMITMENT || tx.type === TxType.TRIGGER;
++    /** Rechecks eligibility before sending and updates the persisted queue state. */
++    const process = async () => {
++      const signedTx = wasm.Transaction.sigma_parse_bytes(
++        base64ToArrayBuffer(tx.txSerialized)
++      );
++      if (await this.verifyTx(tx)) {
++        const result = await ErgoNetwork.sendTx(signedTx.to_json());
++        if (result.success) {
++          logger.debug(
++            `Updating ${tx.type} transaction with txId [${tx.txId}] status to valid`
+           );
++          await this.database.setTxValidStatus(tx, true);
++          await this.database.setTxUpdateHeight(tx, currentHeight);
++          logger.info(
++            `The ${tx.type} transaction with txId [${tx.txId}] sent successfully`
++          );
++        } else {
++          if (!(await this.validateTxInputsAndOutputs(signedTx))) {
++            await this.resetTxStatus(tx, currentHeight);
++          } else {
++            logger.warn(
++              `Error occurred while sending ${tx.type} tx [${tx.txId}]`
++            );
++          }
+         }
++      } else {
++        logger.info(
++          `Tx [${tx.txId}] of type ${tx.type} observation or commitments are not valid, skipping the transaction sending]`
++        );
++        await this.resetTxStatus(tx, currentHeight);
+       }
+-    } else {
+-      logger.info(
+-        `Tx [${tx.txId}] of type ${tx.type} observation or commitments are not valid, skipping the transaction sending]`
+-      );
+-      await this.resetTxStatus(tx, currentHeight);
+-    }
++    };
++    if (observationTransaction)
++      await avalancheObservationSafety.withObservation(tx.observation, process);
++    else await process();
+   };
+ 
+   /**
+diff --git a/src/jobs/initScanner.ts b/src/jobs/initScanner.ts
+index c84484202df3cacc1dad60b9d201822dd7839195..e7bce3a751c0ab05046fef0e422e823c9985880b 100644
+--- a/src/jobs/initScanner.ts
++++ b/src/jobs/initScanner.ts
+@@ -15,23 +15,39 @@ const {
+   doge: dogeConfig,
+   ethereum: ethereumConfig,
+   binance: binanceConfig,
++  avalanche: avalancheConfig,
+   handshake: handshakeConfig,
+   firo: firoConfig,
+ } = allConfig;
+ 
+ const logger = DefaultLogger.getInstance().child(import.meta.url);
+ 
+-const scanningJob = async (interval: number, scanner: GeneralScanner<any>) => {
++/** Updates one scanner and schedules its next attempt, with fixed Avalanche failure text. */
++const scanningJob = async (
++  interval: number,
++  scanner: GeneralScanner<any>,
++  sanitizeFailure = false
++) => {
+   try {
+     await scanner.update();
+   } catch (e) {
+-    logger.warn(
+-      `Scanning Job failed for ${scanner.name()}, ${e.message}, ${e.stack}`
+-    );
++    if (sanitizeFailure) {
++      logger.warn(
++        'Avalanche scanner update failed; inspect persisted safety state.'
++      );
++    } else {
++      logger.warn(
++        `Scanning Job failed for ${scanner.name()}, ${e.message}, ${e.stack}`
++      );
++    }
+   }
+-  setTimeout(() => scanningJob(interval, scanner), interval * 1000);
++  setTimeout(
++    () => scanningJob(interval, scanner, sanitizeFailure),
++    interval * 1000
++  );
+ };
+ 
++/** Starts Ergo scanning and the configured observation scanner's update loop. */
+ export const scannerInit = () => {
+   const scanner = CreateScanner.getInstance();
+   scanningJob(config.ergoInterval, scanner.getErgoScanner()).then(() => null);
+@@ -82,6 +98,15 @@ export const scannerInit = () => {
+         scanner.getObservationScanner() as EvmRpcScanner
+       ).then(() => null);
+       break;
++    case Constants.AVALANCHE_CHAIN_NAME:
++      if (!avalancheConfig)
++        throw new Error('Avalanche configuration is missing');
++      scanningJob(
++        avalancheConfig.interval,
++        scanner.getObservationScanner() as EvmRpcScanner,
++        true
++      ).then(() => null);
++      break;
+     case Constants.FIRO_CHAIN_NAME:
+       scanningJob(
+         firoConfig.interval,
+diff --git a/src/transactions/commitmentCreation.ts b/src/transactions/commitmentCreation.ts
+index b8e48535cfeb27447e3b2d847b03ac806640f2a6..c3079644547f447ed4232872dfebd0d1d97b4541 100644
+--- a/src/transactions/commitmentCreation.ts
++++ b/src/transactions/commitmentCreation.ts
+@@ -12,6 +12,7 @@ import { getConfig } from '../config/config';
+ import { DefaultLogger } from '@rosen-bridge/abstract-logger';
+ import { ERGO_CHAIN_NAME } from '../config/constants';
+ import { TokensConfig } from '../config/tokensConfig';
++import { avalancheObservationSafety } from '../utils/avalancheSafety';
+ 
+ const logger = DefaultLogger.getInstance().child(import.meta.url);
+ 
+@@ -20,6 +21,7 @@ export class CommitmentCreation {
+   txUtils: TransactionUtils;
+   boxes: Boxes;
+ 
++  /** Binds commitment creation to observation checks, queue submission and boxes. */
+   constructor(
+     watcherUtils: WatcherUtils,
+     txUtils: TransactionUtils,
+@@ -118,7 +120,10 @@ export class CommitmentCreation {
+         getConfig().general.secretKey,
+         inputBoxes,
+         candidates,
+-        height
++        height,
++        undefined,
++        undefined,
++        (sign) => avalancheObservationSafety.withObservation(observation, sign)
+       );
+       await this.txUtils.submitTransaction(
+         signed,
+diff --git a/src/transactions/commitmentReveal.ts b/src/transactions/commitmentReveal.ts
+index 2e77d580a442e9ef8cbf950ce6557f6131e2c49c..06a29f2f53c8f1bf465cb9224cd2fee684934589 100644
+--- a/src/transactions/commitmentReveal.ts
++++ b/src/transactions/commitmentReveal.ts
+@@ -11,6 +11,7 @@ import { TransactionUtils, WatcherUtils } from '../utils/watcherUtils';
+ import { getConfig } from '../config/config';
+ import { DefaultLogger } from '@rosen-bridge/abstract-logger';
+ import { ERGO_CHAIN_NAME } from '../config/constants';
++import { avalancheObservationSafety } from '../utils/avalancheSafety';
+ 
+ const logger = DefaultLogger.getInstance().child(import.meta.url);
+ 
+@@ -19,6 +20,7 @@ export class CommitmentReveal {
+   txUtils: TransactionUtils;
+   boxes: Boxes;
+ 
++  /** Binds trigger creation to observation checks, queue submission and boxes. */
+   constructor(
+     watcherUtils: WatcherUtils,
+     txUtils: TransactionUtils,
+@@ -77,7 +79,9 @@ export class CommitmentReveal {
+         inputBoxes,
+         [triggerEvent],
+         height,
+-        dataInputs
++        dataInputs,
++        undefined,
++        (sign) => avalancheObservationSafety.withObservation(observation, sign)
+       );
+       await this.txUtils.submitTransaction(signed, TxType.TRIGGER, observation);
+       logger.info(`Trigger event created with txId [${signed.id().to_str()}]`);
+diff --git a/src/types/config.ts b/src/types/config.ts
+index f0c94f5e3cfe9a5810e5bf1def48701695579554..158753e22031794e000f6b823f7caa287106b4c5 100644
+--- a/src/types/config.ts
++++ b/src/types/config.ts
+@@ -8,6 +8,7 @@ type NetworkType =
+   | typeof Constants.DOGE_CHAIN_NAME
+   | typeof Constants.ETHEREUM_CHAIN_NAME
+   | typeof Constants.BINANCE_CHAIN_NAME
++  | typeof Constants.AVALANCHE_CHAIN_NAME
+   | typeof Constants.FIRO_CHAIN_NAME
+   | typeof Constants.HANDSHAKE_CHAIN_NAME;
+ 
+diff --git a/src/utils/avalancheSafety.ts b/src/utils/avalancheSafety.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..8b2718c27ae8623af81c06fbb366460c2fff22a5
+--- /dev/null
++++ b/src/utils/avalancheSafety.ts
+@@ -0,0 +1,72 @@
++import { ObservationEntity } from '@rosen-bridge/abstract-observation-extractor';
++import { AvalancheRpcScanner } from '@rosen-bridge/evm-scanner';
++import { getConfig } from '../config/config';
++import { AVALANCHE_CHAIN_NAME } from '../config/constants';
++import { CreateScanner } from './scanner';
++
++/** Bind observation actions to the single writer's persisted settlement state. */
++export class AvalancheObservationSafety {
++  /** Resolves the selected watcher and its current single-writer observation scanner. */
++  constructor(
++    private readonly getChain: () => string = () =>
++      getConfig().general.networkWatcher,
++    private readonly getScanner: () => unknown = () =>
++      CreateScanner.getInstance().getObservationScanner()
++  ) {}
++
++  /** Selects Avalanche safety and refuses its observations on a different watcher. */
++  private requiresAvalanche = (observation?: ObservationEntity): boolean => {
++    if (this.getChain() === AVALANCHE_CHAIN_NAME) return true;
++    if (observation?.fromChain?.toLowerCase() === AVALANCHE_CHAIN_NAME)
++      throw new Error(
++        'Stored Avalanche observation requires an Avalanche watcher'
++      );
++    return false;
++  };
++
++  /** Requires the settled scanner and matching chain, extractor and source-block provenance. */
++  private qualifiedScanner = (observation?: ObservationEntity) => {
++    const scanner = this.getScanner();
++    if (!(scanner instanceof AvalancheRpcScanner))
++      throw new Error('Avalanche observation requires its settled scanner');
++    if (
++      !observation ||
++      observation.fromChain !== AVALANCHE_CHAIN_NAME ||
++      observation.extractor !== 'avalanche-rpc-extractor' ||
++      typeof observation.block !== 'string' ||
++      typeof observation.sourceBlockId !== 'string' ||
++      observation.block.toLowerCase() !==
++        observation.sourceBlockId.toLowerCase()
++    )
++      throw new Error('Invalid Avalanche observation provenance');
++    return { scanner, observation };
++  };
++
++  /** Early eligibility check; action-time exclusion is provided by withObservation. */
++  assertObservation = async (
++    observation?: ObservationEntity
++  ): Promise<void> => {
++    if (!this.requiresAvalanche(observation)) return;
++    const qualified = this.qualifiedScanner(observation);
++    await qualified.scanner.assertObservation(
++      qualified.observation.height,
++      qualified.observation.block
++    );
++  };
++
++  /** Executes an Avalanche observation action under the scanner's settlement exclusion. */
++  withObservation = async <T>(
++    observation: ObservationEntity | undefined,
++    action: () => T | Promise<T>
++  ): Promise<T> => {
++    if (!this.requiresAvalanche(observation)) return action();
++    const qualified = this.qualifiedScanner(observation);
++    return qualified.scanner.withObservation(
++      qualified.observation.height,
++      qualified.observation.block,
++      action
++    );
++  };
++}
++
++export const avalancheObservationSafety = new AvalancheObservationSafety();
+diff --git a/src/utils/avalancheScanner.ts b/src/utils/avalancheScanner.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..9575d737c45cb12288aa90c20f1781951180f210
+--- /dev/null
++++ b/src/utils/avalancheScanner.ts
+@@ -0,0 +1,68 @@
++import type { AbstractLogger } from '@rosen-bridge/abstract-logger';
++import type { BlockCleanupConfig } from '@rosen-bridge/abstract-scanner/dist/scanner/interfaces';
++import type { DataSource } from '@rosen-bridge/extended-typeorm';
++import type { TokenMap } from '@rosen-bridge/tokens';
++import {
++  AvalancheRpcNetwork,
++  AvalancheRpcScanner,
++} from '@rosen-bridge/evm-scanner';
++import { AvalancheRpcObservationExtractor } from '@rosen-bridge/evm-observation-extractor';
++import type { AvalancheConfig, RosenConfig } from '../config/config';
++
++interface AvalancheScannerDependencies {
++  dataSource: DataSource;
++  tokens: TokenMap;
++  rosen: Pick<RosenConfig, 'lockAddress'>;
++  storeRawData: boolean;
++  blockCleanupConfig: BlockCleanupConfig;
++  logger?: AbstractLogger;
++  extractorLogger?: AbstractLogger;
++  createNetwork?: (
++    ...args: ConstructorParameters<typeof AvalancheRpcNetwork>
++  ) => AvalancheRpcNetwork;
++  createScanner?: (
++    config: ConstructorParameters<typeof AvalancheRpcScanner>[0]
++  ) => AvalancheRpcScanner;
++}
++
++/** Builds the settled source and awaits registration before exposing its scanner. */
++export const createAvalancheScanner = async (
++  config: AvalancheConfig,
++  dependencies: AvalancheScannerDependencies
++): Promise<AvalancheRpcScanner> => {
++  const network = (
++    dependencies.createNetwork ??
++    ((...args) => new AvalancheRpcNetwork(...args))
++  )(
++    config.rpc.url,
++    BigInt(config.chainId),
++    config.rpc.timeout * 1000,
++    config.rpc.authToken
++  );
++  if (network.expectedChainId !== BigInt(config.chainId)) {
++    throw new Error(
++      'Avalanche scanner network does not match configured chain'
++    );
++  }
++  const scanner = (
++    dependencies.createScanner ??
++    ((options) => new AvalancheRpcScanner(options))
++  )({
++    dataSource: dependencies.dataSource,
++    network,
++    initialHeight: config.initialHeight,
++    sourceId: config.sourceId,
++    logger: dependencies.logger,
++    blockCleanupConfig: dependencies.blockCleanupConfig,
++  });
++  await scanner.registerExtractor(
++    new AvalancheRpcObservationExtractor(
++      dependencies.rosen.lockAddress,
++      dependencies.dataSource,
++      dependencies.tokens,
++      dependencies.extractorLogger,
++      dependencies.storeRawData
++    )
++  );
++  return scanner;
++};
+diff --git a/src/utils/healthCheck.ts b/src/utils/healthCheck.ts
+index 4f2fd03db1fb6bfe225e59de03b52335a9296e5d..8fa01b95e12dce0e5aa7b8052a7c01b80b3b5468 100644
+--- a/src/utils/healthCheck.ts
++++ b/src/utils/healthCheck.ts
+@@ -24,6 +24,7 @@ import {
+ import { Transaction } from '../api/Transaction';
+ import { getConfig } from '../config/config';
+ import {
++  AVALANCHE_CHAIN_NAME,
+   BINANCE_BLOCK_TIME,
+   BINANCE_CHAIN_NAME,
+   BITCOIN_BLOCK_TIME,
+@@ -58,6 +59,7 @@ class HealthCheckSingleton {
+   private permitHealthCheckParam: AbstractPermitHealthCheckParam;
+   private ergoScannerSyncCheckParam: ScannerSyncHealthCheckParam;
+ 
++  /** Returns the watcher-wide health registry, creating it on first access. */
+   static getInstance = () => {
+     if (!HealthCheckSingleton.instance) {
+       HealthCheckSingleton.instance = new HealthCheckSingleton();
+@@ -65,6 +67,7 @@ class HealthCheckSingleton {
+     return HealthCheckSingleton.instance;
+   };
+ 
++  /** Registers logging, Ergo and observation health checks with the configured notifications. */
+   private constructor() {
+     let notify;
+     let notificationConfig;
+@@ -118,6 +121,7 @@ class HealthCheckSingleton {
+     }
+   }
+ 
++  /** Reads the database's latest completed block for the requested scanner. */
+   private observingNetworkLastBlock = (scanner: string) => {
+     return () => watcherDatabase.getLastBlockInfo(scanner);
+   };
+@@ -257,6 +261,13 @@ class HealthCheckSingleton {
+           chainBlockTime = BINANCE_BLOCK_TIME;
+           updateInterval = currentConfig.binance.interval;
+           break;
++        case AVALANCHE_CHAIN_NAME:
++          if (!currentConfig.avalanche)
++            throw new Error('Avalanche configuration is missing');
++          chainName = AVALANCHE_CHAIN_NAME;
++          chainBlockTime = currentConfig.avalanche.blockTime;
++          updateInterval = currentConfig.avalanche.interval;
++          break;
+         case HANDSHAKE_CHAIN_NAME:
+           chainName = HANDSHAKE_CHAIN_NAME;
+           chainBlockTime = HANDSHAKE_BLOCK_TIME;
+diff --git a/src/utils/scanner.ts b/src/utils/scanner.ts
+index ea1b44ebb5e6aaa5454287e380442f33d6aae3a7..8269b8ba20eaa223b7c846487cc0539a53925dbd 100644
+--- a/src/utils/scanner.ts
++++ b/src/utils/scanner.ts
+@@ -83,6 +83,7 @@ import {
+   createHandshakeRpcNetworkConnectorManager,
+ } from './networkConnectorManagers';
+ import { BlockCleanupConfig } from '@rosen-bridge/abstract-scanner/dist/scanner/interfaces';
++import { createAvalancheScanner } from './avalancheScanner';
+ 
+ const logger = DefaultLogger.getInstance().child(import.meta.url);
+ 
+@@ -120,6 +121,7 @@ class CreateScanner {
+     | FiroElectrumXScanner
+     | HandshakeRpcScanner;
+ 
++  /** Creates the singleton whose scanners are attached during initialization. */
+   private constructor() {
+     // do nothing
+   }
+@@ -140,6 +142,7 @@ class CreateScanner {
+         doge: dogeConfig,
+         ethereum: ethereumConfig,
+         binance: binanceConfig,
++        avalanche: avalancheConfig,
+         handshake: handshakeConfig,
+         firo: firoConfig,
+       } = allConfig;
+@@ -195,6 +198,20 @@ class CreateScanner {
+             nonErgoChainsBlockCleanupConfig
+           );
+           break;
++        case Constants.AVALANCHE_CHAIN_NAME:
++          if (!avalancheConfig)
++            throw new Error('Avalanche configuration is missing');
++          CreateScanner.instance.observationScanner =
++            await createAvalancheScanner(avalancheConfig, {
++              dataSource,
++              rosen: rosenConfig,
++              tokens: TokensConfig.getInstance().getTokenMap(),
++              storeRawData: config.observationStoreRawData,
++              blockCleanupConfig: nonErgoChainsBlockCleanupConfig,
++              logger: loggers.observationScannerLogger,
++              extractorLogger: loggers.observationExtractorLogger,
++            });
++          break;
+         case Constants.DOGE_CHAIN_NAME:
+           await CreateScanner.instance.createDogeScanner(
+             dogeConfig,
+@@ -239,6 +256,7 @@ class CreateScanner {
+   };
+ 
+   /**
++   * Returns the configured Ergo scanner after singleton initialization.
+    * @returns the ergo scanner
+    */
+   getErgoScanner = (): ErgoScanner => {
+@@ -249,6 +267,7 @@ class CreateScanner {
+   };
+ 
+   /**
++   * Returns the configured observation scanner after singleton initialization.
+    * @returns the observation scanner
+    */
+   getObservationScanner = ():
+@@ -270,6 +289,7 @@ class CreateScanner {
+     return this.observationScanner;
+   };
+ 
++  /** Creates the Ergo scanner and registers the Rosen coordination extractors. */
+   private createErgoScanner = async (
+     config: Config,
+     rosenConfig: RosenConfig
+@@ -389,6 +409,7 @@ class CreateScanner {
+     this.ergoScanner.registerExtractor(collateralExtractor);
+   };
+ 
++  /** Creates the selected Cardano scanner and its observation extractor. */
+   private createCardanoScanner = async (
+     cardanoConfig: CardanoConfig,
+     rosenConfig: RosenConfig,
+@@ -453,6 +474,7 @@ class CreateScanner {
+     }
+   };
+ 
++  /** Creates the selected Bitcoin scanner and its observation extractor. */
+   private createBitcoinScanner = async (
+     bitcoinConfig: BitcoinConfig,
+     rosenConfig: RosenConfig,
+@@ -497,6 +519,7 @@ class CreateScanner {
+     }
+   };
+ 
++  /** Creates the Bitcoin scanner with the selected Runes protocol extractor. */
+   private createBitcoinRunesScanner = async (
+     bitcoinConfig: BitcoinConfig,
+     bitcoinRunesConfig: BitcoinRunesConfig,
+@@ -559,6 +582,7 @@ class CreateScanner {
+     }
+   };
+ 
++  /** Creates the selected Dogecoin scanner and its observation extractor. */
+   private createDogeScanner = async (
+     dogeConfig: DogeConfig,
+     rosenConfig: RosenConfig,
+@@ -603,6 +627,7 @@ class CreateScanner {
+     }
+   };
+ 
++  /** Creates the Ethereum RPC scanner and its observation extractor. */
+   private createEthereumScanner = async (
+     ethereumConfig: EthereumConfig,
+     rosenConfig: RosenConfig,
+@@ -636,6 +661,7 @@ class CreateScanner {
+     }
+   };
+ 
++  /** Creates the Binance RPC scanner and its observation extractor. */
+   private createBinanceScanner = async (
+     binanceConfig: BinanceConfig,
+     rosenConfig: RosenConfig,
+@@ -669,6 +695,7 @@ class CreateScanner {
+     }
+   };
+ 
++  /** Creates the selected Firo scanner and its observation extractor. */
+   private createFiroScanner = async (
+     firoConfig: FiroConfig,
+     rosenConfig: RosenConfig,
+@@ -714,6 +741,7 @@ class CreateScanner {
+     }
+   };
+ 
++  /** Creates the Handshake RPC scanner and its observation extractor. */
+   private createHandshakeScanner = async (
+     handshakeConfig: HandshakeConfig,
+     rosenConfig: RosenConfig,
+diff --git a/tests/avalancheTestData.ts b/tests/avalancheTestData.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..6091e51c1ae8a2a05d023e7fd5a1f64637fa69c2
+--- /dev/null
++++ b/tests/avalancheTestData.ts
+@@ -0,0 +1,8 @@
++/** Synthetic permit box used by Avalanche producer/signing tests. */
++export { default as permitJson } from './ergoUtils/dataset/permitBox.json' assert { type: 'json' };
++/** Synthetic repository configuration box for event-trigger construction. */
++export { default as repoConfigJson } from './ergoUtils/dataset/repoConfigBox.json' assert { type: 'json' };
++/** Synthetic watcher identity box for event-trigger construction. */
++export { default as widJson } from './ergoUtils/dataset/WIDBox.json' assert { type: 'json' };
++/** Serialized historical synthetic Ergo transaction used without broadcast. */
++export { default as txJson } from './ergo/dataset/tx.json' assert { type: 'json' };
+diff --git a/tests/avalancheTestUtils.ts b/tests/avalancheTestUtils.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..2f5d875986cfdd67f3ee97446ec9deb59fb956c8
+--- /dev/null
++++ b/tests/avalancheTestUtils.ts
+@@ -0,0 +1,15 @@
++import * as wasm from 'ergo-lib-wasm-nodejs';
++import { ObservationEntity } from '@rosen-bridge/abstract-observation-extractor';
++import { txJson } from './avalancheTestData';
++/** Decode a synthetic transaction fixture without constructing a wallet or submitting it. */
++export const createAvalancheTestTransaction = () =>
++  wasm.Transaction.from_json(JSON.stringify(txJson));
++/** Build a synthetic observation bound to completed Avalanche block one. */
++export const createAvalancheTestObservation = () =>
++  Object.assign(new ObservationEntity(), {
++    extractor: 'avalanche-rpc-extractor',
++    fromChain: 'avalanche',
++    height: 1,
++    block: '0x' + '11'.repeat(32),
++    sourceBlockId: '0x' + '11'.repeat(32),
++  });
+diff --git a/tests/config/avalancheConfig.spec.ts b/tests/config/avalancheConfig.spec.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..ddb8a75d675501125ff51ea844b40b4ef54a1c04
+--- /dev/null
++++ b/tests/config/avalancheConfig.spec.ts
+@@ -0,0 +1,920 @@
++import { beforeEach, describe, expect, it } from 'vitest';
++import { execFileSync } from 'node:child_process';
++
++import {
++  AvalancheConfig,
++  ConfigReader,
++  getObservationValidThreshold,
++} from '../../src/config/config';
++
++describe('config/config', () => {
++  const missing = Symbol('missing configuration');
++  let values: Map<string, unknown>;
++  let reader: ConfigReader;
++
++  beforeEach(() => {
++    values = new Map<string, unknown>([
++      ['network', 'avalanche'],
++      ['avalanche.type', 'rpc'],
++      ['avalanche.chainId', 43113],
++      ['avalanche.sourceId', 'fuji-rpc-1'],
++      ['avalanche.initial.height', -1],
++      ['avalanche.interval', 20],
++      ['avalanche.healthCheck.blockTime', 0.5],
++      ['avalanche.rpc.url', 'https://rpc.invalid/ext/bc/C/rpc'],
++      ['avalanche.rpc.timeout', 10],
++      ['observation.validThresholdBlocks', 150],
++    ]);
++    reader = {
++      get: <T>(path: string): T => values.get(path) as T,
++      has: (path: string) => values.has(path) && values.get(path) !== missing,
++    };
++  });
++
++  describe('AvalancheConfig', () => {
++    describe('constructor', () => {
++      const literalControlCases1 = [43113, 43114];
++      /** Runs the original control against one unchanged case-table row. */
++      const runLiteralControl1_0 = (
++        chainId: typeof literalControlCases1[number]
++      ) => {
++        values.set('avalanche.chainId', chainId);
++        const result = new AvalancheConfig(reader);
++        expect(result.chainId).toEqual(chainId);
++        expect(result.sourceId).toEqual('fuji-rpc-1');
++        expect(result.initialHeight).toEqual(-1);
++        expect(result.interval).toEqual(20);
++        expect(result.blockTime).toEqual(0.5);
++        expect(result.rpc).toEqual({
++          url: 'https://rpc.invalid/ext/bc/C/rpc',
++          timeout: 10,
++          authToken: undefined,
++        });
++      };
++
++      /**
++       * @target AvalancheConfig.constructor: loads explicit C-Chain identity 43113
++       * @dependencies ConfigReader API double; real config parser; synthetic
++       * node-config fixture for the isolated process
++       * @scenario Set the tested C-Chain ID, construct AvalancheConfig using the
++       * reader double, and inspect every parsed policy field.
++       * @expected Return the configured chain/source/start/cadence/block-time and
++       * exact RPC settings.
++       */
++      it('loads explicit C-Chain identity 43113', () =>
++        runLiteralControl1_0(literalControlCases1[0]));
++
++      /**
++       * @target AvalancheConfig.constructor: loads explicit C-Chain identity 43114
++       * @dependencies ConfigReader API double; real config parser; synthetic
++       * node-config fixture for the isolated process
++       * @scenario Set the tested C-Chain ID, construct AvalancheConfig using the
++       * reader double, and inspect every parsed policy field.
++       * @expected Return the configured chain/source/start/cadence/block-time and
++       * exact RPC settings.
++       */
++      it('loads explicit C-Chain identity 43114', () =>
++        runLiteralControl1_0(literalControlCases1[1]));
++
++      const invalid: Array<[string, unknown]> = [
++        ['avalanche.type', 'explorer'],
++        ['avalanche.chainId', missing],
++        ['avalanche.chainId', 1],
++        ['avalanche.chainId', 43112],
++        ['avalanche.chainId', '43113'],
++        ['avalanche.chainId', 43113.5],
++        ['avalanche.chainId', null],
++        ['avalanche.sourceId', missing],
++        ['avalanche.sourceId', ''],
++        ['avalanche.sourceId', 'source with spaces'],
++        ['avalanche.sourceId', '../rpc'],
++        ['avalanche.sourceId', '_rpc'],
++        ['avalanche.sourceId', 'r'.repeat(129)],
++        ['avalanche.sourceId', 1],
++        ['avalanche.rpc.url', missing],
++        ['avalanche.rpc.url', ''],
++        ['avalanche.rpc.url', 'https://'],
++        ['avalanche.rpc.url', 'ws://rpc.invalid'],
++        ['avalanche.rpc.url', ' https://rpc.invalid'],
++        ['avalanche.rpc.url', 7],
++        ['avalanche.rpc.authToken', 7],
++        ['avalanche.initial.height', -2],
++        ['avalanche.initial.height', 0.5],
++        ['avalanche.initial.height', Number.MAX_SAFE_INTEGER + 1],
++        ['avalanche.initial.height', '10'],
++        ['avalanche.initial.height', NaN],
++        ['avalanche.initial.height', Infinity],
++        ['avalanche.healthCheck.blockTime', missing],
++        ['avalanche.healthCheck.blockTime', 0],
++        ['avalanche.healthCheck.blockTime', -1],
++        ['avalanche.healthCheck.blockTime', Infinity],
++        ['avalanche.healthCheck.blockTime', NaN],
++        ['avalanche.healthCheck.blockTime', '0.5'],
++      ];
++      for (const field of ['avalanche.interval', 'avalanche.rpc.timeout']) {
++        for (const value of [0, -1, Infinity, NaN, '10', 2147483.648]) {
++          invalid.push([field, value]);
++        }
++      }
++      const literalControlCases2 = invalid;
++      /** Runs the original control against one unchanged case-table row. */
++      const runLiteralControl2_0 = ([
++        field,
++        value,
++      ]: typeof literalControlCases2[number]) => {
++        values.set(field, value);
++        expect(() => new AvalancheConfig(reader)).toThrow(field);
++      };
++
++      /**
++       * @target AvalancheConfig.constructor: rejects invalid avalanche.type: explorer
++       * @dependencies ConfigReader API double; real config parser; synthetic
++       * node-config fixture for the isolated process
++       * @scenario Change exactly the named configuration field to the tested
++       * invalid value, then construct AvalancheConfig.
++       * @expected Throw the error identifying that field; no network connector is
++       * created.
++       */
++      it('rejects invalid avalanche.type: explorer', () =>
++        runLiteralControl2_0(literalControlCases2[0]));
++
++      /**
++       * @target AvalancheConfig.constructor: rejects invalid avalanche.chainId: Symbol(missing configuration)
++       * @dependencies ConfigReader API double; real config parser; synthetic
++       * node-config fixture for the isolated process
++       * @scenario Change exactly the named configuration field to the tested
++       * invalid value, then construct AvalancheConfig.
++       * @expected Throw the error identifying that field; no network connector is
++       * created.
++       */
++      it('rejects invalid avalanche.chainId: Symbol(missing configuration)', () =>
++        runLiteralControl2_0(literalControlCases2[1]));
++
++      /**
++       * @target AvalancheConfig.constructor: rejects invalid avalanche.chainId: 1
++       * @dependencies ConfigReader API double; real config parser; synthetic
++       * node-config fixture for the isolated process
++       * @scenario Change exactly the named configuration field to the tested
++       * invalid value, then construct AvalancheConfig.
++       * @expected Throw the error identifying that field; no network connector is
++       * created.
++       */
++      it('rejects invalid avalanche.chainId: 1', () =>
++        runLiteralControl2_0(literalControlCases2[2]));
++
++      /**
++       * @target AvalancheConfig.constructor: rejects invalid avalanche.chainId: 43112
++       * @dependencies ConfigReader API double; real config parser; synthetic
++       * node-config fixture for the isolated process
++       * @scenario Change exactly the named configuration field to the tested
++       * invalid value, then construct AvalancheConfig.
++       * @expected Throw the error identifying that field; no network connector is
++       * created.
++       */
++      it('rejects invalid avalanche.chainId: 43112', () =>
++        runLiteralControl2_0(literalControlCases2[3]));
++
++      /**
++       * @target AvalancheConfig.constructor: rejects invalid avalanche.chainId: 43113
++       * @dependencies ConfigReader API double; real config parser; synthetic
++       * node-config fixture for the isolated process
++       * @scenario Change exactly the named configuration field to the tested
++       * invalid value, then construct AvalancheConfig.
++       * @expected Throw the error identifying that field; no network connector is
++       * created.
++       */
++      it('rejects invalid avalanche.chainId: 43113', () =>
++        runLiteralControl2_0(literalControlCases2[4]));
++
++      /**
++       * @target AvalancheConfig.constructor: rejects invalid avalanche.chainId: 43113.5
++       * @dependencies ConfigReader API double; real config parser; synthetic
++       * node-config fixture for the isolated process
++       * @scenario Change exactly the named configuration field to the tested
++       * invalid value, then construct AvalancheConfig.
++       * @expected Throw the error identifying that field; no network connector is
++       * created.
++       */
++      it('rejects invalid avalanche.chainId: 43113.5', () =>
++        runLiteralControl2_0(literalControlCases2[5]));
++
++      /**
++       * @target AvalancheConfig.constructor: rejects invalid avalanche.chainId: null
++       * @dependencies ConfigReader API double; real config parser; synthetic
++       * node-config fixture for the isolated process
++       * @scenario Change exactly the named configuration field to the tested
++       * invalid value, then construct AvalancheConfig.
++       * @expected Throw the error identifying that field; no network connector is
++       * created.
++       */
++      it('rejects invalid avalanche.chainId: null', () =>
++        runLiteralControl2_0(literalControlCases2[6]));
++
++      /**
++       * @target AvalancheConfig.constructor: rejects invalid avalanche.sourceId: Symbol(missing configuration)
++       * @dependencies ConfigReader API double; real config parser; synthetic
++       * node-config fixture for the isolated process
++       * @scenario Change exactly the named configuration field to the tested
++       * invalid value, then construct AvalancheConfig.
++       * @expected Throw the error identifying that field; no network connector is
++       * created.
++       */
++      it('rejects invalid avalanche.sourceId: Symbol(missing configuration)', () =>
++        runLiteralControl2_0(literalControlCases2[7]));
++
++      /**
++       * @target AvalancheConfig.constructor: rejects invalid avalanche.sourceId:
++       * @dependencies ConfigReader API double; real config parser; synthetic
++       * node-config fixture for the isolated process
++       * @scenario Change exactly the named configuration field to the tested
++       * invalid value, then construct AvalancheConfig.
++       * @expected Throw the error identifying that field; no network connector is
++       * created.
++       */
++      it('rejects invalid avalanche.sourceId: ', () =>
++        runLiteralControl2_0(literalControlCases2[8]));
++
++      /**
++       * @target AvalancheConfig.constructor: rejects invalid avalanche.sourceId: source with spaces
++       * @dependencies ConfigReader API double; real config parser; synthetic
++       * node-config fixture for the isolated process
++       * @scenario Change exactly the named configuration field to the tested
++       * invalid value, then construct AvalancheConfig.
++       * @expected Throw the error identifying that field; no network connector is
++       * created.
++       */
++      it('rejects invalid avalanche.sourceId: source with spaces', () =>
++        runLiteralControl2_0(literalControlCases2[9]));
++
++      /**
++       * @target AvalancheConfig.constructor: rejects invalid avalanche.sourceId: ../rpc
++       * @dependencies ConfigReader API double; real config parser; synthetic
++       * node-config fixture for the isolated process
++       * @scenario Change exactly the named configuration field to the tested
++       * invalid value, then construct AvalancheConfig.
++       * @expected Throw the error identifying that field; no network connector is
++       * created.
++       */
++      it('rejects invalid avalanche.sourceId: ../rpc', () =>
++        runLiteralControl2_0(literalControlCases2[10]));
++
++      /**
++       * @target AvalancheConfig.constructor: rejects invalid avalanche.sourceId: _rpc
++       * @dependencies ConfigReader API double; real config parser; synthetic
++       * node-config fixture for the isolated process
++       * @scenario Change exactly the named configuration field to the tested
++       * invalid value, then construct AvalancheConfig.
++       * @expected Throw the error identifying that field; no network connector is
++       * created.
++       */
++      it('rejects invalid avalanche.sourceId: _rpc', () =>
++        runLiteralControl2_0(literalControlCases2[11]));
++
++      /**
++       * @target AvalancheConfig.constructor: rejects invalid avalanche.sourceId: rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr
++       * @dependencies ConfigReader API double; real config parser; synthetic
++       * node-config fixture for the isolated process
++       * @scenario Change exactly the named configuration field to the tested
++       * invalid value, then construct AvalancheConfig.
++       * @expected Throw the error identifying that field; no network connector is
++       * created.
++       */
++      it('rejects invalid avalanche.sourceId: rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr', () =>
++        runLiteralControl2_0(literalControlCases2[12]));
++
++      /**
++       * @target AvalancheConfig.constructor: rejects invalid avalanche.sourceId: 1
++       * @dependencies ConfigReader API double; real config parser; synthetic
++       * node-config fixture for the isolated process
++       * @scenario Change exactly the named configuration field to the tested
++       * invalid value, then construct AvalancheConfig.
++       * @expected Throw the error identifying that field; no network connector is
++       * created.
++       */
++      it('rejects invalid avalanche.sourceId: 1', () =>
++        runLiteralControl2_0(literalControlCases2[13]));
++
++      /**
++       * @target AvalancheConfig.constructor: rejects invalid avalanche.rpc.url: Symbol(missing configuration)
++       * @dependencies ConfigReader API double; real config parser; synthetic
++       * node-config fixture for the isolated process
++       * @scenario Change exactly the named configuration field to the tested
++       * invalid value, then construct AvalancheConfig.
++       * @expected Throw the error identifying that field; no network connector is
++       * created.
++       */
++      it('rejects invalid avalanche.rpc.url: Symbol(missing configuration)', () =>
++        runLiteralControl2_0(literalControlCases2[14]));
++
++      /**
++       * @target AvalancheConfig.constructor: rejects invalid avalanche.rpc.url:
++       * @dependencies ConfigReader API double; real config parser; synthetic
++       * node-config fixture for the isolated process
++       * @scenario Change exactly the named configuration field to the tested
++       * invalid value, then construct AvalancheConfig.
++       * @expected Throw the error identifying that field; no network connector is
++       * created.
++       */
++      it('rejects invalid avalanche.rpc.url: ', () =>
++        runLiteralControl2_0(literalControlCases2[15]));
++
++      /**
++       * @target AvalancheConfig.constructor: rejects invalid avalanche.rpc.url: https://
++       * @dependencies ConfigReader API double; real config parser; synthetic
++       * node-config fixture for the isolated process
++       * @scenario Change exactly the named configuration field to the tested
++       * invalid value, then construct AvalancheConfig.
++       * @expected Throw the error identifying that field; no network connector is
++       * created.
++       */
++      it('rejects invalid avalanche.rpc.url: https://', () =>
++        runLiteralControl2_0(literalControlCases2[16]));
++
++      /**
++       * @target AvalancheConfig.constructor: rejects invalid avalanche.rpc.url: ws://rpc.invalid
++       * @dependencies ConfigReader API double; real config parser; synthetic
++       * node-config fixture for the isolated process
++       * @scenario Change exactly the named configuration field to the tested
++       * invalid value, then construct AvalancheConfig.
++       * @expected Throw the error identifying that field; no network connector is
++       * created.
++       */
++      it('rejects invalid avalanche.rpc.url: ws://rpc.invalid', () =>
++        runLiteralControl2_0(literalControlCases2[17]));
++
++      /**
++       * @target AvalancheConfig.constructor: rejects invalid avalanche.rpc.url:  https://rpc.invalid
++       * @dependencies ConfigReader API double; real config parser; synthetic
++       * node-config fixture for the isolated process
++       * @scenario Change exactly the named configuration field to the tested
++       * invalid value, then construct AvalancheConfig.
++       * @expected Throw the error identifying that field; no network connector is
++       * created.
++       */
++      it('rejects invalid avalanche.rpc.url:  https://rpc.invalid', () =>
++        runLiteralControl2_0(literalControlCases2[18]));
++
++      /**
++       * @target AvalancheConfig.constructor: rejects invalid avalanche.rpc.url: 7
++       * @dependencies ConfigReader API double; real config parser; synthetic
++       * node-config fixture for the isolated process
++       * @scenario Change exactly the named configuration field to the tested
++       * invalid value, then construct AvalancheConfig.
++       * @expected Throw the error identifying that field; no network connector is
++       * created.
++       */
++      it('rejects invalid avalanche.rpc.url: 7', () =>
++        runLiteralControl2_0(literalControlCases2[19]));
++
++      /**
++       * @target AvalancheConfig.constructor: rejects invalid avalanche.rpc.authToken: 7
++       * @dependencies ConfigReader API double; real config parser; synthetic
++       * node-config fixture for the isolated process
++       * @scenario Change exactly the named configuration field to the tested
++       * invalid value, then construct AvalancheConfig.
++       * @expected Throw the error identifying that field; no network connector is
++       * created.
++       */
++      it('rejects invalid avalanche.rpc.authToken: 7', () =>
++        runLiteralControl2_0(literalControlCases2[20]));
++
++      /**
++       * @target AvalancheConfig.constructor: rejects invalid avalanche.initial.height: -2
++       * @dependencies ConfigReader API double; real config parser; synthetic
++       * node-config fixture for the isolated process
++       * @scenario Change exactly the named configuration field to the tested
++       * invalid value, then construct AvalancheConfig.
++       * @expected Throw the error identifying that field; no network connector is
++       * created.
++       */
++      it('rejects invalid avalanche.initial.height: -2', () =>
++        runLiteralControl2_0(literalControlCases2[21]));
++
++      /**
++       * @target AvalancheConfig.constructor: rejects invalid avalanche.initial.height: 0.5
++       * @dependencies ConfigReader API double; real config parser; synthetic
++       * node-config fixture for the isolated process
++       * @scenario Change exactly the named configuration field to the tested
++       * invalid value, then construct AvalancheConfig.
++       * @expected Throw the error identifying that field; no network connector is
++       * created.
++       */
++      it('rejects invalid avalanche.initial.height: 0.5', () =>
++        runLiteralControl2_0(literalControlCases2[22]));
++
++      /**
++       * @target AvalancheConfig.constructor: rejects invalid avalanche.initial.height: 9007199254740992
++       * @dependencies ConfigReader API double; real config parser; synthetic
++       * node-config fixture for the isolated process
++       * @scenario Change exactly the named configuration field to the tested
++       * invalid value, then construct AvalancheConfig.
++       * @expected Throw the error identifying that field; no network connector is
++       * created.
++       */
++      it('rejects invalid avalanche.initial.height: 9007199254740992', () =>
++        runLiteralControl2_0(literalControlCases2[23]));
++
++      /**
++       * @target AvalancheConfig.constructor: rejects invalid avalanche.initial.height: 10
++       * @dependencies ConfigReader API double; real config parser; synthetic
++       * node-config fixture for the isolated process
++       * @scenario Change exactly the named configuration field to the tested
++       * invalid value, then construct AvalancheConfig.
++       * @expected Throw the error identifying that field; no network connector is
++       * created.
++       */
++      it('rejects invalid avalanche.initial.height: 10', () =>
++        runLiteralControl2_0(literalControlCases2[24]));
++
++      /**
++       * @target AvalancheConfig.constructor: rejects invalid avalanche.initial.height: NaN
++       * @dependencies ConfigReader API double; real config parser; synthetic
++       * node-config fixture for the isolated process
++       * @scenario Change exactly the named configuration field to the tested
++       * invalid value, then construct AvalancheConfig.
++       * @expected Throw the error identifying that field; no network connector is
++       * created.
++       */
++      it('rejects invalid avalanche.initial.height: NaN', () =>
++        runLiteralControl2_0(literalControlCases2[25]));
++
++      /**
++       * @target AvalancheConfig.constructor: rejects invalid avalanche.initial.height: Infinity
++       * @dependencies ConfigReader API double; real config parser; synthetic
++       * node-config fixture for the isolated process
++       * @scenario Change exactly the named configuration field to the tested
++       * invalid value, then construct AvalancheConfig.
++       * @expected Throw the error identifying that field; no network connector is
++       * created.
++       */
++      it('rejects invalid avalanche.initial.height: Infinity', () =>
++        runLiteralControl2_0(literalControlCases2[26]));
++
++      /**
++       * @target AvalancheConfig.constructor: rejects invalid avalanche.healthCheck.blockTime: Symbol(missing configuration)
++       * @dependencies ConfigReader API double; real config parser; synthetic
++       * node-config fixture for the isolated process
++       * @scenario Change exactly the named configuration field to the tested
++       * invalid value, then construct AvalancheConfig.
++       * @expected Throw the error identifying that field; no network connector is
++       * created.
++       */
++      it('rejects invalid avalanche.healthCheck.blockTime: Symbol(missing configuration)', () =>
++        runLiteralControl2_0(literalControlCases2[27]));
++
++      /**
++       * @target AvalancheConfig.constructor: rejects invalid avalanche.healthCheck.blockTime: 0
++       * @dependencies ConfigReader API double; real config parser; synthetic
++       * node-config fixture for the isolated process
++       * @scenario Change exactly the named configuration field to the tested
++       * invalid value, then construct AvalancheConfig.
++       * @expected Throw the error identifying that field; no network connector is
++       * created.
++       */
++      it('rejects invalid avalanche.healthCheck.blockTime: 0', () =>
++        runLiteralControl2_0(literalControlCases2[28]));
++
++      /**
++       * @target AvalancheConfig.constructor: rejects invalid avalanche.healthCheck.blockTime: -1
++       * @dependencies ConfigReader API double; real config parser; synthetic
++       * node-config fixture for the isolated process
++       * @scenario Change exactly the named configuration field to the tested
++       * invalid value, then construct AvalancheConfig.
++       * @expected Throw the error identifying that field; no network connector is
++       * created.
++       */
++      it('rejects invalid avalanche.healthCheck.blockTime: -1', () =>
++        runLiteralControl2_0(literalControlCases2[29]));
++
++      /**
++       * @target AvalancheConfig.constructor: rejects invalid avalanche.healthCheck.blockTime: Infinity
++       * @dependencies ConfigReader API double; real config parser; synthetic
++       * node-config fixture for the isolated process
++       * @scenario Change exactly the named configuration field to the tested
++       * invalid value, then construct AvalancheConfig.
++       * @expected Throw the error identifying that field; no network connector is
++       * created.
++       */
++      it('rejects invalid avalanche.healthCheck.blockTime: Infinity', () =>
++        runLiteralControl2_0(literalControlCases2[30]));
++
++      /**
++       * @target AvalancheConfig.constructor: rejects invalid avalanche.healthCheck.blockTime: NaN
++       * @dependencies ConfigReader API double; real config parser; synthetic
++       * node-config fixture for the isolated process
++       * @scenario Change exactly the named configuration field to the tested
++       * invalid value, then construct AvalancheConfig.
++       * @expected Throw the error identifying that field; no network connector is
++       * created.
++       */
++      it('rejects invalid avalanche.healthCheck.blockTime: NaN', () =>
++        runLiteralControl2_0(literalControlCases2[31]));
++
++      /**
++       * @target AvalancheConfig.constructor: rejects invalid avalanche.healthCheck.blockTime: 0.5
++       * @dependencies ConfigReader API double; real config parser; synthetic
++       * node-config fixture for the isolated process
++       * @scenario Change exactly the named configuration field to the tested
++       * invalid value, then construct AvalancheConfig.
++       * @expected Throw the error identifying that field; no network connector is
++       * created.
++       */
++      it('rejects invalid avalanche.healthCheck.blockTime: 0.5', () =>
++        runLiteralControl2_0(literalControlCases2[32]));
++
++      /**
++       * @target AvalancheConfig.constructor: rejects invalid avalanche.interval: 0
++       * @dependencies ConfigReader API double; real config parser; synthetic
++       * node-config fixture for the isolated process
++       * @scenario Change exactly the named configuration field to the tested
++       * invalid value, then construct AvalancheConfig.
++       * @expected Throw the error identifying that field; no network connector is
++       * created.
++       */
++      it('rejects invalid avalanche.interval: 0', () =>
++        runLiteralControl2_0(literalControlCases2[33]));
++
++      /**
++       * @target AvalancheConfig.constructor: rejects invalid avalanche.interval: -1
++       * @dependencies ConfigReader API double; real config parser; synthetic
++       * node-config fixture for the isolated process
++       * @scenario Change exactly the named configuration field to the tested
++       * invalid value, then construct AvalancheConfig.
++       * @expected Throw the error identifying that field; no network connector is
++       * created.
++       */
++      it('rejects invalid avalanche.interval: -1', () =>
++        runLiteralControl2_0(literalControlCases2[34]));
++
++      /**
++       * @target AvalancheConfig.constructor: rejects invalid avalanche.interval: Infinity
++       * @dependencies ConfigReader API double; real config parser; synthetic
++       * node-config fixture for the isolated process
++       * @scenario Change exactly the named configuration field to the tested
++       * invalid value, then construct AvalancheConfig.
++       * @expected Throw the error identifying that field; no network connector is
++       * created.
++       */
++      it('rejects invalid avalanche.interval: Infinity', () =>
++        runLiteralControl2_0(literalControlCases2[35]));
++
++      /**
++       * @target AvalancheConfig.constructor: rejects invalid avalanche.interval: NaN
++       * @dependencies ConfigReader API double; real config parser; synthetic
++       * node-config fixture for the isolated process
++       * @scenario Change exactly the named configuration field to the tested
++       * invalid value, then construct AvalancheConfig.
++       * @expected Throw the error identifying that field; no network connector is
++       * created.
++       */
++      it('rejects invalid avalanche.interval: NaN', () =>
++        runLiteralControl2_0(literalControlCases2[36]));
++
++      /**
++       * @target AvalancheConfig.constructor: rejects invalid avalanche.interval: 10
++       * @dependencies ConfigReader API double; real config parser; synthetic
++       * node-config fixture for the isolated process
++       * @scenario Change exactly the named configuration field to the tested
++       * invalid value, then construct AvalancheConfig.
++       * @expected Throw the error identifying that field; no network connector is
++       * created.
++       */
++      it('rejects invalid avalanche.interval: 10', () =>
++        runLiteralControl2_0(literalControlCases2[37]));
++
++      /**
++       * @target AvalancheConfig.constructor: rejects invalid avalanche.interval: 2147483.648
++       * @dependencies ConfigReader API double; real config parser; synthetic
++       * node-config fixture for the isolated process
++       * @scenario Change exactly the named configuration field to the tested
++       * invalid value, then construct AvalancheConfig.
++       * @expected Throw the error identifying that field; no network connector is
++       * created.
++       */
++      it('rejects invalid avalanche.interval: 2147483.648', () =>
++        runLiteralControl2_0(literalControlCases2[38]));
++
++      /**
++       * @target AvalancheConfig.constructor: rejects invalid avalanche.rpc.timeout: 0
++       * @dependencies ConfigReader API double; real config parser; synthetic
++       * node-config fixture for the isolated process
++       * @scenario Change exactly the named configuration field to the tested
++       * invalid value, then construct AvalancheConfig.
++       * @expected Throw the error identifying that field; no network connector is
++       * created.
++       */
++      it('rejects invalid avalanche.rpc.timeout: 0', () =>
++        runLiteralControl2_0(literalControlCases2[39]));
++
++      /**
++       * @target AvalancheConfig.constructor: rejects invalid avalanche.rpc.timeout: -1
++       * @dependencies ConfigReader API double; real config parser; synthetic
++       * node-config fixture for the isolated process
++       * @scenario Change exactly the named configuration field to the tested
++       * invalid value, then construct AvalancheConfig.
++       * @expected Throw the error identifying that field; no network connector is
++       * created.
++       */
++      it('rejects invalid avalanche.rpc.timeout: -1', () =>
++        runLiteralControl2_0(literalControlCases2[40]));
++
++      /**
++       * @target AvalancheConfig.constructor: rejects invalid avalanche.rpc.timeout: Infinity
++       * @dependencies ConfigReader API double; real config parser; synthetic
++       * node-config fixture for the isolated process
++       * @scenario Change exactly the named configuration field to the tested
++       * invalid value, then construct AvalancheConfig.
++       * @expected Throw the error identifying that field; no network connector is
++       * created.
++       */
++      it('rejects invalid avalanche.rpc.timeout: Infinity', () =>
++        runLiteralControl2_0(literalControlCases2[41]));
++
++      /**
++       * @target AvalancheConfig.constructor: rejects invalid avalanche.rpc.timeout: NaN
++       * @dependencies ConfigReader API double; real config parser; synthetic
++       * node-config fixture for the isolated process
++       * @scenario Change exactly the named configuration field to the tested
++       * invalid value, then construct AvalancheConfig.
++       * @expected Throw the error identifying that field; no network connector is
++       * created.
++       */
++      it('rejects invalid avalanche.rpc.timeout: NaN', () =>
++        runLiteralControl2_0(literalControlCases2[42]));
++
++      /**
++       * @target AvalancheConfig.constructor: rejects invalid avalanche.rpc.timeout: 10
++       * @dependencies ConfigReader API double; real config parser; synthetic
++       * node-config fixture for the isolated process
++       * @scenario Change exactly the named configuration field to the tested
++       * invalid value, then construct AvalancheConfig.
++       * @expected Throw the error identifying that field; no network connector is
++       * created.
++       */
++      it('rejects invalid avalanche.rpc.timeout: 10', () =>
++        runLiteralControl2_0(literalControlCases2[43]));
++
++      /**
++       * @target AvalancheConfig.constructor: rejects invalid avalanche.rpc.timeout: 2147483.648
++       * @dependencies ConfigReader API double; real config parser; synthetic
++       * node-config fixture for the isolated process
++       * @scenario Change exactly the named configuration field to the tested
++       * invalid value, then construct AvalancheConfig.
++       * @expected Throw the error identifying that field; no network connector is
++       * created.
++       */
++      it('rejects invalid avalanche.rpc.timeout: 2147483.648', () =>
++        runLiteralControl2_0(literalControlCases2[44]));
++
++      const literalControlCases3 = [-1, 0, Number.MAX_SAFE_INTEGER];
++      /** Runs the original control against one unchanged case-table row. */
++      const runLiteralControl3_0 = (
++        height: typeof literalControlCases3[number]
++      ) => {
++        values.set('avalanche.initial.height', height);
++        expect(new AvalancheConfig(reader).initialHeight).toEqual(height);
++      };
++
++      /**
++       * @target AvalancheConfig.constructor: accepts safe initial height -1
++       * @dependencies ConfigReader API double; real config parser; synthetic
++       * node-config fixture for the isolated process
++       * @scenario Set the tested safe starting height and construct
++       * AvalancheConfig.
++       * @expected Return that exact height.
++       */
++      it('accepts safe initial height -1', () =>
++        runLiteralControl3_0(literalControlCases3[0]));
++
++      /**
++       * @target AvalancheConfig.constructor: accepts safe initial height 0
++       * @dependencies ConfigReader API double; real config parser; synthetic
++       * node-config fixture for the isolated process
++       * @scenario Set the tested safe starting height and construct
++       * AvalancheConfig.
++       * @expected Return that exact height.
++       */
++      it('accepts safe initial height 0', () =>
++        runLiteralControl3_0(literalControlCases3[1]));
++
++      /**
++       * @target AvalancheConfig.constructor: accepts safe initial height 9007199254740991
++       * @dependencies ConfigReader API double; real config parser; synthetic
++       * node-config fixture for the isolated process
++       * @scenario Set the tested safe starting height and construct
++       * AvalancheConfig.
++       * @expected Return that exact height.
++       */
++      it('accepts safe initial height 9007199254740991', () =>
++        runLiteralControl3_0(literalControlCases3[2]));
++
++      /**
++       * @target AvalancheConfig.constructor: accepts bounded source identifiers
++       * and subsecond durations
++       * @dependencies ConfigReader API double; real config parser; synthetic
++       * node-config fixture for the isolated process
++       * @scenario Set a 128-character source ID and half-second cadence/timeout,
++       * then construct AvalancheConfig.
++       * @expected Keep the full source ID and both 0.5-second durations.
++       */
++      it('accepts bounded source identifiers and subsecond durations', () => {
++        values.set('avalanche.sourceId', 'A'.repeat(128));
++        values.set('avalanche.interval', 0.5);
++        values.set('avalanche.rpc.timeout', 0.5);
++        const result = new AvalancheConfig(reader);
++        expect(result.sourceId).toHaveLength(128);
++        expect(result.interval).toEqual(0.5);
++        expect(result.rpc.timeout).toEqual(0.5);
++      });
++    });
++  });
++  describe('getObservationValidThreshold', () => {
++    /**
++     * @target getObservationValidThreshold: uses the explicit Avalanche
++     * observation block count
++     * @dependencies ConfigReader API double; real config parser; synthetic
++     * node-config fixture for the isolated process
++     * @scenario Remove the legacy seconds threshold and read the Avalanche
++     * block-count threshold.
++     * @expected Return 150 blocks from validThresholdBlocks.
++     */
++    it('uses the explicit Avalanche observation block count', () => {
++      values.set('observation.validThreshold', missing);
++      expect(getObservationValidThreshold('avalanche', reader)).toEqual(150);
++    });
++
++    const literalControlCases4 = [
++      missing,
++      0,
++      -1,
++      1.5,
++      '150',
++      null,
++      NaN,
++      Infinity,
++      Number.MAX_SAFE_INTEGER + 1,
++    ];
++    /** Runs the original control against one unchanged case-table row. */
++    const runLiteralControl4_0 = (
++      value: typeof literalControlCases4[number]
++    ) => {
++      values.set('observation.validThresholdBlocks', value);
++      expect(() => getObservationValidThreshold('avalanche', reader)).toThrow(
++        'observation.validThresholdBlocks'
++      );
++    };
++
++    /**
++     * @target getObservationValidThreshold: rejects invalid observation block count: Symbol(missing configuration)
++     * @dependencies ConfigReader API double; real config parser; synthetic
++     * node-config fixture for the isolated process
++     * @scenario Set only validThresholdBlocks to the tested invalid value and
++     * read the Avalanche threshold.
++     * @expected Reject the invalid block count.
++     */
++    it('rejects invalid observation block count: Symbol(missing configuration)', () =>
++      runLiteralControl4_0(literalControlCases4[0]));
++
++    /**
++     * @target getObservationValidThreshold: rejects invalid observation block count: 0
++     * @dependencies ConfigReader API double; real config parser; synthetic
++     * node-config fixture for the isolated process
++     * @scenario Set only validThresholdBlocks to the tested invalid value and
++     * read the Avalanche threshold.
++     * @expected Reject the invalid block count.
++     */
++    it('rejects invalid observation block count: 0', () =>
++      runLiteralControl4_0(literalControlCases4[1]));
++
++    /**
++     * @target getObservationValidThreshold: rejects invalid observation block count: -1
++     * @dependencies ConfigReader API double; real config parser; synthetic
++     * node-config fixture for the isolated process
++     * @scenario Set only validThresholdBlocks to the tested invalid value and
++     * read the Avalanche threshold.
++     * @expected Reject the invalid block count.
++     */
++    it('rejects invalid observation block count: -1', () =>
++      runLiteralControl4_0(literalControlCases4[2]));
++
++    /**
++     * @target getObservationValidThreshold: rejects invalid observation block count: 1.5
++     * @dependencies ConfigReader API double; real config parser; synthetic
++     * node-config fixture for the isolated process
++     * @scenario Set only validThresholdBlocks to the tested invalid value and
++     * read the Avalanche threshold.
++     * @expected Reject the invalid block count.
++     */
++    it('rejects invalid observation block count: 1.5', () =>
++      runLiteralControl4_0(literalControlCases4[3]));
++
++    /**
++     * @target getObservationValidThreshold: rejects invalid observation block count: 150
++     * @dependencies ConfigReader API double; real config parser; synthetic
++     * node-config fixture for the isolated process
++     * @scenario Set only validThresholdBlocks to the tested invalid value and
++     * read the Avalanche threshold.
++     * @expected Reject the invalid block count.
++     */
++    it('rejects invalid observation block count: 150', () =>
++      runLiteralControl4_0(literalControlCases4[4]));
++
++    /**
++     * @target getObservationValidThreshold: rejects invalid observation block count: null
++     * @dependencies ConfigReader API double; real config parser; synthetic
++     * node-config fixture for the isolated process
++     * @scenario Set only validThresholdBlocks to the tested invalid value and
++     * read the Avalanche threshold.
++     * @expected Reject the invalid block count.
++     */
++    it('rejects invalid observation block count: null', () =>
++      runLiteralControl4_0(literalControlCases4[5]));
++
++    /**
++     * @target getObservationValidThreshold: rejects invalid observation block count: NaN
++     * @dependencies ConfigReader API double; real config parser; synthetic
++     * node-config fixture for the isolated process
++     * @scenario Set only validThresholdBlocks to the tested invalid value and
++     * read the Avalanche threshold.
++     * @expected Reject the invalid block count.
++     */
++    it('rejects invalid observation block count: NaN', () =>
++      runLiteralControl4_0(literalControlCases4[6]));
++
++    /**
++     * @target getObservationValidThreshold: rejects invalid observation block count: Infinity
++     * @dependencies ConfigReader API double; real config parser; synthetic
++     * node-config fixture for the isolated process
++     * @scenario Set only validThresholdBlocks to the tested invalid value and
++     * read the Avalanche threshold.
++     * @expected Reject the invalid block count.
++     */
++    it('rejects invalid observation block count: Infinity', () =>
++      runLiteralControl4_0(literalControlCases4[7]));
++
++    /**
++     * @target getObservationValidThreshold: rejects invalid observation block count: 9007199254740992
++     * @dependencies ConfigReader API double; real config parser; synthetic
++     * node-config fixture for the isolated process
++     * @scenario Set only validThresholdBlocks to the tested invalid value and
++     * read the Avalanche threshold.
++     * @expected Reject the invalid block count.
++     */
++    it('rejects invalid observation block count: 9007199254740992', () =>
++      runLiteralControl4_0(literalControlCases4[8]));
++
++    /**
++     * @target getObservationValidThreshold: preserves the existing seconds
++     * conversion for other networks
++     * @dependencies ConfigReader API double; real config parser; synthetic
++     * node-config fixture for the isolated process
++     * @scenario Select Ergo, set its legacy seconds threshold to 600, and omit
++     * Avalanche block-count policy.
++     * @expected Return the existing five-block conversion.
++     */
++    it('preserves the existing seconds conversion for other networks', () => {
++      values.set('network', 'ergo');
++      values.set('observation.validThreshold', 600);
++      values.set('observation.validThresholdBlocks', missing);
++      expect(getObservationValidThreshold('ergo', reader)).toEqual(5);
++    });
++  });
++  describe('getConfig', () => {
++    /**
++     * @target getConfig: loads an existing watcher without requiring Avalanche
++     * identity
++     * @dependencies ConfigReader API double; real config parser; synthetic
++     * node-config fixture for the isolated process
++     * @scenario Run getConfig in a fresh synthetic Ergo process with an invalid
++     * unused Avalanche value.
++     * @expected The process succeeds with Ergo selected and Avalanche
++     * configuration absent.
++     */
++    it('loads an existing watcher without requiring Avalanche identity', () => {
++      // A fresh process bypasses getConfig's singleton and node-config's cache.
++      const result = execFileSync(
++        process.execPath,
++        [
++          '--import',
++          'tsx',
++          '--input-type=module',
++          '-e',
++          "import { getConfig } from './src/config/config.ts'; const c = getConfig(); if (c.general.networkWatcher !== 'ergo' || c.avalanche !== undefined) process.exit(1);",
++        ],
++        {
++          cwd: process.cwd(),
++          env: {
++            ...process.env,
++            NODE_ENV: 'test',
++            NODE_CONFIG: JSON.stringify({
++              network: 'ergo',
++              avalanche: { chainId: 'invalid' },
++            }),
++          },
++          encoding: 'utf8',
++        }
++      );
++      expect(result).toEqual(expect.any(String));
++    });
++  });
++});
+diff --git a/tests/database/avalancheSafetyState.spec.ts b/tests/database/avalancheSafetyState.spec.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..11a7a62332781126b1505fb7745403573e934ed4
+--- /dev/null
++++ b/tests/database/avalancheSafetyState.spec.ts
+@@ -0,0 +1,70 @@
++import '@rosen-bridge/extended-typeorm/bootstrap';
++import { describe, expect, it } from 'vitest';
++import {
++  AvalancheSafetyState,
++  AvalancheSafetyState1790769600000,
++} from '@rosen-bridge/evm-scanner';
++
++import { dataSource } from '../../config/dataSource';
++import { createMemoryDatabase } from '../resources/inMemoryDb';
++
++describe('Avalanche watcher database registration', () => {
++  describe('entity and migration registration', () => {
++    /**
++     * @target dataSource Avalanche safety registration: registers the safety
++     * entity and migration in the production data source
++     * @dependencies Actual production DataSource definitions; real SQLite
++     * migrations and repository from createMemoryDatabase; no external
++     * connection
++     * @scenario Load the actual production dataSource definition and inspect
++     * its registrations without connecting.
++     * @expected Contain the actual safety entity/migration and disable schema
++     * synchronization.
++     */
++    it('registers the safety entity and migration in the production data source', () => {
++      expect(dataSource.options.entities).toContain(AvalancheSafetyState);
++      expect(dataSource.options.migrations).toContain(
++        AvalancheSafetyState1790769600000
++      );
++      expect(dataSource.options.synchronize).toEqual(false);
++    });
++  });
++  describe('runMigrations and persisted safety repository', () => {
++    /**
++     * @target dataSource Avalanche safety registration: migrates and stores
++     * safety identity through the watcher test database
++     * @dependencies Actual production DataSource definitions; real SQLite
++     * migrations and repository from createMemoryDatabase; no external
++     * connection
++     * @scenario Initialize the real in-memory migration fixture, insert a
++     * synthetic safety row, read it back, and destroy the fixture.
++     * @expected Preserve the exact chain/source/start/frontier/hold fields.
++     */
++    it('migrates and stores safety identity through the watcher test database', async () => {
++      const database = await createMemoryDatabase();
++      try {
++        const repository = database.getRepository(AvalancheSafetyState);
++        await repository.insert({
++          scanner: 'avalanche',
++          chainId: '43113',
++          sourceId: 'fuji-rpc-1',
++          policy: 'fixture-policy',
++          initialHeight: -1,
++          finalizedHeight: 10,
++          finalizedHash: `0x${'12'.repeat(32)}`,
++          holdReason: 'fixture-conflict',
++        });
++        const state = await repository.findOneByOrFail({
++          scanner: 'avalanche',
++        });
++        expect(state.chainId).toEqual('43113');
++        expect(state.sourceId).toEqual('fuji-rpc-1');
++        expect(state.initialHeight).toEqual(-1);
++        expect(state.finalizedHeight).toEqual(10);
++        expect(state.holdReason).toEqual('fixture-conflict');
++      } finally {
++        await database.destroy();
++      }
++    });
++  });
++});
+diff --git a/tests/ergo/transaction/avalancheQueue.spec.ts b/tests/ergo/transaction/avalancheQueue.spec.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..cb1af69c8f1b44bb4efe59e4464a4730eb6c7ad1
+--- /dev/null
++++ b/tests/ergo/transaction/avalancheQueue.spec.ts
+@@ -0,0 +1,535 @@
++import '@rosen-bridge/extended-typeorm/bootstrap';
++import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
++
++import { ErgoNetwork } from '../../../src/ergo/network/ergoNetwork';
++import { Queue } from '../../../src/ergo/transaction/queue';
++import { TxEntity, TxType } from '../../../src/database/entities/txEntity';
++import { WatcherDataBase } from '../../../src/database/models/watcherModel';
++import { WatcherUtils } from '../../../src/utils/watcherUtils';
++import { avalancheObservationSafety } from '../../../src/utils/avalancheSafety';
++import { AvalancheObservationSafety } from '../../../src/utils/avalancheSafety';
++import { DataSource } from '@rosen-bridge/extended-typeorm';
++import {
++  BlockEntity,
++  ExtractorStatusEntity,
++  migrations,
++} from '@rosen-bridge/abstract-scanner';
++import {
++  AvalancheRpcNetwork,
++  AvalancheRpcScanner,
++  AvalancheSafetyState,
++  AvalancheSafetyState1790769600000,
++} from '@rosen-bridge/evm-scanner';
++
++import {
++  createAvalancheTestTransaction,
++  createAvalancheTestObservation,
++} from '../../avalancheTestUtils';
++const transaction = createAvalancheTestTransaction();
++const observation = createAvalancheTestObservation();
++describe('Queue', () => {
++  describe('job', () => {
++    let database: DataSource;
++    let network: AvalancheRpcNetwork;
++    let scanner: AvalancheRpcScanner;
++    let safety: AvalancheObservationSafety;
++    beforeEach(async () => {
++      database = await new DataSource({
++        type: 'sqlite',
++        database: ':memory:',
++        synchronize: false,
++        entities: [BlockEntity, ExtractorStatusEntity, AvalancheSafetyState],
++        migrations: [...migrations.sqlite, AvalancheSafetyState1790769600000],
++      }).initialize();
++      await database.runMigrations();
++      network = new AvalancheRpcNetwork('http://127.0.0.1:1', 43113n);
++      vi.spyOn(network, 'getCurrentHeight').mockResolvedValue(1);
++      vi.spyOn(network, 'getBlockAtHeight').mockResolvedValue({
++        height: 1,
++        hash: observation.block,
++        parentHash: '0x' + '00'.repeat(32),
++        timestamp: 1790769600,
++        txCount: 0,
++      });
++      vi.spyOn(network, 'getBlockTxs').mockResolvedValue([]);
++      scanner = new AvalancheRpcScanner({
++        dataSource: database,
++        network,
++        sourceId: 'fixture-fuji',
++        initialHeight: 0,
++        blockCleanupConfig: {
++          blockCleanupThresholdDuration: 86400,
++          blockTrimCountInRound: 0,
++        },
++      });
++      await scanner.update();
++      safety = new AvalancheObservationSafety(
++        () => 'avalanche',
++        () => scanner
++      );
++    });
++    afterEach(async () => {
++      vi.restoreAllMocks();
++      network['provider'].destroy();
++      await database.destroy();
++    });
++
++    /** Construct the real queue with synthetic transactions and dependency API mocks. */
++    const setup = (type: TxType) => {
++      const tx = Object.assign(new TxEntity(), {
++        type,
++        observation,
++        txId: transaction.id().to_str(),
++        updateBlock: 99,
++        txSerialized: Buffer.from(transaction.sigma_serialize_bytes()).toString(
++          'base64'
++        ),
++      });
++      const getAllTxs = vi.fn().mockResolvedValue([tx]);
++      const setTxValidStatus = vi.fn().mockResolvedValue(undefined);
++      const setTxUpdateHeight = vi.fn().mockResolvedValue(undefined);
++      const removeTx = vi.fn().mockResolvedValue(undefined);
++      const downgradeObservationTxStatus = vi.fn().mockResolvedValue(undefined);
++      const database = {
++        getAllTxs,
++        setTxValidStatus,
++        setTxUpdateHeight,
++        removeTx,
++        downgradeObservationTxStatus,
++      } as unknown as WatcherDataBase;
++      const isObservationValid = vi.fn().mockResolvedValue(true);
++      const isMergeHappened = vi.fn().mockResolvedValue(false);
++      const connection = {
++        isObservationValid,
++        isMergeHappened,
++      } as unknown as WatcherUtils;
++      vi.spyOn(ErgoNetwork, 'getHeight').mockResolvedValue(100);
++      vi.spyOn(ErgoNetwork, 'getConfNum').mockResolvedValue(-1);
++      const send = vi
++        .spyOn(ErgoNetwork, 'sendTx')
++        .mockResolvedValue({ success: true });
++      const gate = vi
++        .spyOn(avalancheObservationSafety, 'assertObservation')
++        .mockResolvedValue(undefined);
++      const actionGate = vi
++        .spyOn(avalancheObservationSafety, 'withObservation')
++        .mockImplementation(safety.withObservation);
++      return {
++        queue: new Queue(database, connection),
++        tx,
++        gate,
++        actionGate,
++        send,
++        isObservationValid,
++        isMergeHappened,
++        setTxValidStatus,
++        setTxUpdateHeight,
++        removeTx,
++        downgradeObservationTxStatus,
++      };
++    };
++
++    const literalControlCases1 = [TxType.COMMITMENT, TxType.TRIGGER];
++    /** Runs the original control against one unchanged case-table row. */
++    const runLiteralControl1_0 = async (
++      type: typeof literalControlCases1[number]
++    ) => {
++      const fixture = setup(type);
++      await database
++        .getRepository(AvalancheSafetyState)
++        .update({ scanner: 'avalanche' }, { holdReason: 'fixture-hold' });
++      await fixture.queue.job();
++      for (const stub of [
++        fixture.send,
++        fixture.isObservationValid,
++        fixture.isMergeHappened,
++        fixture.setTxValidStatus,
++        fixture.setTxUpdateHeight,
++        fixture.removeTx,
++        fixture.downgradeObservationTxStatus,
++      ]) {
++        expect(stub).not.toHaveBeenCalled();
++      }
++      expect(fixture.gate).not.toHaveBeenCalled();
++      expect(fixture.actionGate.mock.calls[0][0]).toBe(observation);
++    };
++    /** Runs the original control against one unchanged case-table row. */
++    const runLiteralControl1_1 = async (
++      type: typeof literalControlCases1[number]
++    ) => {
++      const fixture = setup(type);
++      const verify =
++        type === TxType.COMMITMENT
++          ? fixture.isObservationValid
++          : fixture.isMergeHappened;
++      verify.mockImplementation(async () => {
++        let error: unknown;
++        try {
++          await scanner.update();
++        } catch (caught) {
++          error = caught;
++        }
++        expect(String(error)).toContain('operation already running');
++        return type !== TxType.COMMITMENT;
++      });
++      await fixture.queue.job();
++      expect(fixture.gate).not.toHaveBeenCalled();
++      expect(fixture.actionGate).toHaveBeenCalledTimes(1);
++      expect(fixture.send).not.toHaveBeenCalled();
++      expect(fixture.setTxValidStatus).toHaveBeenNthCalledWith(
++        1,
++        fixture.tx,
++        false
++      );
++      expect(fixture.setTxUpdateHeight).not.toHaveBeenCalled();
++      expect(fixture.removeTx).not.toHaveBeenCalled();
++      await scanner.update();
++    };
++    /** Runs the original control against one unchanged case-table row. */
++    const runLiteralControl1_2 = async (
++      type: typeof literalControlCases1[number]
++    ) => {
++      const fixture = setup(type);
++      await fixture.queue.job();
++      expect(fixture.gate).not.toHaveBeenCalled();
++      expect(fixture.actionGate).toHaveBeenCalledTimes(1);
++      expect(fixture.send).toHaveBeenCalledTimes(1);
++      expect(
++        fixture.actionGate.mock.invocationCallOrder[0] <
++          fixture.send.mock.invocationCallOrder[0]
++      ).toEqual(true);
++      expect(fixture.setTxValidStatus).toHaveBeenNthCalledWith(
++        1,
++        fixture.tx,
++        true
++      );
++      expect(fixture.setTxUpdateHeight).toHaveBeenNthCalledWith(
++        1,
++        fixture.tx,
++        100
++      );
++    };
++
++    /**
++     * @target Queue.job: keeps held commitment queued without sending or changing status
++     * @dependencies Real transaction queue and settled scanner over SQLite;
++     * mocked Ergo network, observation verification and queue persistence APIs
++     * @scenario Persist a hold, execute the tested queue item, and inspect
++     * send/verification/persistence mocks.
++     * @expected Perform no send, verification or state change; pass the
++     * observation to the action gate.
++     */
++    it('keeps held commitment queued without sending or changing status', async () =>
++      await runLiteralControl1_0(literalControlCases1[0]));
++
++    /**
++     * @target Queue.job: excludes updates through false commitment verification and controlled reset
++     * @dependencies Real transaction queue and settled scanner over SQLite;
++     * mocked Ergo network, observation verification and queue persistence APIs
++     * @scenario During the tested false verification path, attempt a scanner
++     * update; run the queue and then retry after it finishes.
++     * @expected Reject the concurrent update, mark the item invalid without
++     * sending/removing it, and release the lease afterward.
++     */
++    it('excludes updates through false commitment verification and controlled reset', async () =>
++      await runLiteralControl1_1(literalControlCases1[0]));
++
++    /**
++     * @target Queue.job: sends qualified commitment inside the observation lease
++     * @dependencies Real transaction queue and settled scanner over SQLite;
++     * mocked Ergo network, observation verification and queue persistence APIs
++     * @scenario Run the qualified queue item and inspect gate, send, validation
++     * and persistence ordering.
++     * @expected Enter the observation lease before sending, mark the exact item
++     * valid, and persist height 100.
++     */
++    it('sends qualified commitment inside the observation lease', async () =>
++      await runLiteralControl1_2(literalControlCases1[0]));
++
++    /**
++     * @target Queue.job: keeps held trigger queued without sending or changing status
++     * @dependencies Real transaction queue and settled scanner over SQLite;
++     * mocked Ergo network, observation verification and queue persistence APIs
++     * @scenario Persist a hold, execute the tested queue item, and inspect
++     * send/verification/persistence mocks.
++     * @expected Perform no send, verification or state change; pass the
++     * observation to the action gate.
++     */
++    it('keeps held trigger queued without sending or changing status', async () =>
++      await runLiteralControl1_0(literalControlCases1[1]));
++
++    /**
++     * @target Queue.job: excludes updates through false trigger verification and controlled reset
++     * @dependencies Real transaction queue and settled scanner over SQLite;
++     * mocked Ergo network, observation verification and queue persistence APIs
++     * @scenario During the tested false verification path, attempt a scanner
++     * update; run the queue and then retry after it finishes.
++     * @expected Reject the concurrent update, mark the item invalid without
++     * sending/removing it, and release the lease afterward.
++     */
++    it('excludes updates through false trigger verification and controlled reset', async () =>
++      await runLiteralControl1_1(literalControlCases1[1]));
++
++    /**
++     * @target Queue.job: sends qualified trigger inside the observation lease
++     * @dependencies Real transaction queue and settled scanner over SQLite;
++     * mocked Ergo network, observation verification and queue persistence APIs
++     * @scenario Run the qualified queue item and inspect gate, send, validation
++     * and persistence ordering.
++     * @expected Enter the observation lease before sending, mark the exact item
++     * valid, and persist height 100.
++     */
++    it('sends qualified trigger inside the observation lease', async () =>
++      await runLiteralControl1_2(literalControlCases1[1]));
++
++    const literalControlCases2 = [false, true];
++    /** Runs the original control against one unchanged case-table row. */
++    const runLiteralControl2_0 = async (
++      reset: typeof literalControlCases2[number]
++    ) => {
++      const fixture = setup(TxType.COMMITMENT);
++      let entered!: () => void;
++      const waiting = new Promise<void>((resolve) => {
++        entered = resolve;
++      });
++      let release!: () => void;
++      const barrier = new Promise<void>((resolve) => {
++        release = resolve;
++      });
++      if (reset) {
++        fixture.isObservationValid.mockResolvedValue(false);
++        fixture.tx.updateBlock = -1000000000;
++      }
++      const persistence = reset ? fixture.removeTx : fixture.setTxUpdateHeight;
++      persistence.mockImplementation(async () => {
++        entered();
++        await barrier;
++      });
++      let finished = false;
++      const run = fixture.queue.job().then(() => {
++        finished = true;
++      });
++      await waiting;
++      let error: unknown;
++      try {
++        await scanner.update();
++      } catch (caught) {
++        error = caught;
++      }
++      expect(String(error)).toContain('operation already running');
++      expect(finished).toEqual(false);
++      release();
++      await run;
++      await scanner.update();
++      expect(finished).toEqual(true);
++      expect(fixture.setTxValidStatus).toHaveBeenNthCalledWith(
++        1,
++        fixture.tx,
++        !reset
++      );
++    };
++
++    /**
++     * @target Queue.job: retains its lease until successful status persistence completes
++     * @dependencies Real transaction queue and settled scanner over SQLite;
++     * mocked Ergo network, observation verification and queue persistence APIs
++     * @scenario Block the selected persistence/removal call, attempt an update
++     * while it waits, then release it and retry.
++     * @expected Reject the concurrent update, await persistence/removal before
++     * returning, and release the lease afterward.
++     */
++    it('retains its lease until successful status persistence completes', async () =>
++      await runLiteralControl2_0(literalControlCases2[0]));
++
++    /**
++     * @target Queue.job: retains its lease until invalid transaction removal completes
++     * @dependencies Real transaction queue and settled scanner over SQLite;
++     * mocked Ergo network, observation verification and queue persistence APIs
++     * @scenario Block the selected persistence/removal call, attempt an update
++     * while it waits, then release it and retry.
++     * @expected Reject the concurrent update, await persistence/removal before
++     * returning, and release the lease afterward.
++     */
++    it('retains its lease until invalid transaction removal completes', async () =>
++      await runLiteralControl2_0(literalControlCases2[1]));
++
++    const literalControlCases3 = [
++      'verification',
++      'send',
++      'validation',
++      'persistence',
++    ];
++    /** Runs the original control against one unchanged case-table row. */
++    const runLiteralControl3_0 = async (
++      failure: typeof literalControlCases3[number]
++    ) => {
++      const fixture = setup(TxType.COMMITMENT);
++      const error = new Error('fixture failure');
++      let updateError: unknown;
++      if (failure === 'verification')
++        fixture.isObservationValid.mockRejectedValue(error);
++      if (failure === 'send') fixture.send.mockRejectedValue(error);
++      if (failure === 'persistence')
++        fixture.setTxValidStatus.mockRejectedValue(error);
++      if (failure === 'validation') {
++        fixture.send.mockResolvedValue({ success: false });
++        vi.spyOn(ErgoNetwork, 'checkTxInputs').mockImplementation(async () => {
++          try {
++            await scanner.update();
++          } catch (caught) {
++            updateError = caught;
++          }
++          throw error;
++        });
++      }
++      await fixture.queue.job();
++      if (failure === 'validation')
++        expect(String(updateError)).toContain('operation already running');
++      await scanner.update();
++      expect(fixture.removeTx).not.toHaveBeenCalled();
++    };
++
++    /**
++     * @target Queue.job: releases the observation lease after verification throws
++     * @dependencies Real transaction queue and settled scanner over SQLite;
++     * mocked Ergo network, observation verification and queue persistence APIs
++     * @scenario Throw at exactly the tested
++     * verification/send/validation/persistence stage, run the queue, and retry
++     * a scanner update.
++     * @expected Release the lease despite the failure and never remove the
++     * queued item.
++     */
++    it('releases the observation lease after verification throws', async () =>
++      await runLiteralControl3_0(literalControlCases3[0]));
++
++    /**
++     * @target Queue.job: releases the observation lease after send throws
++     * @dependencies Real transaction queue and settled scanner over SQLite;
++     * mocked Ergo network, observation verification and queue persistence APIs
++     * @scenario Throw at exactly the tested
++     * verification/send/validation/persistence stage, run the queue, and retry
++     * a scanner update.
++     * @expected Release the lease despite the failure and never remove the
++     * queued item.
++     */
++    it('releases the observation lease after send throws', async () =>
++      await runLiteralControl3_0(literalControlCases3[1]));
++
++    /**
++     * @target Queue.job: releases the observation lease after validation throws
++     * @dependencies Real transaction queue and settled scanner over SQLite;
++     * mocked Ergo network, observation verification and queue persistence APIs
++     * @scenario Throw at exactly the tested
++     * verification/send/validation/persistence stage, run the queue, and retry
++     * a scanner update.
++     * @expected Release the lease despite the failure and never remove the
++     * queued item.
++     */
++    it('releases the observation lease after validation throws', async () =>
++      await runLiteralControl3_0(literalControlCases3[2]));
++
++    /**
++     * @target Queue.job: releases the observation lease after persistence throws
++     * @dependencies Real transaction queue and settled scanner over SQLite;
++     * mocked Ergo network, observation verification and queue persistence APIs
++     * @scenario Throw at exactly the tested
++     * verification/send/validation/persistence stage, run the queue, and retry
++     * a scanner update.
++     * @expected Release the lease despite the failure and never remove the
++     * queued item.
++     */
++    it('releases the observation lease after persistence throws', async () =>
++      await runLiteralControl3_0(literalControlCases3[3]));
++
++    /**
++     * @target Queue.job: holds the lease through failed-send input validation
++     * and awaited reset
++     * @dependencies Real transaction queue and settled scanner over SQLite;
++     * mocked Ergo network, observation verification and queue persistence APIs
++     * @scenario Return a failed send and invalid inputs; try an update during
++     * the awaited invalid-status reset.
++     * @expected Reject the update during reset, mark the exact item invalid
++     * once, then release the lease.
++     */
++    it('holds the lease through failed-send input validation and awaited reset', async () => {
++      const fixture = setup(TxType.COMMITMENT);
++      let error: unknown;
++      fixture.send.mockResolvedValue({ success: false });
++      vi.spyOn(ErgoNetwork, 'checkTxInputs').mockResolvedValue(false);
++      fixture.setTxValidStatus.mockImplementation(async () => {
++        try {
++          await scanner.update();
++        } catch (caught) {
++          error = caught;
++        }
++      });
++      await fixture.queue.job();
++      expect(fixture.setTxValidStatus).toHaveBeenCalledTimes(1);
++      expect(fixture.setTxValidStatus).toHaveBeenCalledWith(fixture.tx, false);
++      expect(String(error)).toContain('operation already running');
++      await scanner.update();
++    });
++
++    const literalControlCases4 = [
++      TxType.DETACH,
++      TxType.REDEEM,
++      TxType.PERMIT,
++      TxType.REWARD,
++    ];
++    /** Runs the original control against one unchanged case-table row. */
++    const runLiteralControl4_0 = async (
++      type: typeof literalControlCases4[number]
++    ) => {
++      const fixture = setup(type);
++      fixture.gate.mockRejectedValue(new Error('scanner held'));
++      await fixture.queue.job();
++      expect(fixture.gate).not.toHaveBeenCalled();
++      expect(fixture.actionGate).not.toHaveBeenCalled();
++      expect(fixture.send).toHaveBeenCalledTimes(1);
++    };
++
++    /**
++     * @target Queue.job: keeps detach recovery behavior unchanged
++     * @dependencies Real transaction queue and settled scanner over SQLite;
++     * mocked Ergo network, observation verification and queue persistence APIs
++     * @scenario Run the tested non-observation recovery transaction while the
++     * Avalanche gate would reject if called.
++     * @expected Keep the recovery send path and call neither Avalanche gate.
++     */
++    it('keeps detach recovery behavior unchanged', async () =>
++      await runLiteralControl4_0(literalControlCases4[0]));
++
++    /**
++     * @target Queue.job: keeps redeem recovery behavior unchanged
++     * @dependencies Real transaction queue and settled scanner over SQLite;
++     * mocked Ergo network, observation verification and queue persistence APIs
++     * @scenario Run the tested non-observation recovery transaction while the
++     * Avalanche gate would reject if called.
++     * @expected Keep the recovery send path and call neither Avalanche gate.
++     */
++    it('keeps redeem recovery behavior unchanged', async () =>
++      await runLiteralControl4_0(literalControlCases4[1]));
++
++    /**
++     * @target Queue.job: keeps permit recovery behavior unchanged
++     * @dependencies Real transaction queue and settled scanner over SQLite;
++     * mocked Ergo network, observation verification and queue persistence APIs
++     * @scenario Run the tested non-observation recovery transaction while the
++     * Avalanche gate would reject if called.
++     * @expected Keep the recovery send path and call neither Avalanche gate.
++     */
++    it('keeps permit recovery behavior unchanged', async () =>
++      await runLiteralControl4_0(literalControlCases4[2]));
++
++    /**
++     * @target Queue.job: keeps reward recovery behavior unchanged
++     * @dependencies Real transaction queue and settled scanner over SQLite;
++     * mocked Ergo network, observation verification and queue persistence APIs
++     * @scenario Run the tested non-observation recovery transaction while the
++     * Avalanche gate would reject if called.
++     * @expected Keep the recovery send path and call neither Avalanche gate.
++     */
++    it('keeps reward recovery behavior unchanged', async () =>
++      await runLiteralControl4_0(literalControlCases4[3]));
++  });
++});
+diff --git a/tests/jobs/initScanner.spec.ts b/tests/jobs/initScanner.spec.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..5cf81ce4c468442792bd5273f8c0c634c3d16759
+--- /dev/null
++++ b/tests/jobs/initScanner.spec.ts
+@@ -0,0 +1,69 @@
++import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
++import { configureStartup, pendingUpdate } from './testUtils';
++import { observationScanner, warnings } from './mocked/scanning.mock';
++import { credentialMarker, sanitizedWarning } from './testData';
++
++describe('scannerInit', () => {
++  beforeEach(() => {
++    vi.useFakeTimers();
++    vi.clearAllMocks();
++    configureStartup();
++  });
++
++  afterEach(() => {
++    vi.clearAllTimers();
++    vi.useRealTimers();
++  });
++
++  /**
++   * @target scannerInit - sanitizes Avalanche failure logs and retries the same scanner
++   * @dependencies Isolated external scanner update, logger and configuration
++   * @scenario Two consecutive updates reject with synthetic credential-bearing error text
++   * @expected Each failure emits a fixed warning and the same scanner retries after two seconds
++   */
++  it('sanitizes Avalanche failure logs and retries the same scanner', async () => {
++    observationScanner.update.mockRejectedValueOnce(
++      new Error(credentialMarker)
++    );
++    observationScanner.update.mockRejectedValueOnce(
++      new Error(credentialMarker)
++    );
++    const { scannerInit } = await import('../../src/jobs/initScanner');
++    scannerInit();
++    await vi.advanceTimersByTimeAsync(0);
++    expect(warnings).toHaveBeenCalledTimes(1);
++    expect(warnings).toHaveBeenNthCalledWith(1, sanitizedWarning);
++    expect(JSON.stringify(warnings.mock.calls)).not.toContain(credentialMarker);
++    expect(observationScanner.update).toHaveBeenCalledTimes(1);
++    await vi.advanceTimersByTimeAsync(1999);
++    expect(observationScanner.update).toHaveBeenCalledTimes(1);
++    await vi.advanceTimersByTimeAsync(1);
++    expect(observationScanner.update).toHaveBeenCalledTimes(2);
++    expect(warnings).toHaveBeenCalledTimes(2);
++    expect(warnings).toHaveBeenNthCalledWith(2, sanitizedWarning);
++    expect(JSON.stringify(warnings.mock.calls)).not.toContain(credentialMarker);
++  });
++
++  /**
++   * @target scannerInit - waits for the pending Avalanche update before scheduling another
++   * @dependencies Deferred external observation update and fake clock
++   * @scenario An observation update remains pending for ten seconds
++   * @expected No overlapping update occurs and the next scan starts two seconds after completion
++   */
++  it('waits for the pending Avalanche update before scheduling another', async () => {
++    const pending = pendingUpdate();
++    observationScanner.update.mockImplementationOnce(() => pending.promise);
++    const { scannerInit } = await import('../../src/jobs/initScanner');
++    scannerInit();
++    await vi.advanceTimersByTimeAsync(10000);
++    expect(observationScanner.update).toHaveBeenCalledTimes(1);
++    expect(warnings).not.toHaveBeenCalled();
++    pending.complete();
++    await vi.advanceTimersByTimeAsync(0);
++    await vi.advanceTimersByTimeAsync(1999);
++    expect(observationScanner.update).toHaveBeenCalledTimes(1);
++    await vi.advanceTimersByTimeAsync(1);
++    expect(observationScanner.update).toHaveBeenCalledTimes(2);
++    expect(warnings).not.toHaveBeenCalled();
++  });
++});
+diff --git a/tests/jobs/mocked/scanning.mock.ts b/tests/jobs/mocked/scanning.mock.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..d6339a975f98f8ac8c02421c7aee0d330975c296
+--- /dev/null
++++ b/tests/jobs/mocked/scanning.mock.ts
+@@ -0,0 +1,19 @@
++import { DummyLogger } from '@rosen-bridge/abstract-logger';
++import { vi } from 'vitest';
++
++/** Logger dependency shared by the imported startup module across cases. */
++export const logger = new DummyLogger();
++/** Observe only warnings emitted by the actual startup loop. */
++export const warnings = vi.spyOn(logger, 'warn');
++/** External Ergo scanner update dependency for startup composition. */
++export const ergoScanner = {
++  update: vi.fn(async (): Promise<void> => undefined),
++  /** Supplies the external Ergo scanner's stable diagnostic name. */
++  name: () => 'ergo-fixture',
++};
++/** External observation scanner update dependency for retry and pending controls. */
++export const observationScanner = {
++  update: vi.fn(async (): Promise<void> => undefined),
++  /** Supplies the external observation scanner's stable diagnostic name. */
++  name: () => 'avalanche-fixture',
++};
+diff --git a/tests/jobs/testData.ts b/tests/jobs/testData.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..60f1dc23bb3f0fe59ebec0059f180fa2592eda94
+--- /dev/null
++++ b/tests/jobs/testData.ts
+@@ -0,0 +1,9 @@
++/** Synthetic observation retry period in seconds. */
++export const observationInterval = 2;
++/** Separate Ergo retry period keeps its timer outside observation assertions. */
++export const ergoInterval = 60;
++/** Marker carried by a synthetic exception to detect raw failure text in logs. */
++export const credentialMarker = 'fixture-private-rpc-material';
++/** Fixed operational message for an Avalanche scan failure. */
++export const sanitizedWarning =
++  'Avalanche scanner update failed; inspect persisted safety state.';
+diff --git a/tests/jobs/testUtils.ts b/tests/jobs/testUtils.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..d43067d28b21938f5ef3a5d4da585512f215b867
+--- /dev/null
++++ b/tests/jobs/testUtils.ts
+@@ -0,0 +1,55 @@
++import { DefaultLogger } from '@rosen-bridge/abstract-logger';
++import { vi } from 'vitest';
++import * as configModule from '../../src/config/config';
++import { AVALANCHE_CHAIN_NAME } from '../../src/config/constants';
++import { CreateScanner } from '../../src/utils/scanner';
++import { ergoInterval, observationInterval } from './testData';
++import {
++  ergoScanner,
++  logger,
++  observationScanner,
++} from './mocked/scanning.mock';
++
++/** Compose the actual startup entry with isolated config, logger and scanner dependencies. */
++export const configureStartup = () => {
++  const current = configModule.getConfig();
++  vi.spyOn(configModule, 'getConfig').mockReturnValue({
++    ...current,
++    general: {
++      ...current.general,
++      networkWatcher: AVALANCHE_CHAIN_NAME,
++      ergoInterval,
++    },
++    avalanche: {
++      type: 'rpc',
++      chainId: 43113,
++      sourceId: 'fixture-startup-fuji',
++      initialHeight: 0,
++      interval: observationInterval,
++      blockTime: 1.25,
++      rpc: { url: 'http://127.0.0.1:1', timeout: 1 },
++    },
++  });
++  vi.spyOn(logger, 'child').mockReturnValue(logger);
++  vi.spyOn(DefaultLogger, 'getInstance').mockReturnValue(logger);
++  vi.spyOn(CreateScanner, 'getInstance').mockReturnValue({
++    /** Returns the isolated external Ergo update dependency. */
++    getErgoScanner: () => ergoScanner,
++    /** Returns the isolated external observation update dependency. */
++    getObservationScanner: () => observationScanner,
++  } as unknown as CreateScanner);
++};
++
++/** Hold one external update pending until the test explicitly completes it. */
++export const pendingUpdate = () => {
++  /** Receives the deferred promise resolver before the fixture is returned. */
++  let complete: () => void = () => undefined;
++  const promise = new Promise<void>((resolve) => {
++    complete = resolve;
++  });
++  return {
++    promise,
++    /** Completes the held external update without advancing the fake clock. */
++    complete: () => complete(),
++  };
++};
+diff --git a/tests/resources/inMemoryDb.ts b/tests/resources/inMemoryDb.ts
+index 9e0e461c42197148bbe3e58875ffc86195edfc0f..e4ad23e051604cd9e14402bb46f68776a8450585 100644
+--- a/tests/resources/inMemoryDb.ts
++++ b/tests/resources/inMemoryDb.ts
+@@ -1,4 +1,8 @@
+ import { DataSource } from '@rosen-bridge/extended-typeorm';
++import {
++  AvalancheSafetyState,
++  AvalancheSafetyState1790769600000,
++} from '@rosen-bridge/evm-scanner';
+ import {
+   BoxEntity,
+   migrations as addressExtractorMigrations,
+@@ -27,6 +31,7 @@ import { RevenueChartDataView } from '../../src/database/entities/revenueChartDa
+ 
+ const createMemoryDatabase = async (): Promise<DataSource> => {
+   const entities = [
++    AvalancheSafetyState,
+     BlockEntity,
+     BoxEntity,
+     ObservationEntity,
+@@ -46,6 +51,7 @@ const createMemoryDatabase = async (): Promise<DataSource> => {
+     database: ':memory:',
+     entities: entities,
+     migrations: [
++      AvalancheSafetyState1790769600000,
+       ...addressExtractorMigrations.sqlite,
+       ...observationMigrations.sqlite,
+       ...scannerMigrations.sqlite,
+diff --git a/tests/setup-tests.ts b/tests/setup-tests.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..50cfe49d03039a5f5b47878f1263c06e3d5ec214
+--- /dev/null
++++ b/tests/setup-tests.ts
+@@ -0,0 +1,14 @@
++import '@rosen-bridge/extended-typeorm/bootstrap';
++import { beforeAll } from 'vitest';
++import { DefaultLogger, DummyLogger } from '@rosen-bridge/abstract-logger';
++import nock from 'nock';
++
++DefaultLogger.init(new DummyLogger());
++nock.disableNetConnect();
++
++const { getConfig } = await import('../src/config/config');
++const { TokensConfig } = await import('../src/config/tokensConfig');
++
++beforeAll(async () => {
++  await TokensConfig.init(getConfig().general.rosenTokensPath);
++});
+diff --git a/tests/transactions/avalancheCommitmentCreation.spec.ts b/tests/transactions/avalancheCommitmentCreation.spec.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..d98b392551318106eef818ac7795d435664f6039
+--- /dev/null
++++ b/tests/transactions/avalancheCommitmentCreation.spec.ts
+@@ -0,0 +1,108 @@
++import '@rosen-bridge/extended-typeorm/bootstrap';
++import { afterEach, describe, expect, it, vi } from 'vitest';
++import * as wasm from 'ergo-lib-wasm-nodejs';
++
++import { ErgoUtils } from '../../src/ergo/utils';
++import { ErgoNetwork } from '../../src/ergo/network/ergoNetwork';
++
++import { WatcherUtils } from '../../src/utils/watcherUtils';
++import { avalancheObservationSafety } from '../../src/utils/avalancheSafety';
++
++import { CommitmentCreation } from '../../src/transactions/commitmentCreation';
++
++import { Boxes } from '../../src/ergo/boxes';
++import { TransactionUtils } from '../../src/utils/watcherUtils';
++import { TokensConfig } from '../../src/config/tokensConfig';
++
++import { permitJson, repoConfigJson, widJson } from '../avalancheTestData';
++import {
++  createAvalancheTestTransaction,
++  createAvalancheTestObservation,
++} from '../avalancheTestUtils';
++const transaction = createAvalancheTestTransaction();
++const observation = createAvalancheTestObservation();
++describe('CommitmentCreation', () => {
++  describe('createCommitmentTx', () => {
++    afterEach(() => vi.restoreAllMocks());
++    const kind = 'commitment';
++    /**
++     * @target CommitmentCreation.createCommitmentTx: passes the commitment observation into the action wrapper before submitting
++     * @dependencies Real WASM boxes and transaction producer; mocked box
++     * builder, Ergo network, signing dependency, token config and observation
++     * action gate
++     * @scenario Create the tested producer with synthetic boxes/network/token
++     * responses, capture its signing wrapper, and reject the observation action
++     * gate.
++     * @expected Pass the identical observation to the gate and never submit a
++     * transaction.
++     */
++    it('passes the commitment observation into the action wrapper before submitting', async () => {
++      const permit = wasm.ErgoBox.from_json(JSON.stringify(permitJson));
++      const config = wasm.ErgoBox.from_json(JSON.stringify(repoConfigJson));
++      const wid = wasm.ErgoBox.from_json(JSON.stringify(widJson));
++      const candidate = {} as wasm.ErgoBoxCandidate;
++      const boxes = {
++        getRepoConfigBox: vi.fn().mockResolvedValue(config),
++        createCommitment: vi.fn().mockReturnValue(candidate),
++        createPermit: vi.fn().mockReturnValue(candidate),
++        createTriggerEvent: vi.fn().mockResolvedValue(candidate),
++        RWTTokenId: permit.tokens().get(0).id(),
++      } as unknown as Boxes;
++      const submit = vi.fn().mockResolvedValue(undefined);
++      const txUtils = {
++        submitTransaction: submit,
++      } as unknown as TransactionUtils;
++      const watcher = {} as WatcherUtils;
++      vi.spyOn(ErgoNetwork, 'getMaxHeight').mockResolvedValue(100);
++      vi.spyOn(ErgoUtils, 'getExtraTokenCount').mockReturnValue(0);
++      vi.spyOn(TokensConfig, 'getInstance').mockReturnValue({
++        getTokenMap: () => ({ unwrapAmount: () => ({ amount: 1n }) }),
++      } as unknown as TokensConfig);
++      const actionGate = vi
++        .spyOn(avalancheObservationSafety, 'withObservation')
++        .mockRejectedValue(new Error('scanner held'));
++      const create = vi
++        .spyOn(ErgoUtils, 'createAndSignTx')
++        .mockImplementation(
++          async (
++            _secret,
++            _boxes,
++            _candidates,
++            _height,
++            _data,
++            _change,
++            wrapper
++          ) => {
++            expect(wrapper).toEqual(expect.any(Function));
++            if (!wrapper) throw new Error('Signing wrapper missing');
++            return wrapper(() => transaction);
++          }
++        );
++      {
++        let error: unknown;
++        try {
++          await new CommitmentCreation(
++            watcher,
++            txUtils,
++            boxes
++          ).createCommitmentTx(
++            '11'.repeat(32),
++            observation,
++            new Uint8Array(32),
++            [permit],
++            wid,
++            [],
++            0n
++          );
++        } catch (caught) {
++          error = caught;
++        }
++        expect(String(error)).toContain('scanner held');
++      }
++      expect(create).toHaveBeenCalledTimes(1);
++      expect(actionGate).toHaveBeenCalledTimes(1);
++      expect(actionGate.mock.calls[0][0]).toBe(observation);
++      expect(submit).not.toHaveBeenCalled();
++    });
++  });
++});
+diff --git a/tests/transactions/avalancheCommitmentReveal.spec.ts b/tests/transactions/avalancheCommitmentReveal.spec.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..4ae399a3b2fd7d740979be98b38cfa23fdb6d772
+--- /dev/null
++++ b/tests/transactions/avalancheCommitmentReveal.spec.ts
+@@ -0,0 +1,93 @@
++import '@rosen-bridge/extended-typeorm/bootstrap';
++import { afterEach, describe, expect, it, vi } from 'vitest';
++import * as wasm from 'ergo-lib-wasm-nodejs';
++
++import { ErgoUtils } from '../../src/ergo/utils';
++import { ErgoNetwork } from '../../src/ergo/network/ergoNetwork';
++
++import { WatcherUtils } from '../../src/utils/watcherUtils';
++import { avalancheObservationSafety } from '../../src/utils/avalancheSafety';
++
++import { CommitmentReveal } from '../../src/transactions/commitmentReveal';
++import { Boxes } from '../../src/ergo/boxes';
++import { TransactionUtils } from '../../src/utils/watcherUtils';
++import { TokensConfig } from '../../src/config/tokensConfig';
++
++import { permitJson, repoConfigJson, widJson } from '../avalancheTestData';
++import {
++  createAvalancheTestTransaction,
++  createAvalancheTestObservation,
++} from '../avalancheTestUtils';
++const transaction = createAvalancheTestTransaction();
++const observation = createAvalancheTestObservation();
++describe('CommitmentReveal', () => {
++  describe('triggerEventCreationTx', () => {
++    afterEach(() => vi.restoreAllMocks());
++    const kind = 'trigger';
++    /**
++     * @target CommitmentReveal.triggerEventCreationTx: passes the trigger observation into the action wrapper before submitting
++     * @dependencies Real WASM boxes and transaction producer; mocked box
++     * builder, Ergo network, signing dependency, token config and observation
++     * action gate
++     * @scenario Create the tested producer with synthetic boxes/network/token
++     * responses, capture its signing wrapper, and reject the observation action
++     * gate.
++     * @expected Pass the identical observation to the gate and never submit a
++     * transaction.
++     */
++    it('passes the trigger observation into the action wrapper before submitting', async () => {
++      const permit = wasm.ErgoBox.from_json(JSON.stringify(permitJson));
++      const config = wasm.ErgoBox.from_json(JSON.stringify(repoConfigJson));
++      const wid = wasm.ErgoBox.from_json(JSON.stringify(widJson));
++      const candidate = {} as wasm.ErgoBoxCandidate;
++      const boxes = {
++        getRepoConfigBox: vi.fn().mockResolvedValue(config),
++        createCommitment: vi.fn().mockReturnValue(candidate),
++        createPermit: vi.fn().mockReturnValue(candidate),
++        createTriggerEvent: vi.fn().mockResolvedValue(candidate),
++        RWTTokenId: permit.tokens().get(0).id(),
++      } as unknown as Boxes;
++      const submit = vi.fn().mockResolvedValue(undefined);
++      const txUtils = {
++        submitTransaction: submit,
++      } as unknown as TransactionUtils;
++      const watcher = {} as WatcherUtils;
++      vi.spyOn(ErgoNetwork, 'getMaxHeight').mockResolvedValue(100);
++      vi.spyOn(ErgoUtils, 'getExtraTokenCount').mockReturnValue(0);
++      vi.spyOn(TokensConfig, 'getInstance').mockReturnValue({
++        getTokenMap: () => ({ unwrapAmount: () => ({ amount: 1n }) }),
++      } as unknown as TokensConfig);
++      const actionGate = vi
++        .spyOn(avalancheObservationSafety, 'withObservation')
++        .mockRejectedValue(new Error('scanner held'));
++      const create = vi
++        .spyOn(ErgoUtils, 'createAndSignTx')
++        .mockImplementation(
++          async (
++            _secret,
++            _boxes,
++            _candidates,
++            _height,
++            _data,
++            _change,
++            wrapper
++          ) => {
++            expect(wrapper).toEqual(expect.any(Function));
++            if (!wrapper) throw new Error('Signing wrapper missing');
++            return wrapper(() => transaction);
++          }
++        );
++      {
++        await new CommitmentReveal(
++          watcher,
++          txUtils,
++          boxes
++        ).triggerEventCreationTx([permit], wid, config, observation, [], []);
++      }
++      expect(create).toHaveBeenCalledTimes(1);
++      expect(actionGate).toHaveBeenCalledTimes(1);
++      expect(actionGate.mock.calls[0][0]).toBe(observation);
++      expect(submit).not.toHaveBeenCalled();
++    });
++  });
++});
+diff --git a/tests/utils/avalancheSafety.spec.ts b/tests/utils/avalancheSafety.spec.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..cc15fcb75ca480ef26553d37d3fea3abb22cc270
+--- /dev/null
++++ b/tests/utils/avalancheSafety.spec.ts
+@@ -0,0 +1,459 @@
++import '@rosen-bridge/extended-typeorm/bootstrap';
++import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
++import { DataSource } from '@rosen-bridge/extended-typeorm';
++import {
++  BlockEntity,
++  ExtractorStatusEntity,
++  migrations,
++} from '@rosen-bridge/abstract-scanner';
++import { ObservationEntity } from '@rosen-bridge/abstract-observation-extractor';
++import {
++  AvalancheRpcNetwork,
++  AvalancheRpcScanner,
++  AvalancheSafetyState,
++  AvalancheSafetyState1790769600000,
++} from '@rosen-bridge/evm-scanner';
++import { AvalancheObservationSafety } from '../../src/utils/avalancheSafety';
++
++/** Encode a deterministic synthetic block hash for the requested fixture height. */
++const hash = (height: number) => '0x' + height.toString(16).padStart(64, '0');
++/** Build an observation bound to the fixture scanner's completed block one. */
++const observation = () =>
++  Object.assign(new ObservationEntity(), {
++    fromChain: 'avalanche',
++    height: 1,
++    block: hash(1),
++    sourceBlockId: hash(1),
++    extractor: 'avalanche-rpc-extractor',
++  });
++/** Await a rejection and verify the expected safety diagnostic. */
++const rejected = async (operation: Promise<unknown>, message: string) => {
++  let error: unknown;
++  try {
++    await operation;
++  } catch (caught) {
++    error = caught;
++  }
++  expect(String(error)).toContain(message);
++};
++
++describe('AvalancheObservationSafety', () => {
++  let database: DataSource;
++  let network: AvalancheRpcNetwork;
++  let scanner: AvalancheRpcScanner;
++  let safety: AvalancheObservationSafety;
++
++  beforeEach(async () => {
++    database = await new DataSource({
++      type: 'sqlite',
++      database: ':memory:',
++      synchronize: false,
++      entities: [BlockEntity, ExtractorStatusEntity, AvalancheSafetyState],
++      migrations: [...migrations.sqlite, AvalancheSafetyState1790769600000],
++    }).initialize();
++    await database.runMigrations();
++    network = new AvalancheRpcNetwork('http://127.0.0.1:1', 43113n);
++    vi.spyOn(network, 'getCurrentHeight').mockResolvedValue(2);
++    vi.spyOn(network, 'getBlockAtHeight').mockImplementation(
++      async (height) => ({
++        height,
++        hash: hash(height),
++        parentHash: hash(height - 1),
++        timestamp: 1790769600 + height,
++        txCount: 0,
++      })
++    );
++    vi.spyOn(network, 'getBlockTxs').mockResolvedValue([]);
++    scanner = new AvalancheRpcScanner({
++      dataSource: database,
++      network,
++      initialHeight: 0,
++      sourceId: 'fixture-fuji',
++      blockCleanupConfig: {
++        blockCleanupThresholdDuration: 86400,
++        blockTrimCountInRound: 0,
++      },
++    });
++    safety = new AvalancheObservationSafety(
++      () => 'avalanche',
++      () => scanner
++    );
++    await scanner.update();
++  });
++
++  afterEach(async () => {
++    vi.restoreAllMocks();
++    network['provider'].destroy();
++    await database.destroy();
++  });
++  describe('assertObservation', () => {
++    /**
++     * @target AvalancheObservationSafety.assertObservation: rejects a generic
++     * or missing scanner
++     * @dependencies Real settled scanner, SQLite state and block repositories;
++     * mocked connector methods and action callback
++     * @scenario Construct the safety reader with no settled Avalanche scanner
++     * and check the synthetic observation.
++     * @expected Reject the missing settled scanner.
++     */
++    it('rejects a generic or missing scanner', async () => {
++      await rejected(
++        new AvalancheObservationSafety(
++          () => 'avalanche',
++          () => undefined
++        ).assertObservation(observation()),
++        'requires its settled scanner'
++      );
++    });
++  });
++  describe('withObservation', () => {
++    /**
++     * @target AvalancheObservationSafety.withObservation: accepts a matching
++     * completed block from the qualified source
++     * @dependencies Real settled scanner, SQLite state and block repositories;
++     * mocked connector methods and action callback
++     * @scenario Read the synthetic observation and execute its action through
++     * the actual qualified completed-block lease.
++     * @expected Return executed from the qualified action.
++     */
++    it('accepts a matching completed block from the qualified source', async () => {
++      await safety.assertObservation(observation());
++      expect(
++        await safety.withObservation(observation(), () => 'executed')
++      ).toEqual('executed');
++    });
++
++    /**
++     * @target AvalancheObservationSafety.withObservation: fails closed without
++     * persisted qualification
++     * @dependencies Real settled scanner, SQLite state and block repositories;
++     * mocked connector methods and action callback
++     * @scenario Clear only the persisted safety row, then try eligibility and
++     * action-time checks.
++     * @expected Both checks reject qualification and the action is never
++     * called.
++     */
++    it('fails closed without persisted qualification', async () => {
++      await database.getRepository(AvalancheSafetyState).clear();
++      await rejected(safety.assertObservation(observation()), 'not qualified');
++      const action = vi.fn();
++      await rejected(
++        safety.withObservation(observation(), action),
++        'not qualified'
++      );
++      expect(action).not.toHaveBeenCalled();
++    });
++
++    const literalControlCases1 = [
++      ['hold', { holdReason: 'fixture-conflict' }],
++      ['source', { sourceId: 'another-provider' }],
++      ['chain', { chainId: '43114' }],
++      ['policy', { policy: 'another-policy' }],
++      ['initial height', { initialHeight: 1 }],
++      ['missing frontier height', { finalizedHeight: null }],
++      ['missing frontier hash', { finalizedHash: null }],
++    ] as const;
++    /** Runs the original control against one unchanged case-table row. */
++    const runLiteralControl1_0 = async ([
++      name,
++      change,
++    ]: typeof literalControlCases1[number]) => {
++      await database
++        .getRepository(AvalancheSafetyState)
++        .update({ scanner: 'avalanche' }, change);
++      await rejected(safety.assertObservation(observation()), 'not qualified');
++      const action = vi.fn();
++      await rejected(
++        safety.withObservation(observation(), action),
++        'not qualified'
++      );
++      expect(action).not.toHaveBeenCalled();
++    };
++
++    /**
++     * @target AvalancheObservationSafety.withObservation: rejects changed hold
++     * @dependencies Real settled scanner, SQLite state and block repositories;
++     * mocked connector methods and action callback
++     * @scenario Change exactly the named persisted safety field, then try
++     * eligibility and action-time checks.
++     * @expected Reject qualification and never call the action.
++     */
++    it('rejects changed hold', async () =>
++      await runLiteralControl1_0(literalControlCases1[0]));
++
++    /**
++     * @target AvalancheObservationSafety.withObservation: rejects changed source
++     * @dependencies Real settled scanner, SQLite state and block repositories;
++     * mocked connector methods and action callback
++     * @scenario Change exactly the named persisted safety field, then try
++     * eligibility and action-time checks.
++     * @expected Reject qualification and never call the action.
++     */
++    it('rejects changed source', async () =>
++      await runLiteralControl1_0(literalControlCases1[1]));
++
++    /**
++     * @target AvalancheObservationSafety.withObservation: rejects changed chain
++     * @dependencies Real settled scanner, SQLite state and block repositories;
++     * mocked connector methods and action callback
++     * @scenario Change exactly the named persisted safety field, then try
++     * eligibility and action-time checks.
++     * @expected Reject qualification and never call the action.
++     */
++    it('rejects changed chain', async () =>
++      await runLiteralControl1_0(literalControlCases1[2]));
++
++    /**
++     * @target AvalancheObservationSafety.withObservation: rejects changed policy
++     * @dependencies Real settled scanner, SQLite state and block repositories;
++     * mocked connector methods and action callback
++     * @scenario Change exactly the named persisted safety field, then try
++     * eligibility and action-time checks.
++     * @expected Reject qualification and never call the action.
++     */
++    it('rejects changed policy', async () =>
++      await runLiteralControl1_0(literalControlCases1[3]));
++
++    /**
++     * @target AvalancheObservationSafety.withObservation: rejects changed initial height
++     * @dependencies Real settled scanner, SQLite state and block repositories;
++     * mocked connector methods and action callback
++     * @scenario Change exactly the named persisted safety field, then try
++     * eligibility and action-time checks.
++     * @expected Reject qualification and never call the action.
++     */
++    it('rejects changed initial height', async () =>
++      await runLiteralControl1_0(literalControlCases1[4]));
++
++    /**
++     * @target AvalancheObservationSafety.withObservation: rejects changed missing frontier height
++     * @dependencies Real settled scanner, SQLite state and block repositories;
++     * mocked connector methods and action callback
++     * @scenario Change exactly the named persisted safety field, then try
++     * eligibility and action-time checks.
++     * @expected Reject qualification and never call the action.
++     */
++    it('rejects changed missing frontier height', async () =>
++      await runLiteralControl1_0(literalControlCases1[5]));
++
++    /**
++     * @target AvalancheObservationSafety.withObservation: rejects changed missing frontier hash
++     * @dependencies Real settled scanner, SQLite state and block repositories;
++     * mocked connector methods and action callback
++     * @scenario Change exactly the named persisted safety field, then try
++     * eligibility and action-time checks.
++     * @expected Reject qualification and never call the action.
++     */
++    it('rejects changed missing frontier hash', async () =>
++      await runLiteralControl1_0(literalControlCases1[6]));
++
++    const literalControlCases2 = [
++      ['unfinished block', { status: 'PROCESSING' }],
++      ['wrong stored hash', { hash: hash(8) }],
++      ['wrong scanner', { scanner: 'ethereum' }],
++    ] as const;
++    /** Runs the original control against one unchanged case-table row. */
++    const runLiteralControl2_0 = async ([
++      name,
++      change,
++    ]: typeof literalControlCases2[number]) => {
++      await database.getRepository(BlockEntity).update({ height: 1 }, change);
++      await rejected(
++        safety.assertObservation(observation()),
++        'no matching completed block'
++      );
++      const action = vi.fn();
++      await rejected(
++        safety.withObservation(observation(), action),
++        'no matching completed block'
++      );
++      expect(action).not.toHaveBeenCalled();
++    };
++
++    /**
++     * @target AvalancheObservationSafety.withObservation: rejects unfinished block
++     * @dependencies Real settled scanner, SQLite state and block repositories;
++     * mocked connector methods and action callback
++     * @scenario Alter only the named block/provenance field, then try
++     * eligibility and action-time checks.
++     * @expected Reject the incompatible completed block or provenance and never
++     * call the action.
++     */
++    it('rejects unfinished block', async () =>
++      await runLiteralControl2_0(literalControlCases2[0]));
++
++    /**
++     * @target AvalancheObservationSafety.withObservation: rejects wrong stored hash
++     * @dependencies Real settled scanner, SQLite state and block repositories;
++     * mocked connector methods and action callback
++     * @scenario Alter only the named block/provenance field, then try
++     * eligibility and action-time checks.
++     * @expected Reject the incompatible completed block or provenance and never
++     * call the action.
++     */
++    it('rejects wrong stored hash', async () =>
++      await runLiteralControl2_0(literalControlCases2[1]));
++
++    /**
++     * @target AvalancheObservationSafety.withObservation: rejects wrong scanner
++     * @dependencies Real settled scanner, SQLite state and block repositories;
++     * mocked connector methods and action callback
++     * @scenario Alter only the named block/provenance field, then try
++     * eligibility and action-time checks.
++     * @expected Reject the incompatible completed block or provenance and never
++     * call the action.
++     */
++    it('rejects wrong scanner', async () =>
++      await runLiteralControl2_0(literalControlCases2[2]));
++
++    const literalControlCases3 = [
++      ['missing observation', undefined],
++      ['wrong source chain', { ...observation(), fromChain: 'ethereum' }],
++      [
++        'wrong extractor',
++        { ...observation(), extractor: 'ethereum-rpc-extractor' },
++      ],
++      ['source block mismatch', { ...observation(), sourceBlockId: hash(7) }],
++    ] as const;
++    /** Runs the original control against one unchanged case-table row. */
++    const runLiteralControl3_0 = async ([
++      name,
++      value,
++    ]: typeof literalControlCases3[number]) => {
++      await rejected(
++        safety.assertObservation(value),
++        'Invalid Avalanche observation provenance'
++      );
++      const action = vi.fn().mockReturnValue('forbidden');
++      await rejected(
++        safety.withObservation(value, action),
++        'Invalid Avalanche observation provenance'
++      );
++      expect(action).not.toHaveBeenCalled();
++    };
++
++    /**
++     * @target AvalancheObservationSafety.withObservation: rejects missing observation
++     * @dependencies Real settled scanner, SQLite state and block repositories;
++     * mocked connector methods and action callback
++     * @scenario Alter only the named block/provenance field, then try
++     * eligibility and action-time checks.
++     * @expected Reject the incompatible completed block or provenance and never
++     * call the action.
++     */
++    it('rejects missing observation', async () =>
++      await runLiteralControl3_0(literalControlCases3[0]));
++
++    /**
++     * @target AvalancheObservationSafety.withObservation: rejects wrong source chain
++     * @dependencies Real settled scanner, SQLite state and block repositories;
++     * mocked connector methods and action callback
++     * @scenario Alter only the named block/provenance field, then try
++     * eligibility and action-time checks.
++     * @expected Reject the incompatible completed block or provenance and never
++     * call the action.
++     */
++    it('rejects wrong source chain', async () =>
++      await runLiteralControl3_0(literalControlCases3[1]));
++
++    /**
++     * @target AvalancheObservationSafety.withObservation: rejects wrong extractor
++     * @dependencies Real settled scanner, SQLite state and block repositories;
++     * mocked connector methods and action callback
++     * @scenario Alter only the named block/provenance field, then try
++     * eligibility and action-time checks.
++     * @expected Reject the incompatible completed block or provenance and never
++     * call the action.
++     */
++    it('rejects wrong extractor', async () =>
++      await runLiteralControl3_0(literalControlCases3[2]));
++
++    /**
++     * @target AvalancheObservationSafety.withObservation: rejects source block mismatch
++     * @dependencies Real settled scanner, SQLite state and block repositories;
++     * mocked connector methods and action callback
++     * @scenario Alter only the named block/provenance field, then try
++     * eligibility and action-time checks.
++     * @expected Reject the incompatible completed block or provenance and never
++     * call the action.
++     */
++    it('rejects source block mismatch', async () =>
++      await runLiteralControl3_0(literalControlCases3[3]));
++
++    /**
++     * @target AvalancheObservationSafety.withObservation: leaves other chains
++     * unchanged without retrieving an Avalanche scanner
++     * @dependencies Real settled scanner, SQLite state and block repositories;
++     * mocked connector methods and action callback
++     * @scenario Select Ethereum and inject a scanner getter that throws if
++     * used; perform eligibility and action checks.
++     * @expected Return executed without retrieving an Avalanche scanner.
++     */
++    it('leaves other chains unchanged without retrieving an Avalanche scanner', async () => {
++      const getScanner = vi.fn(() => {
++        throw new Error('must not be accessed');
++      });
++      await new AvalancheObservationSafety(
++        () => 'ethereum',
++        getScanner
++      ).assertObservation();
++      expect(
++        await new AvalancheObservationSafety(
++          () => 'ethereum',
++          getScanner
++        ).withObservation(undefined, () => 'executed')
++      ).toEqual('executed');
++      expect(getScanner).not.toHaveBeenCalled();
++    });
++
++    const literalControlCases4 = ['avalanche', 'AVALANCHE'];
++    /** Runs the original control against one unchanged case-table row. */
++    const runLiteralControl4_0 = async (
++      fromChain: typeof literalControlCases4[number]
++    ) => {
++      const otherChain = new AvalancheObservationSafety(
++        () => 'ethereum',
++        () => scanner
++      );
++      const stored = { ...observation(), fromChain };
++      const action = vi.fn();
++      let assertError: unknown;
++      let actionError: unknown;
++      try {
++        await otherChain.assertObservation(stored);
++      } catch (error) {
++        assertError = error;
++      }
++      try {
++        await otherChain.withObservation(stored, action);
++      } catch (error) {
++        actionError = error;
++      }
++      expect(assertError).toBeInstanceOf(Error);
++      expect(actionError).toBeInstanceOf(Error);
++      expect(action).not.toHaveBeenCalled();
++    };
++
++    /**
++     * @target AvalancheObservationSafety.withObservation: rejects stored avalanche observations after switching configured chain
++     * @dependencies Real settled scanner, SQLite state and block repositories;
++     * mocked connector methods and action callback
++     * @scenario Select another chain while passing the tested spelling of a
++     * stored Avalanche observation.
++     * @expected Both checks reject and never execute the action.
++     */
++    it('rejects stored avalanche observations after switching configured chain', async () =>
++      await runLiteralControl4_0(literalControlCases4[0]));
++
++    /**
++     * @target AvalancheObservationSafety.withObservation: rejects stored AVALANCHE observations after switching configured chain
++     * @dependencies Real settled scanner, SQLite state and block repositories;
++     * mocked connector methods and action callback
++     * @scenario Select another chain while passing the tested spelling of a
++     * stored Avalanche observation.
++     * @expected Both checks reject and never execute the action.
++     */
++    it('rejects stored AVALANCHE observations after switching configured chain', async () =>
++      await runLiteralControl4_0(literalControlCases4[1]));
++  });
++});
+diff --git a/tests/utils/avalancheScanner.spec.ts b/tests/utils/avalancheScanner.spec.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..6ff6890a008e75ce4b2c560024b4e18b65b7331c
+--- /dev/null
++++ b/tests/utils/avalancheScanner.spec.ts
+@@ -0,0 +1,486 @@
++import { mockRpc, mockJoeRpc } from './mocked/avalancheScanner.mock';
++import '@rosen-bridge/extended-typeorm/bootstrap';
++import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
++import { createHash, randomUUID } from 'node:crypto';
++import { existsSync, readFileSync, unlinkSync } from 'node:fs';
++import { tmpdir } from 'node:os';
++import { join } from 'node:path';
++import { fileURLToPath } from 'node:url';
++
++import { DataSource } from '@rosen-bridge/extended-typeorm';
++import {
++  BlockEntity,
++  ExtractorStatusEntity,
++  migrations as scannerMigrations,
++} from '@rosen-bridge/abstract-scanner';
++import {
++  ObservationEntity,
++  migrations as observationMigrations,
++} from '@rosen-bridge/abstract-observation-extractor';
++import {
++  AvalancheRpcNetwork,
++  AvalancheRpcScanner,
++  AvalancheSafetyState,
++  AvalancheSafetyState1790769600000,
++} from '@rosen-bridge/evm-scanner';
++import { TokenMap } from '@rosen-bridge/tokens';
++import { AddressManager } from '@rosen-bridge/address-manager';
++import { chainValidators, chainDecoders } from '@rosen-bridge/address-codec';
++import type { AvalancheConfig } from '../../src/config/config';
++import { createAvalancheScanner } from '../../src/utils/avalancheScanner';
++import { TokensConfig } from '../../src/config/tokensConfig';
++import { RosenConfig } from '../../src/config/rosenConfig';
++
++import {
++  lockAddress,
++  hash,
++  targetToken,
++  rawData,
++  joe,
++  joeCounterpart,
++  joeMetadata,
++  mergedContractsSha256,
++  mergedTokensSha256,
++} from './avalancheScannerTestData';
++/** Create a token-map fixture member with the requested ID and precision. */
++const token = (tokenId: string, decimals: number) => ({
++  tokenId,
++  decimals,
++  name: 'synthetic',
++  type: 'test',
++  residency: 'test',
++  extra: {},
++});
++
++describe('avalancheScanner', () => {
++  describe('createAvalancheScanner', () => {
++    let database: DataSource;
++    let network: AvalancheRpcNetwork;
++    let tokens: TokenMap;
++    const config: AvalancheConfig = {
++      type: 'rpc',
++      chainId: 43113,
++      sourceId: 'fixture-fuji',
++      initialHeight: 9,
++      interval: 7,
++      blockTime: 1.25,
++      rpc: { url: 'http://127.0.0.1:1', timeout: 4, authToken: 'fixture-auth' },
++    };
++    const dependencies = () => ({
++      dataSource: database,
++      tokens,
++      rosen: { lockAddress },
++      storeRawData: true,
++      blockCleanupConfig: {
++        blockCleanupThresholdDuration: 86400,
++        blockTrimCountInRound: 0,
++      },
++      createNetwork: () => network,
++    });
++
++    beforeEach(async () => {
++      AddressManager.init(chainValidators, chainDecoders);
++      database = await new DataSource({
++        type: 'sqlite',
++        database: ':memory:',
++        synchronize: false,
++        entities: [
++          BlockEntity,
++          ExtractorStatusEntity,
++          ObservationEntity,
++          AvalancheSafetyState,
++        ],
++        migrations: [
++          ...scannerMigrations.sqlite,
++          ...observationMigrations.sqlite,
++          AvalancheSafetyState1790769600000,
++        ],
++      }).initialize();
++      await database.runMigrations();
++      tokens = new TokenMap();
++      await tokens.updateConfigByJson([
++        { avalanche: token('avax', 18), ergo: token(targetToken, 9) },
++      ]);
++      network = new AvalancheRpcNetwork(config.rpc.url, 43113n);
++    });
++
++    afterEach(async () => {
++      vi.restoreAllMocks();
++      network['provider'].destroy();
++      if (database.isInitialized) await database.destroy();
++    });
++
++    const literalControlCases1 = [43113, 43114] as const;
++    /** Runs the original control against one unchanged case-table row. */
++    const runLiteralControl1_0 = async (
++      chainId: typeof literalControlCases1[number]
++    ) => {
++      network['provider'].destroy();
++      network = new AvalancheRpcNetwork(config.rpc.url, BigInt(chainId));
++      const { tx, receipts } = mockRpc(network);
++      const createNetwork = vi.fn().mockReturnValue(network);
++      const scanner = await createAvalancheScanner(
++        { ...config, chainId },
++        { ...dependencies(), createNetwork }
++      );
++      expect(createNetwork).toHaveBeenCalledWith(
++        config.rpc.url,
++        BigInt(chainId),
++        4000,
++        'fixture-auth'
++      );
++      expect(scanner).toBeInstanceOf(AvalancheRpcScanner);
++      await scanner.update();
++      const rows = await database.getRepository(ObservationEntity).find();
++      expect(rows).toHaveLength(1);
++      expect(rows[0]).toMatchObject({
++        fromChain: 'avalanche',
++        toChain: 'ergo',
++        sourceChainTokenId: 'avax',
++        targetChainTokenId: targetToken,
++        amount: '92850989',
++        sourceTxId: tx.hash,
++        sourceBlockId: hash,
++        height: 10,
++        extractor: 'avalanche-rpc-extractor',
++        rawData,
++      });
++      expect(receipts).toHaveBeenCalledTimes(1);
++      expect(
++        await database
++          .getRepository(AvalancheSafetyState)
++          .findOneByOrFail({ scanner: 'avalanche' })
++      ).toMatchObject({
++        sourceId: config.sourceId,
++        chainId: String(chainId),
++        initialHeight: 9,
++        finalizedHeight: 10,
++        holdReason: null,
++      });
++      await scanner.assertObservation(10, hash);
++    };
++
++    /**
++     * @target createAvalancheScanner: joins configured chain 43113, settled RPC, extractor and persisted observation
++     * @dependencies Real TokenMap, scanner, extractor and SQLite repositories;
++     * mocked ethers provider methods and injectable connector factory
++     * @scenario Construct the tested chain connector, inject only ethers
++     * response APIs, build the real factory, and ingest one synthetic lock
++     * transaction.
++     * @expected Persist one exact Avalanche observation and qualified safety
++     * row; use the configured URL/ID/timeout/auth and one receipt read.
++     */
++    it('joins configured chain 43113, settled RPC, extractor and persisted observation', async () =>
++      await runLiteralControl1_0(literalControlCases1[0]));
++
++    /**
++     * @target createAvalancheScanner: joins configured chain 43114, settled RPC, extractor and persisted observation
++     * @dependencies Real TokenMap, scanner, extractor and SQLite repositories;
++     * mocked ethers provider methods and injectable connector factory
++     * @scenario Construct the tested chain connector, inject only ethers
++     * response APIs, build the real factory, and ingest one synthetic lock
++     * transaction.
++     * @expected Persist one exact Avalanche observation and qualified safety
++     * row; use the configured URL/ID/timeout/auth and one receipt read.
++     */
++    it('joins configured chain 43114, settled RPC, extractor and persisted observation', async () =>
++      await runLiteralControl1_0(literalControlCases1[1]));
++
++    /**
++     * @target createAvalancheScanner: uses the Rosen lock address and rejects
++     * transactions to another lock
++     * @dependencies Real TokenMap, scanner, extractor and SQLite repositories;
++     * mocked ethers provider methods and injectable connector factory
++     * @scenario Supply a different Rosen lock address, ingest the synthetic
++     * transaction, and count observations.
++     * @expected Persist zero observations for the unmatched lock.
++     */
++    it('uses the Rosen lock address and rejects transactions to another lock', async () => {
++      mockRpc(network);
++      const scanner = await createAvalancheScanner(config, {
++        ...dependencies(),
++        rosen: { lockAddress: '0x' + '33'.repeat(20) },
++      });
++      await scanner.update();
++      expect(await database.getRepository(ObservationEntity).count()).toEqual(
++        0
++      );
++    });
++
++    /**
++     * @target createAvalancheScanner: honors raw-data storage policy
++     * @dependencies Real TokenMap, scanner, extractor and SQLite repositories;
++     * mocked ethers provider methods and injectable connector factory
++     * @scenario Disable raw-data storage, ingest the synthetic valid lock
++     * transaction, and inspect the stored row.
++     * @expected Persist one observation whose rawData states extraction is off.
++     */
++    it('honors raw-data storage policy', async () => {
++      mockRpc(network);
++      const scanner = await createAvalancheScanner(config, {
++        ...dependencies(),
++        storeRawData: false,
++      });
++      await scanner.update();
++      const rows = await database.getRepository(ObservationEntity).find();
++      expect(rows).toHaveLength(1);
++      expect(rows[0].rawData).toEqual('raw-data extraction is off');
++    });
++
++    /**
++     * @target createAvalancheScanner: never accepts a reverted receipt after
++     * the provider changes its answer
++     * @dependencies Real TokenMap, scanner, extractor and SQLite repositories;
++     * mocked ethers provider methods and injectable connector factory
++     * @scenario Return a reverted receipt once and make every later receipt
++     * read fail; run the real scanner/extractor.
++     * @expected Read the admitted receipt exactly once and store zero
++     * observations.
++     */
++    it('never accepts a reverted receipt after the provider changes its answer', async () => {
++      const { receipts, receipt } = mockRpc(network, 0);
++      receipts
++        .mockResolvedValueOnce(receipt)
++        .mockRejectedValue(new Error('Receipt must not be read again'));
++      const scanner = await createAvalancheScanner(config, dependencies());
++      await scanner.update();
++      expect(receipts).toHaveBeenCalledTimes(1);
++      expect(await database.getRepository(ObservationEntity).count()).toEqual(
++        0
++      );
++    });
++
++    /**
++     * @target createAvalancheScanner: waits for extractor registration before
++     * resolving the factory
++     * @dependencies Real TokenMap, scanner, extractor and SQLite repositories;
++     * mocked ethers provider methods and injectable connector factory
++     * @scenario Block registration on a deferred promise and start the factory;
++     * release registration and await completion.
++     * @expected The factory remains pending until registration completes.
++     */
++    it('waits for extractor registration before resolving the factory', async () => {
++      let release!: () => void;
++      const barrier = new Promise<void>((resolve) => {
++        release = resolve;
++      });
++      let entered!: () => void;
++      const registering = new Promise<void>((resolve) => {
++        entered = resolve;
++      });
++      let resolved = false;
++      const result = createAvalancheScanner(config, {
++        ...dependencies(),
++        createScanner: (options) => {
++          const scanner = new AvalancheRpcScanner(options);
++          const register = scanner.registerExtractor;
++          scanner.registerExtractor = async (extractor) => {
++            entered();
++            await barrier;
++            await register(extractor);
++          };
++          return scanner;
++        },
++      }).then((scanner) => {
++        resolved = true;
++        return scanner;
++      });
++      await registering;
++      await Promise.resolve();
++      expect(resolved).toEqual(false);
++      release();
++      await result;
++      expect(resolved).toEqual(true);
++    });
++
++    /**
++     * @target createAvalancheScanner: rejects a connector for a different
++     * configured chain before registration
++     * @dependencies Real TokenMap, scanner, extractor and SQLite repositories;
++     * mocked ethers provider methods and injectable connector factory
++     * @scenario Configure mainnet while injecting a Fuji connector and attempt
++     * factory construction.
++     * @expected Reject the chain mismatch before any safety row exists.
++     */
++    it('rejects a connector for a different configured chain before registration', async () => {
++      let error: unknown;
++      try {
++        await createAvalancheScanner(
++          { ...config, chainId: 43114 },
++          dependencies()
++        );
++      } catch (caught) {
++        error = caught;
++      }
++      expect(String(error)).toContain('does not match configured chain');
++      expect(
++        await database.getRepository(AvalancheSafetyState).count()
++      ).toEqual(0);
++    });
++
++    describe('merged mainnet JOE configuration', () => {
++      let databasePath: string;
++      let rosen: RosenConfig;
++      const mainnet = {
++        ...config,
++        chainId: 43114 as const,
++        sourceId: 'fixture-mainnet-merged',
++      };
++
++      beforeEach(async () => {
++        databasePath = '';
++        const contractsPath = fileURLToPath(
++          new URL('./data/avalanche-merged-contracts.json', import.meta.url)
++        );
++        const tokensPath = fileURLToPath(
++          new URL('./data/avalanche-merged-tokens.json', import.meta.url)
++        );
++        expect(
++          createHash('sha256').update(readFileSync(contractsPath)).digest('hex')
++        ).toEqual(mergedContractsSha256);
++        expect(
++          createHash('sha256').update(readFileSync(tokensPath)).digest('hex')
++        ).toEqual(mergedTokensSha256);
++        const previous = Reflect.get(TokensConfig, 'instance');
++        Reflect.deleteProperty(TokensConfig, 'instance');
++        try {
++          await TokensConfig.init(tokensPath);
++          tokens = TokensConfig.getInstance().getTokenMap();
++        } finally {
++          Reflect.set(TokensConfig, 'instance', previous);
++        }
++        rosen = new RosenConfig('avalanche', contractsPath);
++        await database.destroy();
++        databasePath = join(
++          tmpdir(),
++          `rosen-avalanche-joe-${randomUUID()}.sqlite`
++        );
++        database = await new DataSource({
++          type: 'sqlite',
++          database: databasePath,
++          synchronize: false,
++          entities: [
++            BlockEntity,
++            ExtractorStatusEntity,
++            ObservationEntity,
++            AvalancheSafetyState,
++          ],
++          migrations: [
++            ...scannerMigrations.sqlite,
++            ...observationMigrations.sqlite,
++            AvalancheSafetyState1790769600000,
++          ],
++        }).initialize();
++        await database.runMigrations();
++        network['provider'].destroy();
++        network = new AvalancheRpcNetwork(mainnet.rpc.url, 43114n);
++      });
++
++      afterEach(async () => {
++        if (database.isInitialized) await database.destroy();
++        if (databasePath && existsSync(databasePath)) unlinkSync(databasePath);
++      });
++
++      /**
++       * @target createAvalancheScanner persists mapped JOE and qualified safety across database and scanner reopen
++       * @dependencies Actual TokensConfig/RosenConfig readers, scanner/extractor and migrated file SQLite; mocked ethers responses
++       * @scenario Load both complete generated files, ingest a JOE transfer and reopen the database with a new scanner
++       * @expected Keep exact source/counterpart IDs, shared units, observation and qualified safety across reopen
++       */
++      it('persists mapped JOE and qualified safety across database and scanner reopen', async () => {
++        const { tx, receipts } = mockJoeRpc(network, rosen.lockAddress);
++        const scanner = await createAvalancheScanner(mainnet, {
++          ...dependencies(),
++          rosen,
++        });
++        await scanner.update();
++        const observations = await database
++          .getRepository(ObservationEntity)
++          .find();
++        expect(observations).toHaveLength(1);
++        expect(observations[0]).toMatchObject({
++          fromChain: 'avalanche',
++          toChain: 'ergo',
++          sourceChainTokenId: joe,
++          targetChainTokenId: joeCounterpart,
++          amount: '100',
++          bridgeFee: '2',
++          networkFee: '3',
++          sourceTxId: tx.hash,
++          sourceBlockId: hash,
++          height: 10,
++          rawData: joeMetadata,
++          extractor: 'avalanche-rpc-extractor',
++        });
++        const safety = await database
++          .getRepository(AvalancheSafetyState)
++          .findOneByOrFail({ scanner: 'avalanche' });
++        expect(safety).toMatchObject({
++          sourceId: mainnet.sourceId,
++          chainId: '43114',
++          finalizedHeight: 10,
++          holdReason: null,
++        });
++        await scanner.assertObservation(10, hash);
++        const options = database.options;
++        await database.destroy();
++        database = await new DataSource(options).initialize();
++        const reopened = await createAvalancheScanner(mainnet, {
++          ...dependencies(),
++          rosen,
++        });
++        await reopened.assertObservation(10, hash);
++        await reopened.update();
++        expect(await database.getRepository(ObservationEntity).find()).toEqual(
++          observations
++        );
++        expect(
++          await database
++            .getRepository(AvalancheSafetyState)
++            .findOneByOrFail({ scanner: 'avalanche' })
++        ).toEqual(safety);
++        expect(receipts).toHaveBeenCalledTimes(1);
++      });
++
++      /**
++       * @target createAvalancheScanner refuses JOE without a Transfer receipt
++       * @dependencies Actual configured map/contracts, scanner/extractor and file SQLite; mocked settled receipt
++       * @scenario Remove only the Transfer log from an otherwise valid JOE receipt
++       * @expected Persist no observation and retain the configured qualified mainnet frontier
++       */
++      it('refuses JOE without a Transfer receipt', async () => {
++        const { receipt } = mockJoeRpc(network, rosen.lockAddress);
++        receipt.logs = [];
++        const scanner = await createAvalancheScanner(mainnet, {
++          ...dependencies(),
++          rosen,
++        });
++        await scanner.update();
++        expect(await database.getRepository(ObservationEntity).count()).toEqual(
++          0
++        );
++        await scanner.assertObservation(10, hash);
++      });
++
++      /**
++       * @target createAvalancheScanner refuses JOE with a conflicting Transfer amount
++       * @dependencies Actual configured map/contracts, scanner/extractor and file SQLite; mocked settled receipt
++       * @scenario Change only the Transfer amount word while keeping signed calldata and receipt identity
++       * @expected Persist no observation and retain the configured qualified mainnet frontier
++       */
++      it('refuses JOE with a conflicting Transfer amount', async () => {
++        const { log } = mockJoeRpc(network, rosen.lockAddress);
++        log.data = '0x' + '01'.padStart(64, '0');
++        const scanner = await createAvalancheScanner(mainnet, {
++          ...dependencies(),
++          rosen,
++        });
++        await scanner.update();
++        expect(await database.getRepository(ObservationEntity).count()).toEqual(
++          0
++        );
++        await scanner.assertObservation(10, hash);
++      });
++    });
++  });
++});
+diff --git a/tests/utils/avalancheScannerTestData.ts b/tests/utils/avalancheScannerTestData.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..2dcd199769df81a7ebeacc4c4b2e5e5fd4e4a6f6
+--- /dev/null
++++ b/tests/utils/avalancheScannerTestData.ts
+@@ -0,0 +1,22 @@
++/** Synthetic C-Chain lock address. */
++export const lockAddress = '0x' + '11'.repeat(20);
++/** Canonical synthetic settled block hash. */
++export const hash = '0x' + 'aa'.repeat(32);
++/** Synthetic wrapped Ergo token ID. */
++export const targetToken = '44'.repeat(32);
++/** Existing synthetic native-lock payload for the public decoder fixture. */
++export const rawData =
++  '00000000007554fc820000000000962f582103f999da8e6e42660e4464d17d29e63bc006734a6710a24eb489b466323d3a9339';
++
++/** Frozen mainnet JOE producer metadata; the generated nine-decimal map yields 100 shared units. */
++export const joeMetadata =
++  '00000000000000000200000000000000032103f999da8e6e42660e4464d17d29e63bc006734a6710a24eb489b466323d3a9339';
++export const joe = '0x6e84a6216ea6dacc71ee8e6b0a5b7322eebc0fdd';
++export const joeCounterpart = '0c'.repeat(32);
++export const joeRawAmount = 100000000000n;
++
++/** Complete offline merger output pins; existing chains/assets remain in the fixture. */
++export const mergedContractsSha256 =
++  '911236500cc3bd52a85895c1fc9ae3d04e70f52b746915933f0f19942315d280';
++export const mergedTokensSha256 =
++  '6c2106bfb0aef7b9f5c6ce5536338a59ece5b762b075d4c5b872cd9067ad7cfb';
+diff --git a/tests/utils/data/avalanche-merged-contracts.json b/tests/utils/data/avalanche-merged-contracts.json
+new file mode 100644
+index 0000000000000000000000000000000000000000..053ca5b83dddec30a59fe7644e9e17703bd1acb1
+--- /dev/null
++++ b/tests/utils/data/avalanche-merged-contracts.json
+@@ -0,0 +1,43 @@
++{
++  "version" : "existing-contract-release",
++  "tokens" : {
++    "RWTRepoNFT" : "0101010101010101010101010101010101010101010101010101010101010101",
++    "GuardNFT" : "0202020202020202020202020202020202020202020202020202020202020202",
++    "RSN" : "0303030303030303030303030303030303030303030303030303030303030303",
++    "MinFeeNFT" : "0404040404040404040404040404040404040404040404040404040404040404",
++    "EmissionNFT" : "0505050505050505050505050505050505050505050505050505050505050505",
++    "ERSN" : "0606060606060606060606060606060606060606060606060606060606060606"
++  },
++  "ergo" : {
++    "addresses" : {
++      "lock" : "existing-ergo-lock"
++    }
++  },
++  "ethereum" : {
++    "addresses" : {
++      "lock" : "existing-ethereum-lock"
++    }
++  },
++  "avalanche" : {
++    "addresses" : {
++      "RWTRepo" : "NY4PEzZ7VfjohJPfSwMSA3PA8C1qCcU5MwZBUvfc9qpXbGCaPX3vm8YJFeHjcvJ14VmardeY8JwcNmPu6ahuL4sJFXPiqDyoutGyBbmKwR6aPs6YSNeZ97g3ns2dJ4WkCMrisMyxver1anfXdsxWtJ1SymGbG5bArKVCXmdaLxWjpw3Uy8pgqgkCVrsjXgZn7zrrHCAdmY8LcrVjACfspbfsao8M1LibC2bEDo9fx7etjCoP2T815PCcgJV6EM8xAmsjuM7z4MhNWND2Zqjtv9QEFAcx8BcP2sEu77gZG7PqDwktBW1XeRoyyHtpmLpBsRJ9cjFYEbKETzpyr6SwSDU2g4D3Jqe6hgqqLpATzChkz88824o8sTTJ6oF6CkH8XKij5q24WvW8YJvHXL4XAiq8xWtfMY52C5hVY8xo2Mis9rt6s3jy56Nx6LarKvYNqhup9xn5YVZK31MrhmN16AKJ5yqCwnyrF4QDAosRfbcZCQZArRdvUaY4Tr6NWRKGwnydxQGUcP6QPS3aU4do8GRs4nDT7E9WTxzN4tXPEDTjyrTPkTX8ReoFwo1fFimVdxrC6iidkCVQkPDNUqpTAvoVrapxcqJxGMjs7f8bVyvawfC4mEHyMQ7Z5Wu4rcKY6CsUumG9SbK9XRUz2jLxKC6pjd5FGm1ek1bsxcwyW58m9oX2JkSnWFuGGximNNwC3V1G4adeQpy91mfuoiNTJu7dY5ALyr1Jx2wNCiCynKiuqJQYZ34sAvwt3otTErm61DZqn2vzkpV4HtYMEGTwgfoyFitPTw9wSSF7JsHkSg9xZB8W9pgE2wVxBjCv6b5nQp48cN6v7MGmwmjkBmVjYpHeDCJUgMjjQjT5B2SMufRGL1k62C7dCrfSD81AdRAFGtSvsnKcVkVr4T13UKp5bAHMBg5F5w2jpXbbfqQWWZwY9BpCTNE1fdEfUFErzqxAM8MPGXzPuc1BgbTPVMDKZruYoCAmaZE1ggJ5UJ4Ma3yT17on3doyvu3gbQ1fSjVRv7Q9TrN1us6ThAhgTNtE3j8bLiiWXFNzafnKpwfzAd8EJEgVHQseDmAYPyZEVoY17xpWya61zFf2ckK9CM13C6PJBj4Vgqg2YkdVhi4ocW8xbn8RbshxnqufN3MYLGp52PsvAegdrsaKNMha2MfDZQxvjTQJ7u9A5f7rDxMccDidXtEJdEsGbvR5PT5DcpjRzR76UweLQhSH8yzgBgyHq8y6hPA3si",
++      "WatcherPermit" : "2Eit2LFRqu2Mo33z3pYTJRHNCMWh1NevG3uiPR5wULq9th92wdcxJ5rGipLeUGwQo9tFKPWggfwhQmSfArX8yqrPUPuFeyYYoVaPjgK6sxSVUe7vQXCriNzy5bUwux4Btj7MHExDFZsxGkEuAi4BB1ukcx6gCf9s1iZjqPwNmx2GdsQ1H5GWjLV3e1BgD9N3NRep19d1BsrAoRKAdR8a68xccWB4PnZUNe3yFk7spXubhh7RQADcQfnovWFyhDyWWzb4rz18V6L1HifMxWtj2ADoXB9s56FhLB1FJvB5ZVAN1YMy8xxnb8Me8Vtymy1Ba3UmcPozU3G66RcLQgSMjT1yGL1MN7X5A4C1KATBFspGbiSUky1C6wxTzas1NC1sA76fUV9pGzzhvwjAVRiXJg8hZM9Cq5KcD2p4apBvrqXCq9dm3m8eK86w8EHdWGvGAY68XZyczgheDtQv53kJyiEnz5YkUMLMY7T1aPQoyptvxb7PHaHDtWEWyfSW53yCy9pLYV9VmipxwZHbeBsnDWNXtxEjXnp5XKMaKAPVkH9zPydR8MPVQ9rhxvgS2jnx8J7LBjei9exLSapeUT6dKify5etL3C2rd8g6Yu9oELzzn982WPjih4A5m3CYApUzZJr8xV5r1EXZ1T4cWoiheFyX26EB1RM3Jkk2w2rTDzfPK73EXi4tdqPiVyW28WnBuE9AM6",
++      "Fraud" : "2U1Bm1VfBKJQzNr6Zu6yAh2ZUttB2oaaaxQeBENSPaTEF3t26NcexepJUtKL9vuA98QHuFXXQ65n4QiQsiHDJ2WqYZzuxkzU6QK2ZekdS5tCwS7gvXwextovNdGJoHU38wVmkuj4BPZ1uTmE9Lytr79FRbVSTuQtDHBevnL5c3VungAcncDbLZWnd6JJfaR31PiASt4tog2KSsEY1zxWVxt4HjSMXJo6UHU3cT6VgTD58FnZxnwoPAa",
++      "lock" : "0x1111111111111111111111111111111111111111",
++      "cold" : "0x2222222222222222222222222222222222222222",
++      "guardSign" : "3FBpC6dt4xNpexUbLSZDR4YbuMWwLyKDUjbnHPCQf6VpUfqqLGzQ6P6uKkfoF1Eudh9YSU9uTEwYYJ3J8hDERT2mhM6wvCciz4HvZPLMUtdjeg5mCtJMyi6Wy2wTeQQ6UxyuwKCNGxU669QN1HNz7MF5JMg1xy84cEFVcTCcU2rKqiYpHNotatUq6uP6K3fAraF",
++      "Commitment" : "5ivrmzxYa4V1dEssGV9a8Twzt9EXTp8a3jFG34m2EZvzJNhUa4vFSEgfD8XFC4h9HL3aHxbSC5V8d4XXXD9rc99WoDBXrRLDQWGMrCCDxs9cPFwA43A8A9nM4jDJxVQ5ARpKpnzzP7gHV1bZArHFuUKVvX6VHv1PLrU1Z6wPdqmq7BbMaUYJt2CQ9NUhJw3rYp2G8pDKzVFwB5SjhYM3svFJXe9Lzd8NPpmgEACnbd8K2EnLsCT1PqztAmP99VwQRirFaw9oD1Q2mr8TP8Du4hAuW8RXbyBtCbbDhaw73YyUthYaKF5vA5HrgncHYZC6kiq1ES5BdDNQvHGogabhPFBchGRCrrXY4V6Us5mHqGZBrHzT2c438SXv6rW7nVgFdDCeZe2CCMQXdyHfCsiNSqDK3JoPk2Kt3xP4D6WGkLhmpC8ewYBk7KAELt5iJwMC68A9t4bVuMVaDrA6BDeEJkMW2nZW5do1nHz4uJuoT3iMmA5JPGSuHHMxe82SrN5xEFtZLmWQ81LVM2E7VkmSgUJkp1r2EgFLC2v5s16Uq1ynqg5dsq3ZhyTKxGXcnppnSFKdCwY8qJYxbAr7gTfGBzk66V4M1GeZeWQSBjBhSn3njNpuFMt64ok2TTeChiYo59qqBg7ShraBoKZhHjh8rtK6FkV81aFTvRK2u6DAY3vG3UetKndyZCFJchTSeHG3dpiqdkA3nPnULmRwUSEpkqGY2Xwo6c2iqRsQnddMfSU3nnr3kPoXApjexqUenedtbmQvqwEunArd8eJW6LA2cHFAPQtrwx8Qp61mza3t2hfHF5WnqBjB7T4S8MU58dBy7Siie2TvRxWW2ao9LvLxBQofweMt9PjkrEUAgaPWPTqYCxXYZ2SKdRfbhcJgx1ANVoeqG4oa3RJyPHKk52EqT5cLQw1V45DdS47SskBXcDe8ipiZGshntuDFZMWzJCFVnqB5RkQGJHo46zhYi1B2xDwc7K6rH9fK3uLbNQoUKSysV269H4nfAtUbuQLwXbvWFVrHRnwcf5qJhMpZjBcY9MoYF6AtLwFot5Py2SFM1kkVF4Kqadqgy4BqJpiYQrzkEoSiAzFJBxqHoorUvS4A1bkVTuSN6TMkohHE7jGv3d9rFougMqhdZP2nSB7vVTNuddCcudjSairx6NM6u81vHsEUfULvCYjkGWCRLgYeFxzHZy9aUUE11ffojtJXytjX4eDxi5efLREE7UfxBoziaveAhxPHQxvZ7vNmJ2fM4BEX4deewTCHFHQXUrgadMVmsPhf4DTA89M4cGACgryFd",
++      "WatcherTriggerEvent" : "ZsPNMsGz8D8y11MAneZTVjJndCjgTUq8N3ZWgqKuU5ajroVuTxThHsTMC1fm3PCKvpdFNiqyZuHwKxzgpcuP35vYvMXXQDVtTbtcWVLhz8thp2hYCNPScvhbZ8o3FL6s9cWvoS2uMUYo1TXMeSDPQM2HD4gWZxnjRVoA9UYZWKsA8gpev35dT3fJyz4bjyzsAWZFUZ9JFDxqr8vxYnMmJbLPhftCsviZ7ZcRpSfpFrQRAi7xjirNwN3Cf5csySzPoSLghcwNKWuZf2TZ2aRRATVEjQvS6LFt3Mu9Fz13TuGz9YgfnSKKzw4crEofbFMoyLt9KJfgabxVU6Vhs6nvSW6vPZVwzxaocm4H4fwjtyHNdcGbAnh8KHUBVWvDTgftge3mYqU39MR9YnXa8TsmiRo8rS8VyDDvP44QfGNZHVNZShxRjrqR39YEDf31AE8FwewVQuCb4C4eCPuAL89eAiyogFaybHoRPZK6iSAQKwmzQ23tsVkYzrTjJuNvo8TSs7acHx",
++      "WatcherCollateral" : "SiDFfCzE1MKdUevpzJZXzsMmBfivPgLhdkZGib2hRAAZfLVXfpcMLrYkd6NtbfSV9XNFrP2ivTbcNAUpLDEJ6DFarL2foAfaEs6vcRcJh3A7jcTFfaijn7P5bBTFkY5WEWTpWpSYvAkcffEHsJeoqKBacZMF5uC3U7yRnBfKSSmYXhYLUrp7kDdcEUxnxxqkKpDBLhbfz6BHxk3z6g4tD29KQe5yqUpA6hRaQcdto49gbbtPqq8zsRKDneBm2GKc7p41zenP318LMEYpvMYLcrmeP8JbTEdykNzzTaDuE3qTYdtkVm6c7WnWX1DJsvk8bR7emqXe3bAaA199YsGijupHFd4QdFLbS5rtzGoqWBLwtzj7L7CpTKUdXwKyMMjXZiiEG5AqXKgNwT9MjT6Vz7sieoq6bPqV769fA9UCVKDiWjkkw72x6yTXXvFBeNXxTEGy35J3qzDKwHkgDGnV4wBEUsjq9cwcVBgsjXFxhGnvG3JK9ekJ2rdzn4RK75QkG2RUgRnLQS3LfkyRFo2ajJSkHxS4hGwvruxmEqdUhQcjK7nxbFmM76Q85jie8qorfYhM8b7gD9B7EbKqDVz1xwTF",
++      "RepoConfig" : "prufxZid3SJMyUVh9KsW47thQWP4ecG4k5GLgozNXrfmvKb7aebQoyqUt6EgYcL9JFspkudXF9NkbGJZfeFoTftwMYu6hgsK1AT7XiNcBbmJt56vTZJQm8iySiWEDX68VYwYVQV2t4XQpDagfCEESqjEByXUVRexS6QNZ2owYhbWjXk2EEviuc6DFPjnACiuXHhvDjRQJUjMWq4r39Qu",
++      "Emission" : "USNVj4qoyg7U7C6EpdFEUdpHH9dDeDQHvhQcuVjzmqHo3gzuqvgBQEdu1CwZe5ruNuPe656kYGPsGZ9CBQ6WuPmQoQr4fkMzAp83gBMLwZATXXL3RZogdFkNWSjZ4Gc7mLVx6LswwAjWUGGJPSJQTX6AYsVZrjf78qecPoALyk771DirX2rGx1481XG7UA77N4jXJF1qjNfo92hj8UZZRD8BfhLsagpdRnLQbdd8QTGpstNDwkiMBnnQs6DKEwBcT47ZWtuzag6zU6BNfXBnwEQUU1y5HK8BrqmDqaNUVAnerund1Ynys6KtyMrF56CweuzSLFYcH7BrG3tRUtKAz6LokR9u5RKjT9sTsbXVUrJdAedQkTrTYqUECrJRPwYcnRCd2qo3ei1cNZzrP2M9MNhqW6ArVZxNL4MQMJRJcLAwmrjsSF8DFfAGtJ2MiqiDbWUEZrnZhzFFQ7U8NrdWNEApm9PtGNb8eGyY9XuS"
++    },
++    "tokens" : {
++      "CleanupNFT" : "0808080808080808080808080808080808080808080808080808080808080808",
++      "RWTId" : "0707070707070707070707070707070707070707070707070707070707070707",
++      "AwcNFT" : "0909090909090909090909090909090909090909090909090909090909090909",
++      "RepoConfigNFT" : "0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a"
++    },
++    "cleanupConfirm" : 21600
++  }
++}
+diff --git a/tests/utils/data/avalanche-merged-tokens.json b/tests/utils/data/avalanche-merged-tokens.json
+new file mode 100644
+index 0000000000000000000000000000000000000000..7facc72e05606bb1101cd3f4e67b88fd51c53b4f
+--- /dev/null
++++ b/tests/utils/data/avalanche-merged-tokens.json
+@@ -0,0 +1,61 @@
++{
++  "version" : "existing-token-release",
++  "tokens" : [
++    {
++      "ergo" : {
++        "tokenId" : "7777777777777777777777777777777777777777777777777777777777777777",
++        "type" : "EIP-004",
++        "name" : "existing",
++        "decimals" : 9,
++        "residency" : "native",
++        "extra" : {
++          
++        }
++      }
++    },
++    {
++      "avalanche" : {
++        "tokenId" : "avax",
++        "name" : "AVAX",
++        "decimals" : 18,
++        "type" : "native",
++        "residency" : "native",
++        "extra" : {
++          
++        }
++      },
++      "ergo" : {
++        "tokenId" : "0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b",
++        "name" : "rsAVAX",
++        "decimals" : 9,
++        "type" : "EIP-004",
++        "residency" : "wrapped",
++        "extra" : {
++          
++        }
++      }
++    },
++    {
++      "avalanche" : {
++        "tokenId" : "0x6e84a6216ea6dacc71ee8e6b0a5b7322eebc0fdd",
++        "name" : "JOE",
++        "decimals" : 18,
++        "type" : "ERC-20",
++        "residency" : "native",
++        "extra" : {
++          
++        }
++      },
++      "ergo" : {
++        "tokenId" : "0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c",
++        "name" : "rsJOE",
++        "decimals" : 9,
++        "type" : "EIP-004",
++        "residency" : "wrapped",
++        "extra" : {
++          
++        }
++      }
++    }
++  ]
++}
+diff --git a/tests/utils/mocked/avalancheScanner.mock.ts b/tests/utils/mocked/avalancheScanner.mock.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..a234aff5dd3bbfaf905030492795b91cfdb8f73b
+--- /dev/null
++++ b/tests/utils/mocked/avalancheScanner.mock.ts
+@@ -0,0 +1,175 @@
++import { expect, vi } from 'vitest';
++import {
++  Block as EthersBlock,
++  Interface,
++  Transaction,
++  TransactionReceipt,
++  TransactionResponse,
++  TransactionResponseParams,
++} from 'ethers';
++import { AvalancheRpcNetwork } from '@rosen-bridge/evm-scanner';
++import {
++  lockAddress,
++  hash,
++  rawData,
++  joe,
++  joeRawAmount,
++  joeMetadata,
++} from '../avalancheScannerTestData';
++/** Mock only external ethers provider APIs with one canonical synthetic lock transaction. */
++export const mockRpc = (network: AvalancheRpcNetwork, status = 1) => {
++  const provider = network['provider'];
++  const signed = Transaction.from({
++    type: 2,
++    to: lockAddress,
++    data: '0x' + rawData,
++    nonce: 10,
++    gasLimit: 21000n,
++    maxPriorityFeePerGas: 500000000n,
++    maxFeePerGas: 48978500000n,
++    value: 92850988521632054n,
++    chainId: network.expectedChainId,
++    accessList: [],
++    signature: {
++      r: '0x' + '01'.repeat(32),
++      s: '0x' + '02'.repeat(32),
++      yParity: 0,
++    },
++  });
++  const tx = new TransactionResponse(
++    signed as unknown as TransactionResponseParams,
++    provider
++  );
++  Object.defineProperties(tx, {
++    blockHash: { value: hash },
++    blockNumber: { value: 10 },
++    index: { value: 0 },
++  });
++  const block = {
++    number: 10,
++    hash,
++    parentHash: '0x' + 'bb'.repeat(32),
++    timestamp: 1790769600,
++    length: 1,
++    transactions: [tx.hash],
++    prefetchedTransactions: [tx],
++  } as unknown as EthersBlock;
++  vi.spyOn(provider, 'send').mockImplementation(async (method, params) => {
++    expect(method).toEqual('eth_chainId');
++    expect(params).toEqual([]);
++    return '0x' + network.expectedChainId.toString(16);
++  });
++  vi.spyOn(provider, 'getBlock').mockImplementation(async (id) => {
++    if (id === 'finalized' || id === 10 || id === hash) return block;
++    throw new Error(`Unexpected block request: ${id}`);
++  });
++  const receipt = {
++    hash: tx.hash,
++    blockHash: hash,
++    blockNumber: 10,
++    index: 0,
++    status,
++    to: lockAddress,
++    from: tx.from,
++    contractAddress: null,
++    logsBloom: '0x' + '00'.repeat(256),
++    gasUsed: 21000n,
++    cumulativeGasUsed: 21000n,
++    gasPrice: 1n,
++    type: 2,
++    root: null,
++    logs: [],
++  } as unknown as TransactionReceipt;
++  const receipts = vi
++    .spyOn(provider, 'getTransactionReceipt')
++    .mockResolvedValue(receipt);
++  return { tx, receipts, receipt };
++};
++
++/** Mock external ethers APIs with a signed mainnet JOE lock and matching Transfer movement. */
++export const mockJoeRpc = (network: AvalancheRpcNetwork, custody: string) => {
++  const provider = network['provider'];
++  const abi = new Interface([
++    'function transfer(address,uint256) returns (bool)',
++    'event Transfer(address indexed from,address indexed to,uint256 value)',
++  ]);
++  const signed = Transaction.from({
++    type: 2,
++    to: joe,
++    data:
++      abi.encodeFunctionData('transfer', [custody, joeRawAmount]) + joeMetadata,
++    nonce: 10,
++    gasLimit: 50000n,
++    maxPriorityFeePerGas: 500000000n,
++    maxFeePerGas: 48978500000n,
++    value: 0n,
++    chainId: network.expectedChainId,
++    accessList: [],
++    signature: {
++      r: '0x' + '01'.repeat(32),
++      s: '0x' + '02'.repeat(32),
++      yParity: 0,
++    },
++  });
++  const tx = new TransactionResponse(
++    signed as unknown as TransactionResponseParams,
++    provider
++  );
++  Object.defineProperties(tx, {
++    blockHash: { value: hash },
++    blockNumber: { value: 10 },
++    index: { value: 0 },
++  });
++  const event = abi.getEvent('Transfer');
++  if (!event) throw new Error('Missing synthetic Transfer event');
++  const transfer = abi.encodeEventLog(event, [tx.from, custody, joeRawAmount]);
++  const log = {
++    ...transfer,
++    address: joe,
++    transactionHash: tx.hash,
++    blockHash: hash,
++    blockNumber: 10,
++    transactionIndex: 0,
++    index: 0,
++    removed: false,
++  };
++  const receipt = {
++    hash: tx.hash,
++    blockHash: hash,
++    blockNumber: 10,
++    index: 0,
++    status: 1,
++    to: joe,
++    from: tx.from,
++    contractAddress: null,
++    logsBloom: '0x' + '00'.repeat(256),
++    gasUsed: 50000n,
++    cumulativeGasUsed: 50000n,
++    gasPrice: 1n,
++    type: 2,
++    root: null,
++    logs: [log],
++  };
++  const block = {
++    number: 10,
++    hash,
++    parentHash: '0x' + 'bb'.repeat(32),
++    timestamp: 1790769600,
++    length: 1,
++    transactions: [tx.hash],
++    prefetchedTransactions: [tx],
++  } as unknown as EthersBlock;
++  vi.spyOn(provider, 'send').mockImplementation(async (method, params) => {
++    expect(method).toEqual('eth_chainId');
++    expect(params).toEqual([]);
++    return '0xa86a';
++  });
++  vi.spyOn(provider, 'getBlock').mockImplementation(async (id) => {
++    if (id === 'finalized' || id === 10 || id === hash) return block;
++    throw new Error(`Unexpected block request: ${id}`);
++  });
++  const receipts = vi
++    .spyOn(provider, 'getTransactionReceipt')
++    .mockResolvedValue(receipt as unknown as TransactionReceipt);
++  return { tx, receipt, receipts, log };
++};
+diff --git a/tsconfig.avalanche.json b/tsconfig.avalanche.json
+new file mode 100644
+index 0000000000000000000000000000000000000000..582098a7ff9fe95e78fe9e7353b3256597f7295e
+--- /dev/null
++++ b/tsconfig.avalanche.json
+@@ -0,0 +1,27 @@
++{
++  "extends": "./tsconfig.json",
++  "compilerOptions": {
++    "noEmit": true
++  },
++  "include": [
++    "src",
++    "config/dataSource.ts",
++    "vitest.avalanche.config.ts",
++    "tests/setup-tests.ts",
++    "tests/avalancheTestData.ts",
++    "tests/avalancheTestUtils.ts",
++    "tests/config/avalancheConfig.spec.ts",
++    "tests/database/avalancheSafetyState.spec.ts",
++    "tests/utils/avalancheSafety.spec.ts",
++    "tests/utils/avalancheScanner.spec.ts",
++    "tests/transactions/avalancheCommitmentCreation.spec.ts",
++    "tests/transactions/avalancheCommitmentReveal.spec.ts",
++    "tests/ergo/transaction/avalancheQueue.spec.ts",
++    "tests/utils/mocked/avalancheScanner.mock.ts",
++    "tests/utils/avalancheScannerTestData.ts",
++    "tests/jobs/initScanner.spec.ts",
++    "tests/jobs/testData.ts",
++    "tests/jobs/testUtils.ts",
++    "tests/jobs/mocked/scanning.mock.ts"
++  ]
++}
+diff --git a/vitest.avalanche.config.ts b/vitest.avalanche.config.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..5579cf5578654896882350439565cbb4371a2274
+--- /dev/null
++++ b/vitest.avalanche.config.ts
+@@ -0,0 +1,24 @@
++import { defineConfig } from 'vitest/config';
++
++export default defineConfig({
++  test: {
++    include: [
++      'tests/config/avalancheConfig.spec.ts',
++      'tests/database/avalancheSafetyState.spec.ts',
++      'tests/utils/avalancheSafety.spec.ts',
++      'tests/utils/avalancheScanner.spec.ts',
++      'tests/transactions/avalancheCommitmentCreation.spec.ts',
++      'tests/transactions/avalancheCommitmentReveal.spec.ts',
++      'tests/ergo/transaction/avalancheQueue.spec.ts',
++      'tests/jobs/initScanner.spec.ts',
++    ],
++    setupFiles: ['tests/setup-tests.ts'],
++    globals: false,
++    environment: 'node',
++    fileParallelism: false,
++    maxWorkers: 1,
++    pool: 'forks',
++    poolOptions: { forks: { execArgv: ['--import', 'tsx'] } },
++    env: { NODE_ENV: 'test', NODE_BACKEND: 'js' },
++  },
++});

@@ -1,0 +1,29 @@
+{
+  "verifiedAt": "2026-10-05T10:28:26.548Z",
+  "scope": "Exact calculated external producer versions; read-only official npm registry metadata",
+  "results": [
+    {
+      "name": "@rosen-bridge/evm-observation-extractor",
+      "version": "7.2.0",
+      "url": "https://registry.npmjs.org/@rosen-bridge%2Fevm-observation-extractor/7.2.0",
+      "status": 404,
+      "available": false
+    },
+    {
+      "name": "@rosen-bridge/evm-scanner",
+      "version": "2.1.0",
+      "url": "https://registry.npmjs.org/@rosen-bridge%2Fevm-scanner/2.1.0",
+      "status": 404,
+      "available": false
+    },
+    {
+      "name": "@rosen-chains/avalanche-rpc",
+      "version": "0.1.0",
+      "url": "https://registry.npmjs.org/@rosen-chains%2Favalanche-rpc/0.1.0",
+      "status": 404,
+      "available": false
+    }
+  ],
+  "installs": 0,
+  "publications": 0
+}

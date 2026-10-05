@@ -1,0 +1,35 @@
+{
+  "schema": "rosen-guard-focused-runtime-portable.v1",
+  "author": "A. Shannon",
+  "rcs": "7b9784dae9d8d5b66b80de7a6043d1ba36a3a4bf",
+  "sourceManifestSha256": "9645a68eef2393e7f3ecc8df3aeefd8bf624979789eb3208d3dfe64f38aede17",
+  "finalTree": "68496f6b1bad18617d16bc4a3d3032c78dd3fa33",
+  "outputs": [
+    {
+      "path": "README.md",
+      "bytes": 1719,
+      "sha256": "4c1bfaf452ff9878fc65f10ccabbeea10ccd40308eb060dfa64b38e712451dc9"
+    },
+    {
+      "path": "input-pins.json",
+      "bytes": 164872,
+      "sha256": "01cc70ebbd3b628d1a1e0022821ad2f6cbe80a4c4eb286040b5f88dc327b47db"
+    },
+    {
+      "path": "replay.mjs",
+      "bytes": 6400,
+      "sha256": "edc5cb66374dcffd3d7b272e757d9ea04c8fc9ef757ef73d68e83f4ba4f4efcb"
+    },
+    {
+      "path": "source-map.json",
+      "bytes": 4515,
+      "sha256": "bc417b6d5c2eba2daa2d6df502921de30ad3bd7cb3034a4eb2756c158b0b857c"
+    },
+    {
+      "path": "validated-replay.json",
+      "bytes": 2074,
+      "sha256": "1629738fa17c48ee096cf30efb62f6f8e6a9859b6b75acef9bb81b3677584fb0"
+    }
+  ],
+  "aggregateSha256": "f220d0c04a5e2885d78d42185caca37a96fccc2cc90bfb3de853081dbdccb87b"
+}

@@ -1,0 +1,569 @@
+diff --git a/.changeset/avalanche-database-producer-families.md b/.changeset/avalanche-database-producer-families.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..0115316f813353ff2e8d1aa16bc2c3662800ee33
+--- /dev/null
++++ b/.changeset/avalanche-database-producer-families.md
+@@ -0,0 +1,13 @@
++---
++'@rosen-ui/data-source': patch
++'@rosen-ui/rosen-statistics-entity': patch
++'@rosen-ui/rosen-statistics': patch
++'@rosen-bridge/rosen-app': patch
++'@rosen-bridge/rosen-service': patch
++'@rosen-bridge/rosen-service2': patch
++---
++
++Align database entity and extractor dependencies across Rosen applications and
++statistics with current scanner families. Require compatible
++legacy scanners so their registered extractors share the current query interface
++and database entity constructors.
+diff --git a/.changeset/service2-current-scanner-interfaces.md b/.changeset/service2-current-scanner-interfaces.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..67613aa297b5581f40414146b6d37edf319cfc9f
+--- /dev/null
++++ b/.changeset/service2-current-scanner-interfaces.md
+@@ -0,0 +1,7 @@
++---
++'@rosen-bridge/rosen-service2': patch
++---
++
++Pass the scanner's default block cleanup parameters to Cardano Ogmios and provide
++the configured Ergo network and commitment address when creating commitment
++extractors with the current watcher interface.
+diff --git a/apps/rosen-service/package.json b/apps/rosen-service/package.json
+index 6e03ceb73dfbd17abb8cd219e75b09d1dd0792a8..24fa2d38a15918c740df0be14270d8d64a449b32 100644
+--- a/apps/rosen-service/package.json
++++ b/apps/rosen-service/package.json
+@@ -25,30 +25,31 @@
+   },
+   "dependencies": {
+     "@rosen-bridge/abstract-logger": "^4.0.0",
+-    "@rosen-bridge/abstract-scanner": "^2.0.3",
+-    "@rosen-bridge/address-codec": "^2.1.0",
++    "@rosen-bridge/abstract-scanner": "4.0.1",
++    "@rosen-bridge/address-codec": "^2.2.0",
+     "@rosen-bridge/address-manager": "^0.1.0",
+     "@rosen-bridge/bitcoin-observation-extractor": "^8.0.5",
+     "@rosen-bridge/bitcoin-runes-observation-extractor": "^3.0.6",
+-    "@rosen-bridge/bitcoin-scanner": "^1.1.3",
++    "@rosen-bridge/bitcoin-scanner": "^2.0.2",
+     "@rosen-bridge/callback-logger": "^2.0.0",
+     "@rosen-bridge/cardano-observation-extractor": "^3.0.5",
+-    "@rosen-bridge/cardano-scanner": "^2.1.3",
++    "@rosen-bridge/cardano-scanner": "^3.0.1",
+     "@rosen-bridge/discord-notification": "^1.0.0",
+     "@rosen-bridge/ergo-observation-extractor": "^2.0.5",
+-    "@rosen-bridge/ergo-scanner": "^1.1.3",
+-    "@rosen-bridge/evm-observation-extractor": "^7.0.5",
+-    "@rosen-bridge/evm-scanner": "^1.1.3",
++    "@rosen-bridge/ergo-scanner": "^2.0.1",
++    "@rosen-bridge/evm-observation-extractor": "7.1.0",
++    "@rosen-bridge/evm-scanner": "2.1.0",
++    "@rosen-bridge/extended-typeorm": "1.1.1",
+     "@rosen-bridge/firo-observation-extractor": "^1.1.3",
+-    "@rosen-bridge/firo-scanner": "^0.2.3",
+-    "@rosen-bridge/handshake-observation-extractor": "1.0.5",
+-    "@rosen-bridge/handshake-scanner": "0.2.3",
++    "@rosen-bridge/firo-scanner": "^1.0.1",
++    "@rosen-bridge/handshake-observation-extractor": "^1.0.8",
++    "@rosen-bridge/handshake-scanner": "^1.0.2",
+     "@rosen-bridge/health-check": "^8.0.0",
+     "@rosen-bridge/log-level-check": "^4.0.0",
+     "@rosen-bridge/scanner-interfaces": "^1.0.0",
+     "@rosen-bridge/scanner-sync-check": "^8.2.0",
+     "@rosen-bridge/tokens": "^6.0.2",
+-    "@rosen-bridge/watcher-data-extractor": "^13.0.10",
++    "@rosen-bridge/watcher-data-extractor": "16.0.0",
+     "@rosen-bridge/winston-logger": "^3.1.0",
+     "@rosen-clients/rate-limited-axios": "^2.0.1",
+     "@rosen-ui/asset-calculator": "^2.4.0",
+diff --git a/apps/rosen-service/src/commitment/commitment-service.ts b/apps/rosen-service/src/commitment/commitment-service.ts
+index 88a44a2944e6a2b06818e778d613ed23ced93c91..cdf6cd5be7357e46b25a4748b3942100926d48b5 100644
+--- a/apps/rosen-service/src/commitment/commitment-service.ts
++++ b/apps/rosen-service/src/commitment/commitment-service.ts
+@@ -1,5 +1,6 @@
+ import { DefaultLogger } from '@rosen-bridge/abstract-logger';
+ import type { ErgoScanner } from '@rosen-bridge/ergo-scanner';
++import { ErgoNetworkType } from '@rosen-bridge/scanner-interfaces';
+ import { CommitmentExtractor } from '@rosen-bridge/watcher-data-extractor';
+ import { NETWORKS, NETWORKS_KEYS } from '@rosen-ui/constants';
+ 
+@@ -26,6 +27,12 @@ export const registerExtractors = async (scanner: ErgoScanner) => {
+         chainConfig.tokens.rwt,
+         dataSource,
+         await getTokenMap(),
++        {
++          active: false,
++          type: ErgoNetworkType.Explorer,
++          url: configs.ergo.explorerUrl,
++          address: chainConfig.addresses.commitment,
++        },
+         logger.child(`${chain}CommitmentExtractor`),
+       );
+       await scanner.registerExtractor(commitmentExtractor);
+diff --git a/apps/rosen-service/src/scanner/scanner-utils.ts b/apps/rosen-service/src/scanner/scanner-utils.ts
+index 7e3727cea128119b0e8fcd53aa29049e756f85fc..152a04695652d993a14df3a206e3c9da63ec1d58 100644
+--- a/apps/rosen-service/src/scanner/scanner-utils.ts
++++ b/apps/rosen-service/src/scanner/scanner-utils.ts
+@@ -11,12 +11,7 @@ import { handleError, runAndSetInterval } from '../utils';
+  * @param updateInterval
+  */
+ export const startScanner = async (
+-  /**
+-   * TODO: remove the inline Biome comment
+-   * local:ergo/rosen-bridge/ui#441
+-   */
+-  // biome-ignore lint/suspicious/noExplicitAny: Use a better type
+-  scanner: GeneralScanner<any>,
++  scanner: Pick<GeneralScanner<unknown>, 'update' | 'name'>,
+   loggerFileName: string,
+   updateInterval: number,
+ ) => {
+diff --git a/apps/rosen-service2/package.json b/apps/rosen-service2/package.json
+index 5c0118ecd84b203f98d741854276baebcfc219b8..9269f64f61b2c46fe628381cbc8597fdef266340 100644
+--- a/apps/rosen-service2/package.json
++++ b/apps/rosen-service2/package.json
+@@ -26,29 +26,29 @@
+     "typeorm:migrate": "npm run typeorm migration:run -- -d ./src/dataSource.ts"
+   },
+   "dependencies": {
+-    "@rosen-bridge/abstract-extractor": "^3.2.3",
++    "@rosen-bridge/abstract-extractor": "^4.0.0",
+     "@rosen-bridge/abstract-logger": "^4.0.0",
+-    "@rosen-bridge/abstract-observation-extractor": "^1.0.10",
+-    "@rosen-bridge/abstract-scanner": "^2.0.3",
++    "@rosen-bridge/abstract-observation-extractor": "^2.0.0",
++    "@rosen-bridge/abstract-scanner": "^4.0.1",
+     "@rosen-bridge/address-codec": "^2.1.0",
+-    "@rosen-bridge/address-extractor": "^7.0.8",
++    "@rosen-bridge/address-extractor": "^7.0.9",
+     "@rosen-bridge/address-manager": "^0.1.0",
+     "@rosen-bridge/bitcoin-observation-extractor": "^8.0.5",
+     "@rosen-bridge/bitcoin-runes-observation-extractor": "^3.0.6",
+-    "@rosen-bridge/bitcoin-scanner": "^1.1.3",
++    "@rosen-bridge/bitcoin-scanner": "^2.0.2",
+     "@rosen-bridge/callback-logger": "^2.0.0",
+     "@rosen-bridge/cardano-observation-extractor": "^3.0.5",
+-    "@rosen-bridge/cardano-scanner": "^2.1.3",
++    "@rosen-bridge/cardano-scanner": "^3.0.1",
+     "@rosen-bridge/config": "^2.1.0",
+     "@rosen-bridge/discord-notification": "^1.0.0",
+     "@rosen-bridge/ergo-observation-extractor": "^2.0.5",
+-    "@rosen-bridge/ergo-scanner": "^1.1.3",
++    "@rosen-bridge/ergo-scanner": "^2.0.1",
+     "@rosen-bridge/evm-observation-extractor": "^7.0.5",
+-    "@rosen-bridge/evm-scanner": "^1.1.3",
++    "@rosen-bridge/evm-scanner": "^2.1.0",
+     "@rosen-bridge/extended-tokens": "^0.1.4",
+     "@rosen-bridge/extended-typeorm": "^1.1.0",
+     "@rosen-bridge/firo-observation-extractor": "^1.1.3",
+-    "@rosen-bridge/firo-scanner": "^0.2.3",
++    "@rosen-bridge/firo-scanner": "^1.0.1",
+     "@rosen-bridge/health-check": "^8.0.0",
+     "@rosen-bridge/json-bigint": "^1.1.0",
+     "@rosen-bridge/log-level-check": "^4.0.0",
+@@ -56,7 +56,7 @@
+     "@rosen-bridge/scanner-sync-check": "^8.2.0",
+     "@rosen-bridge/service-manager": "^3.0.0",
+     "@rosen-bridge/token-price-entity": "^0.2.2",
+-    "@rosen-bridge/watcher-data-extractor": "^13.0.10",
++    "@rosen-bridge/watcher-data-extractor": "^16.0.0",
+     "@rosen-bridge/winston-logger": "^3.1.0",
+     "@rosen-clients/ergo-explorer": "^2.1.3",
+     "@rosen-ui/asset-aggregator": "^0.1.0",
+diff --git a/apps/rosen-service2/src/scanners/cardano.ts b/apps/rosen-service2/src/scanners/cardano.ts
+index 0863124f622f20c1192479de8587a342201be9b2..e88438b224585611dac0172b418937ecaf7fb23e 100644
+--- a/apps/rosen-service2/src/scanners/cardano.ts
++++ b/apps/rosen-service2/src/scanners/cardano.ts
+@@ -1,5 +1,9 @@
+ import { DefaultLogger } from '@rosen-bridge/abstract-logger';
+ import { FailoverStrategy, NetworkConnectorManager } from '@rosen-bridge/abstract-scanner';
++import {
++  BLOCK_CLEANUP_THRESHOLD_DURATION,
++  BLOCK_TRIM_COUNT_IN_ROUND,
++} from '@rosen-bridge/abstract-scanner/dist/constants.js';
+ import {
+   CardanoBlockFrostObservationExtractor,
+   CardanoKoiosObservationExtractor,
+@@ -167,6 +171,10 @@ const buildCardanoOgmiosScannerWithExtractors = async (
+       nodePort: configs.chains.cardano.ogmios.connection.port || 0,
+       initialSlot: configs.chains.cardano.ogmios.connection.initialSlot || 0,
+       initialHash: configs.chains.cardano.ogmios.connection.initialHash || '',
++      blockCleanupConfig: {
++        blockCleanupThresholdDuration: BLOCK_CLEANUP_THRESHOLD_DURATION,
++        blockTrimCountInRound: BLOCK_TRIM_COUNT_IN_ROUND,
++      },
+     },
+     logger.child('cardanoOgmiosScannerLogger'),
+   );
+diff --git a/apps/rosen-service2/src/utils.ts b/apps/rosen-service2/src/utils.ts
+index 6af698df9c28eedf4617dfb49f38b2d16fedbdfc..765371d0fe1020621f7dec2e31eeef984e757985 100644
+--- a/apps/rosen-service2/src/utils.ts
++++ b/apps/rosen-service2/src/utils.ts
+@@ -101,12 +101,19 @@ export const createCommitmentExtractor = (
+   logger: AbstractLogger,
+ ) => {
+   logger.debug(`starting commitment extractor for ${chain}`);
++  const { networkType, url } = resolveErgoNetworkConfig();
+   return new CommitmentExtractor(
+     `${chain}-commitment-extractor`,
+     [chianConfigs.addresses.Commitment],
+     chianConfigs.tokens.RWTId,
+     dataSource,
+     tokenMap,
++    {
++      active: false,
++      type: networkType,
++      url,
++      address: chianConfigs.addresses.Commitment,
++    },
+     logger.child(`${chain}CommitmentExtractor`),
+   );
+ };
+diff --git a/apps/rosen-service2/tests/scanners/cardano.spec.ts b/apps/rosen-service2/tests/scanners/cardano.spec.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..d069277a9564deaec814e0c2a6749f81d0ac99f2
+--- /dev/null
++++ b/apps/rosen-service2/tests/scanners/cardano.spec.ts
+@@ -0,0 +1,123 @@
++import '@rosen-bridge/extended-typeorm/bootstrap';
++
++import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
++
++import { DefaultLogger, DummyLogger } from '@rosen-bridge/abstract-logger';
++import {
++  BLOCK_CLEANUP_THRESHOLD_DURATION,
++  BLOCK_TRIM_COUNT_IN_ROUND,
++} from '@rosen-bridge/abstract-scanner/dist/constants.js';
++import { CardanoOgmiosObservationExtractor } from '@rosen-bridge/cardano-observation-extractor';
++import { CardanoOgmiosScanner } from '@rosen-bridge/cardano-scanner';
++import { TokenMap } from '@rosen-bridge/extended-tokens';
++import { DataSource } from '@rosen-bridge/extended-typeorm';
++
++const configs = vi.hoisted(() => ({
++  chains: {
++    cardano: {
++      method: 'ogmios',
++      ogmios: {
++        connection: {
++          address: '127.0.0.1',
++          port: 1337,
++          initialSlot: 321,
++          initialHash: '11'.repeat(32),
++        },
++      },
++    },
++  },
++  contracts: { cardano: { addresses: { lock: 'synthetic-cardano-lock' } } },
++}));
++
++vi.mock('../../src/configs', () => ({ configs }));
++
++describe('getCardanoScanner', () => {
++  let getCardanoScanner: typeof import('../../src/scanners/cardano').getCardanoScanner;
++  let dataSource: DataSource;
++  let tokenMap: TokenMap;
++
++  beforeAll(async () => {
++    DefaultLogger.init(new DummyLogger());
++    ({ getCardanoScanner } = await import('../../src/scanners/cardano'));
++  });
++
++  beforeEach(() => {
++    configs.chains.cardano.method = 'ogmios';
++    Object.assign(configs.chains.cardano.ogmios.connection, {
++      address: '127.0.0.1',
++      port: 1337,
++      initialSlot: 321,
++      initialHash: '11'.repeat(32),
++    });
++    dataSource = new DataSource({ type: 'sqlite', database: ':memory:' });
++    tokenMap = new TokenMap();
++  });
++
++  /**
++   * @target getCardanoScanner should supply the scanner cleanup defaults
++   * @dependencies Controlled config; genuine scanner, token map and unconnected SQLite DataSource.
++   * @scenario Select Ogmios with a loopback endpoint and construct the scanner without starting it.
++   * @expected Both cleanup fields equal the current abstract-scanner constants.
++   */
++  it('should supply the scanner cleanup defaults', async () => {
++    const scanner = await getCardanoScanner(dataSource, tokenMap);
++
++    expect(scanner).toBeInstanceOf(CardanoOgmiosScanner);
++    expect(scanner.blockCleanupConfig).toEqual({
++      blockCleanupThresholdDuration: BLOCK_CLEANUP_THRESHOLD_DURATION,
++      blockTrimCountInRound: BLOCK_TRIM_COUNT_IN_ROUND,
++    });
++  });
++
++  /**
++   * @target getCardanoScanner should register the actual Ogmios observation extractor
++   * @dependencies Controlled config; genuine scanner and observation extractor; no scanner start.
++   * @scenario Construct the Ogmios scanner with an empty real token map and local DataSource.
++   * @expected Its registration queue contains one CardanoOgmiosObservationExtractor with the real ID.
++   */
++  it('should register the actual Ogmios observation extractor', async () => {
++    const scanner = await getCardanoScanner(dataSource, tokenMap);
++
++    expect(scanner.newExtractors.length).toEqual(1);
++    expect(scanner.newExtractors[0]).toBeInstanceOf(CardanoOgmiosObservationExtractor);
++    expect(scanner.newExtractors[0].getId()).toEqual('cardano-ogmios-extractor');
++  });
++
++  /**
++   * @target getCardanoScanner should preserve the configured Ogmios intersection
++   * @dependencies Controlled config; genuine Ogmios constructor; no WebSocket connection.
++   * @scenario Change the loopback host, port, initial slot and initial hash before construction.
++   * @expected The scanner retains those four inputs alongside the current cleanup policy.
++   */
++  it('should preserve the configured Ogmios intersection', async () => {
++    Object.assign(configs.chains.cardano.ogmios.connection, {
++      address: 'localhost',
++      port: 1447,
++      initialSlot: 654,
++      initialHash: '22'.repeat(32),
++    });
++
++    const scanner = await getCardanoScanner(dataSource, tokenMap);
++
++    expect(scanner).toMatchObject({
++      host: 'localhost',
++      port: 1447,
++      initPoint: { id: '22'.repeat(32), slot: 654 },
++    });
++    expect(dataSource.isInitialized).toEqual(false);
++  });
++
++  /**
++   * @target getCardanoScanner should reject an unsupported scanner method
++   * @dependencies Controlled config; genuine factory and unconnected local DataSource.
++   * @scenario Replace the Ogmios method with an unsupported literal while retaining its endpoint.
++   * @expected The factory rejects the method before returning or starting a scanner.
++   */
++  it('should reject an unsupported scanner method', async () => {
++    configs.chains.cardano.method = 'unsupported';
++
++    await expect(getCardanoScanner(dataSource, tokenMap)).rejects.toThrow(
++      'Unsupported or missing Cardano scanner method',
++    );
++  });
++});
+diff --git a/apps/rosen-service2/tests/utils.spec.ts b/apps/rosen-service2/tests/utils.spec.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..d729c72c978978aa928b7fca9ad01fb3dc7c7ae7
+--- /dev/null
++++ b/apps/rosen-service2/tests/utils.spec.ts
+@@ -0,0 +1,135 @@
++import '@rosen-bridge/extended-typeorm/bootstrap';
++
++import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
++
++import { DefaultLogger, DummyLogger } from '@rosen-bridge/abstract-logger';
++import { TokenMap } from '@rosen-bridge/extended-tokens';
++import { DataSource } from '@rosen-bridge/extended-typeorm';
++import { ErgoNetworkType } from '@rosen-bridge/scanner-interfaces';
++import { CommitmentExtractor } from '@rosen-bridge/watcher-data-extractor';
++
++import type { ChainConfigs } from '../src/types';
++
++const configs = vi.hoisted(() => ({
++  chains: {
++    ergo: {
++      method: 'explorer',
++      explorer: { connections: [{ url: 'http://127.0.0.1:18081' }] },
++      node: { connections: [{ url: 'http://127.0.0.1:18082' }] },
++    },
++  },
++}));
++
++vi.mock('../src/configs', () => ({ configs }));
++
++describe('createCommitmentExtractor', () => {
++  let createCommitmentExtractor: typeof import('../src/utils').createCommitmentExtractor;
++  let dataSource: DataSource;
++  let tokenMap: TokenMap;
++  let chainConfigs: ChainConfigs;
++  const logger = new DummyLogger();
++  const address = '9iMjQx8PzwBKXRvsFUJFJAPoy31znfEeBUGz8DRkcnJX4rJYjVd';
++
++  beforeAll(async () => {
++    DefaultLogger.init(logger);
++    ({ createCommitmentExtractor } = await import('../src/utils'));
++  });
++
++  beforeEach(() => {
++    configs.chains.ergo.method = 'explorer';
++    configs.chains.ergo.explorer.connections[0].url = 'http://127.0.0.1:18081';
++    dataSource = new DataSource({ type: 'sqlite', database: ':memory:' });
++    tokenMap = new TokenMap();
++    chainConfigs = {
++      addresses: {
++        lock: address,
++        cold: address,
++        Commitment: address,
++        WatcherTriggerEvent: address,
++        WatcherPermit: address,
++        Fraud: address,
++      },
++      tokens: { RWTId: '33'.repeat(32) },
++      cleanupConfirm: 10,
++    };
++  });
++
++  /**
++   * @target createCommitmentExtractor should construct an inactive explorer initializer
++   * @dependencies Controlled config; genuine CommitmentExtractor, WASM address decode and DataSource.
++   * @scenario Construct for cardano with a valid synthetic Ergo address and loopback explorer URL.
++   * @expected The real extractor retains its ID, address, explorer URL and inactive initialization.
++   */
++  it('should construct an inactive explorer initializer', () => {
++    const extractor = createCommitmentExtractor(
++      'cardano',
++      dataSource,
++      chainConfigs,
++      tokenMap,
++      logger,
++    );
++
++    expect(extractor).toBeInstanceOf(CommitmentExtractor);
++    expect(extractor.getId()).toEqual('cardano-commitment-extractor');
++    expect(extractor).toMatchObject({
++      initializeOptions: {
++        active: false,
++        type: ErgoNetworkType.Explorer,
++        url: 'http://127.0.0.1:18081',
++        address,
++      },
++    });
++    expect(dataSource.isInitialized).toEqual(false);
++  });
++
++  /**
++   * @target createCommitmentExtractor should select the configured node initializer
++   * @dependencies Controlled config; genuine extractor constructor; no initializer or network start.
++   * @scenario Change only the Ergo method to node while retaining distinct loopback endpoints.
++   * @expected The initialization options use the Node enum and node URL, and remain inactive.
++   */
++  it('should select the configured node initializer', () => {
++    configs.chains.ergo.method = 'node';
++
++    const extractor = createCommitmentExtractor('ergo', dataSource, chainConfigs, tokenMap, logger);
++
++    expect(extractor).toMatchObject({
++      initializeOptions: {
++        active: false,
++        type: ErgoNetworkType.Node,
++        url: 'http://127.0.0.1:18082',
++        address,
++      },
++    });
++    expect(extractor.getId()).toEqual('ergo-commitment-extractor');
++  });
++
++  /**
++   * @target createCommitmentExtractor should reject a missing Ergo endpoint
++   * @dependencies Controlled config; genuine network resolver and factory; no remote transport.
++   * @scenario Remove only the explorer URL from the default explorer configuration.
++   * @expected The factory throws the resolver's missing-URL error before constructing an extractor.
++   */
++  it('should reject a missing Ergo endpoint', () => {
++    configs.chains.ergo.explorer.connections[0].url = '';
++
++    expect(() =>
++      createCommitmentExtractor('cardano', dataSource, chainConfigs, tokenMap, logger),
++    ).toThrow('Ergo network URL is not configured.');
++  });
++
++  /**
++   * @target createCommitmentExtractor should reject a malformed commitment address
++   * @dependencies Controlled config; genuine CommitmentExtractor and Ergo WASM address parser.
++   * @scenario Change only the valid commitment address to an invalid Base58 string.
++   * @expected The real constructor rejects the address without initializing the local DataSource.
++   */
++  it('should reject a malformed commitment address', () => {
++    chainConfigs.addresses.Commitment = 'invalid-commitment-address';
++
++    expect(() =>
++      createCommitmentExtractor('cardano', dataSource, chainConfigs, tokenMap, logger),
++    ).toThrow();
++    expect(dataSource.isInitialized).toEqual(false);
++  });
++});
+diff --git a/apps/rosen/package.json b/apps/rosen/package.json
+index 0c47cb766206ea6e628cf7553d623b89a8a7a1dc..b981ba725f3a8e45deda361264fad0e099783faf 100644
+--- a/apps/rosen/package.json
++++ b/apps/rosen/package.json
+@@ -24,8 +24,8 @@
+     "validate-token-icons": "tsx ./scripts/validateTokenIcons"
+   },
+   "dependencies": {
+-    "@rosen-bridge/abstract-observation-extractor": "^1.0.10",
+-    "@rosen-bridge/abstract-scanner": "^2.0.3",
++    "@rosen-bridge/abstract-observation-extractor": "^2.0.0",
++    "@rosen-bridge/abstract-scanner": "^4.0.1",
+     "@rosen-bridge/encryption": "^1.0.1",
+     "@rosen-bridge/extended-typeorm": "^1.1.0",
+     "@rosen-bridge/icons": "^4.0.0",
+@@ -34,7 +34,7 @@
+     "@rosen-bridge/token-price-entity": "^0.2.2",
+     "@rosen-bridge/tokens": "^6.0.2",
+     "@rosen-bridge/ui-kit": "^6.1.0",
+-    "@rosen-bridge/watcher-data-extractor": "^13.0.10",
++    "@rosen-bridge/watcher-data-extractor": "^16.0.0",
+     "@rosen-network/base": "^0.5.5",
+     "@rosen-network/binance": "^0.4.10",
+     "@rosen-network/bitcoin": "^2.4.9",
+diff --git a/packages/data-source/package.json b/packages/data-source/package.json
+index 762911e7aeb76371401a71c4483c0c7371792bcf..27ac753023ae2bba4308448e8d6e424025902d9f 100644
+--- a/packages/data-source/package.json
++++ b/packages/data-source/package.json
+@@ -18,11 +18,11 @@
+     "type-check": "tsc --noEmit"
+   },
+   "dependencies": {
+-    "@rosen-bridge/abstract-observation-extractor": "^1.0.10",
+-    "@rosen-bridge/abstract-scanner": "^2.0.3",
++    "@rosen-bridge/abstract-observation-extractor": "^2.0.0",
++    "@rosen-bridge/abstract-scanner": "^4.0.1",
+     "@rosen-bridge/extended-typeorm": "^1.1.0",
+     "@rosen-bridge/token-price-entity": "^0.2.2",
+-    "@rosen-bridge/watcher-data-extractor": "^13.0.10",
++    "@rosen-bridge/watcher-data-extractor": "^16.0.0",
+     "@rosen-ui/asset-calculator": "^2.4.0",
+     "@rosen-ui/public-status": "^0.3.0",
+     "@rosen-ui/rosen-statistics-entity": "^0.4.2"
+diff --git a/packages/rosen-statistics-entity/package.json b/packages/rosen-statistics-entity/package.json
+index 3714475990d72cac10db4bc6e16890f26cf0db2a..791e038ef72c81ee463abffcc90411c6997e32fb 100644
+--- a/packages/rosen-statistics-entity/package.json
++++ b/packages/rosen-statistics-entity/package.json
+@@ -28,9 +28,9 @@
+   },
+   "dependencies": {
+     "@rosen-bridge/abstract-logger": "^4.0.0",
+-    "@rosen-bridge/abstract-scanner": "^2.0.3",
++    "@rosen-bridge/abstract-scanner": "^4.0.1",
+     "@rosen-bridge/extended-typeorm": "^1.1.0",
+-    "@rosen-bridge/watcher-data-extractor": "^13.0.10",
++    "@rosen-bridge/watcher-data-extractor": "^16.0.0",
+     "@rosen-ui/asset-calculator": "^2.4.0"
+   },
+   "devDependencies": {
+diff --git a/packages/rosen-statistics/package.json b/packages/rosen-statistics/package.json
+index 56c962fdbce1ae15c8f5d3af2f47eaffa7e3d350..49779ba887e9d2e027984a8fcad374f84fb062d8 100644
+--- a/packages/rosen-statistics/package.json
++++ b/packages/rosen-statistics/package.json
+@@ -26,11 +26,11 @@
+   },
+   "dependencies": {
+     "@rosen-bridge/abstract-logger": "^4.0.0",
+-    "@rosen-bridge/abstract-scanner": "^2.0.3",
++    "@rosen-bridge/abstract-scanner": "^4.0.1",
+     "@rosen-bridge/extended-typeorm": "^1.1.0",
+     "@rosen-bridge/token-price-entity": "^0.2.2",
+     "@rosen-bridge/tokens": "^6.0.2",
+-    "@rosen-bridge/watcher-data-extractor": "^13.0.10",
++    "@rosen-bridge/watcher-data-extractor": "^16.0.0",
+     "@rosen-clients/ergo-node": "^3.1.3",
+     "@rosen-ui/asset-calculator": "^2.4.0",
+     "@rosen-ui/data-source": "^0.3.0",

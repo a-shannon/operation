@@ -1,0 +1,542 @@
+diff --git a/.changeset/service2-statistics-token-identity.md b/.changeset/service2-statistics-token-identity.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..57bb3c6e4a60e5f8ba75ef4c1ca24b1207fa4ec4
+--- /dev/null
++++ b/.changeset/service2-statistics-token-identity.md
+@@ -0,0 +1,8 @@
++---
++'@rosen-ui/rosen-statistics-entity': patch
++---
++
++Resolve bridge metrics token joins and locked-asset lookups through registered
++entity names. This allows Rosen Service2's asset aggregator and the App's asset
++calculator to supply their own constructors while preserving token decimals,
++event range filters, locked amounts, token relations and table prefixes.
+diff --git a/packages/rosen-statistics-entity/lib/actions/bridgeMetricsAction.ts b/packages/rosen-statistics-entity/lib/actions/bridgeMetricsAction.ts
+index 62fdab68714349fe911dc6d563e0ae14ad99630c..e6bd43991d2fa38883d2ee18643e7c96de3a33db 100644
+--- a/packages/rosen-statistics-entity/lib/actions/bridgeMetricsAction.ts
++++ b/packages/rosen-statistics-entity/lib/actions/bridgeMetricsAction.ts
+@@ -2,7 +2,6 @@ import { type AbstractLogger, DummyLogger } from '@rosen-bridge/abstract-logger'
+ import { BlockEntity } from '@rosen-bridge/abstract-scanner';
+ import type { DataSource, Repository } from '@rosen-bridge/extended-typeorm';
+ import { EventTriggerEntity } from '@rosen-bridge/watcher-data-extractor';
+-import { TokenEntity } from '@rosen-ui/asset-calculator';
+ 
+ import { METRIC_KEYS } from '../constants';
+ import { BridgedAmountEntity, BridgeFeeEntity, MetricEntity } from '../entities';
+@@ -103,7 +102,7 @@ export class BridgeMetricsAction {
+     const events = await this.eventTriggerRepo
+       .createQueryBuilder('et')
+       .innerJoin(BlockEntity, 'be', `be.hash = et.spendBlock and be.scanner = 'ergo'`)
+-      .innerJoin(TokenEntity, 'te', `te.id = et.sourceChainTokenId`)
++      .innerJoin('TokenEntity', 'te', `te.id = et.sourceChainTokenId`)
+       .select([
+         'et.fromChain as "fromChain"',
+         'et.amount as "bridgeAmount"',
+diff --git a/packages/rosen-statistics-entity/lib/actions/lockedAssetsMetricAction.ts b/packages/rosen-statistics-entity/lib/actions/lockedAssetsMetricAction.ts
+index e3f352dc51d8d74186f78db20afae9ce5c52b9fb..f2e2627b5f312cf17fbf1bc072c0f99b2b6b6269 100644
+--- a/packages/rosen-statistics-entity/lib/actions/lockedAssetsMetricAction.ts
++++ b/packages/rosen-statistics-entity/lib/actions/lockedAssetsMetricAction.ts
+@@ -1,12 +1,17 @@
+ import { type AbstractLogger, DummyLogger } from '@rosen-bridge/abstract-logger';
+ import type { DataSource } from '@rosen-bridge/extended-typeorm';
+-import { LockedAssetEntity } from '@rosen-ui/asset-calculator';
++import type { LockedAssetEntity } from '@rosen-ui/asset-calculator';
+ 
+ import type { LockedAssetsType } from '../types';
+ 
+ export class LockedAssetsMetricAction {
+   private readonly logger: AbstractLogger;
+ 
++  /**
++   * Creates locked-asset metrics using the DataSource's registered entity family.
++   * @param dataSource - DataSource containing the locked-asset and token entities.
++   * @param logger - Optional metric logger; defaults to DummyLogger.
++   */
+   constructor(
+     private readonly dataSource: DataSource,
+     logger?: AbstractLogger,
+@@ -21,9 +26,11 @@ export class LockedAssetsMetricAction {
+    * @returns A promise that resolves to an array of LockedAssetsType
+    */
+   getLockedAssets = async (): Promise<LockedAssetsType[]> => {
+-    const lockedAssets = await this.dataSource.getRepository(LockedAssetEntity).find({
+-      relations: { token: true },
+-    });
++    const lockedAssets = await this.dataSource
++      .getRepository<LockedAssetEntity>('LockedAssetEntity')
++      .find({
++        relations: { token: true },
++      });
+     this.logger.debug(`Found ${lockedAssets.length} locked assets`);
+     return lockedAssets.map((asset) => ({
+       tokenId: asset.tokenId,
+diff --git a/packages/rosen-statistics-entity/package.json b/packages/rosen-statistics-entity/package.json
+index 791e038ef72c81ee463abffcc90411c6997e32fb..1dc815b3a97db23001e9d731aaf53e6357f13554 100644
+--- a/packages/rosen-statistics-entity/package.json
++++ b/packages/rosen-statistics-entity/package.json
+@@ -34,6 +34,7 @@
+     "@rosen-ui/asset-calculator": "^2.4.0"
+   },
+   "devDependencies": {
++    "@rosen-ui/asset-aggregator": "^0.1.0",
+     "@vitest/coverage-istanbul": "^3.1.4",
+     "tsx": "^4.19.4",
+     "vitest": "^3.1.4"
+diff --git a/packages/rosen-statistics-entity/tests/actions/bridgeMetricsAction.spec.ts b/packages/rosen-statistics-entity/tests/actions/bridgeMetricsAction.spec.ts
+index d989208c233bf1c4912ec3a94bda2fcc2ba004f2..3ab00253e94c2b2ff6c87d953a36200e93c8f532 100644
+--- a/packages/rosen-statistics-entity/tests/actions/bridgeMetricsAction.spec.ts
++++ b/packages/rosen-statistics-entity/tests/actions/bridgeMetricsAction.spec.ts
+@@ -2,9 +2,13 @@ import { beforeEach, describe, expect, it } from 'vitest';
+ 
+ import { type AbstractLogger, DummyLogger } from '@rosen-bridge/abstract-logger';
+ import { BlockEntity } from '@rosen-bridge/abstract-scanner';
+-import type { DataSource, Repository } from '@rosen-bridge/extended-typeorm';
++import { DataSource, type Repository } from '@rosen-bridge/extended-typeorm';
+ import { EventTriggerEntity } from '@rosen-bridge/watcher-data-extractor';
+-import { TokenEntity } from '@rosen-ui/asset-calculator';
++import {
++  LockedAssetEntity as AggregatorLockedAssetEntity,
++  TokenEntity as AggregatorTokenEntity,
++} from '@rosen-ui/asset-aggregator';
++import { LockedAssetEntity, TokenEntity } from '@rosen-ui/asset-calculator';
+ 
+ import {
+   BridgedAmountEntity,
+@@ -155,11 +159,47 @@ describe('BridgeMetricsAction', () => {
+       await eventTriggerRepo.insert(testData.eventTriggerRepo);
+ 
+       const timestamp = await action.getFirstEventTimestamp();
+-      expect(timestamp).toBe(testData.expectedTimestamp);
++      expect(timestamp).toEqual(testData.expectedTimestamp);
+     });
+   });
+ 
+   describe('getEventsInRange', () => {
++    /**
++     * Builds the migrated range fixture with Service2's genuine token/locked-asset pair.
++     * Preserves their declared relation and the fixture's remaining entities and migrations.
++     * @param entityPrefix - Optional table prefix; uses synchronized entity metadata when present.
++     * @returns An initialized local SQLite DataSource owned by the calling test.
++     */
++    const createAggregatorDatabase = async (entityPrefix = ''): Promise<DataSource> => {
++      if (!Array.isArray(dataSource.options.entities)) {
++        throw new Error('Range fixture requires an explicit entity array');
++      }
++      const source = new DataSource({
++        ...dataSource.options,
++        ...(entityPrefix ? { entityPrefix, synchronize: true, migrations: [] } : {}),
++        entities: dataSource.options.entities.map((entity) => {
++          if (entity === TokenEntity) return AggregatorTokenEntity;
++          if (entity === LockedAssetEntity) return AggregatorLockedAssetEntity;
++          return entity;
++        }),
++      });
++      await source.initialize();
++      await source.runMigrations();
++      return source;
++    };
++
++    /**
++     * Inserts the established nonempty range fixture using its registered token table.
++     * @param source - Local migrated DataSource with either genuine TokenEntity family.
++     * @returns A promise resolving after block, event and token rows are inserted.
++     */
++    const insertRangeFixture = async (source: DataSource): Promise<void> => {
++      const fixture = bridgeMetricsActionTestData.getEventsInRangeMultipleEvents;
++      await source.getRepository(BlockEntity).insert(fixture.blockRepo);
++      await source.getRepository(EventTriggerEntity).insert(fixture.eventTriggerRepo);
++      await source.getRepository<TokenEntity>('TokenEntity').insert(fixture.tokenRepo);
++    };
++
+     /**
+      * @target getEventsInRange should fetch bridge amount and bridge fee with block timestamps and token decimals
+      * @dependencies
+@@ -229,6 +269,156 @@ describe('BridgeMetricsAction', () => {
+ 
+       expect(events).toHaveLength(0);
+     });
++
++    /**
++     * @target BridgeMetricsAction.getEventsInRange should join the registered calculator token table
++     * @dependencies Genuine calculator TokenEntity, migrated SQLite and the existing range fixture.
++     * @scenario Insert successful events, three dated blocks and tokens with 8 and 6 significant decimals.
++     * @expected The calculator constructor remains registered and both in-range events retain their decimals.
++     */
++    it('should join the registered calculator token table', async () => {
++      const fixture = bridgeMetricsActionTestData.getEventsInRangeMultipleEvents;
++      await insertRangeFixture(dataSource);
++
++      expect(dataSource.getMetadata('token_entity').target).toBe(TokenEntity);
++      expect(dataSource.hasMetadata(AggregatorTokenEntity)).toEqual(false);
++      expect(await action.getEventsInRange(fixture.startTs, fixture.endTs)).toEqual(
++        fixture.expectedEvents,
++      );
++    });
++
++    /**
++     * @target BridgeMetricsAction.getEventsInRange should join the registered aggregator token table
++     * @dependencies Genuine aggregator TokenEntity, original migrations and the existing range fixture.
++     * @scenario Register Service2's token/locked-asset pair, retaining its relation and the range fixture.
++     * @expected Two populated events retain their amounts, blocks and decimals without registering the calculator class.
++     */
++    it('should join the registered aggregator token table', async () => {
++      const source = await createAggregatorDatabase();
++      try {
++        const fixture = bridgeMetricsActionTestData.getEventsInRangeMultipleEvents;
++        await insertRangeFixture(source);
++
++        expect(source.getMetadata('token_entity').target).toBe(AggregatorTokenEntity);
++        expect(source.hasMetadata(TokenEntity)).toEqual(false);
++        expect(
++          await new BridgeMetricsAction(source).getEventsInRange(fixture.startTs, fixture.endTs),
++        ).toEqual(fixture.expectedEvents);
++      } finally {
++        await source.destroy();
++      }
++    });
++
++    /**
++     * @target BridgeMetricsAction.getEventsInRange should omit an event without its joined token
++     * @dependencies Genuine aggregator token registry and populated local SQLite range fixture.
++     * @scenario Delete only token-1 after inserting both successful in-range events and their blocks.
++     * @expected The token-1 event is absent while the unchanged token-2 event and its decimal remain.
++     */
++    it('should omit an event without its joined token', async () => {
++      const source = await createAggregatorDatabase();
++      try {
++        const fixture = bridgeMetricsActionTestData.getEventsInRangeMultipleEvents;
++        await insertRangeFixture(source);
++        await source.getRepository(AggregatorTokenEntity).delete('token-1');
++
++        expect(
++          await new BridgeMetricsAction(source).getEventsInRange(fixture.startTs, fixture.endTs),
++        ).toEqual(fixture.expectedEvents.slice(1));
++      } finally {
++        await source.destroy();
++      }
++    });
++
++    /**
++     * @target BridgeMetricsAction.getEventsInRange should omit an event with a mismatched source token identifier
++     * @dependencies Genuine aggregator token registry, actual event repository and migrated SQLite.
++     * @scenario Change only event1's sourceChainTokenId to an identifier absent from the token table.
++     * @expected The changed event cannot join; the second event remains with its original amount and decimal.
++     */
++    it('should omit an event with a mismatched source token identifier', async () => {
++      const source = await createAggregatorDatabase();
++      try {
++        const fixture = bridgeMetricsActionTestData.getEventsInRangeMultipleEvents;
++        await insertRangeFixture(source);
++        await source
++          .getRepository(EventTriggerEntity)
++          .update({ eventId: 'event1' }, { sourceChainTokenId: 'missing-token' });
++
++        expect(
++          await new BridgeMetricsAction(source).getEventsInRange(fixture.startTs, fixture.endTs),
++        ).toEqual(fixture.expectedEvents.slice(1));
++      } finally {
++        await source.destroy();
++      }
++    });
++
++    /**
++     * @target BridgeMetricsAction.getEventsInRange should keep the end timestamp exclusive for aggregator tokens
++     * @dependencies Genuine aggregator token registry and nonempty local SQLite event, block and token rows.
++     * @scenario Set endTs exactly to the second successful event's block timestamp.
++     * @expected The event at endTs is excluded and the first successful in-range event remains.
++     */
++    it('should keep the end timestamp exclusive for aggregator tokens', async () => {
++      const source = await createAggregatorDatabase();
++      try {
++        const fixture = bridgeMetricsActionTestData.getEventsInRangeMultipleEvents;
++        await insertRangeFixture(source);
++
++        expect(
++          await new BridgeMetricsAction(source).getEventsInRange(
++            fixture.startTs,
++            fixture.expectedEvents[1].timestamp,
++          ),
++        ).toEqual(fixture.expectedEvents.slice(0, 1));
++      } finally {
++        await source.destroy();
++      }
++    });
++
++    /**
++     * @target BridgeMetricsAction.getEventsInRange should omit an unsuccessful aggregator event
++     * @dependencies Genuine aggregator token registry, event repository and populated local SQLite fixture.
++     * @scenario Change only event1's result from successful to fraud while preserving its block and token.
++     * @expected The unsuccessful event is excluded while the second successful event remains unchanged.
++     */
++    it('should omit an unsuccessful aggregator event', async () => {
++      const source = await createAggregatorDatabase();
++      try {
++        const fixture = bridgeMetricsActionTestData.getEventsInRangeMultipleEvents;
++        await insertRangeFixture(source);
++        await source
++          .getRepository(EventTriggerEntity)
++          .update({ eventId: 'event1' }, { result: 'fraud' });
++
++        expect(
++          await new BridgeMetricsAction(source).getEventsInRange(fixture.startTs, fixture.endTs),
++        ).toEqual(fixture.expectedEvents.slice(1));
++      } finally {
++        await source.destroy();
++      }
++    });
++
++    /**
++     * @target BridgeMetricsAction.getEventsInRange should preserve a configured token table prefix
++     * @dependencies Genuine aggregator entity pair and synchronized prefixed SQLite metadata.
++     * @scenario Populate the established successful range fixture with entityPrefix set to fixture_.
++     * @expected The registered prefixed token table joins both events with their original decimals.
++     */
++    it('should preserve a configured token table prefix', async () => {
++      const source = await createAggregatorDatabase('fixture_');
++      try {
++        const fixture = bridgeMetricsActionTestData.getEventsInRangeMultipleEvents;
++        await insertRangeFixture(source);
++
++        expect(source.getMetadata('TokenEntity').tableName).toEqual('fixture_token_entity');
++        expect(
++          await new BridgeMetricsAction(source).getEventsInRange(fixture.startTs, fixture.endTs),
++        ).toEqual(fixture.expectedEvents);
++      } finally {
++        await source.destroy();
++      }
++    });
+   });
+ 
+   describe('saveBridgeFees', () => {
+@@ -259,12 +449,12 @@ describe('BridgeMetricsAction', () => {
+       const metric = await metricRepo.findOne({
+         where: { key: METRIC_KEYS.TOTAL_BRIDGE_FEES_USD },
+       });
+-      expect(metric?.value).toBe(testData.expectedMetricValue);
++      expect(metric?.value).toEqual(testData.expectedMetricValue);
+       expect(metric?.updatedAt).toBeDefined();
+     });
+ 
+     /**
+-     * @target saveBridgeFees should replace existing total bridge fee records with new values
++     * @target saveBridgeFees should replace existing bridge fee records with new values
+      * @dependencies
+      * - database
+      * @scenario
+@@ -293,7 +483,7 @@ describe('BridgeMetricsAction', () => {
+       const metric = await metricRepo.findOne({
+         where: { key: METRIC_KEYS.TOTAL_BRIDGE_FEES_USD },
+       });
+-      expect(metric?.value).toBe(testData.expectedMetricValue);
++      expect(metric?.value).toEqual(testData.expectedMetricValue);
+     });
+ 
+     /**
+@@ -347,12 +537,12 @@ describe('BridgeMetricsAction', () => {
+       const metric = await metricRepo.findOne({
+         where: { key: METRIC_KEYS.TOTAL_BRIDGE_AMOUNT_USD },
+       });
+-      expect(metric?.value).toBe(testData.expectedMetricValue);
++      expect(metric?.value).toEqual(testData.expectedMetricValue);
+       expect(metric?.updatedAt).toBeDefined();
+     });
+ 
+     /**
+-     * @target saveBridgeAmount should replace existing total bridge amount records with new values
++     * @target saveBridgeAmount should replace existing bridge amount records with new values
+      * @dependencies
+      * - database
+      * @scenario
+@@ -381,7 +571,7 @@ describe('BridgeMetricsAction', () => {
+       const metric = await metricRepo.findOne({
+         where: { key: METRIC_KEYS.TOTAL_BRIDGE_AMOUNT_USD },
+       });
+-      expect(metric?.value).toBe(testData.expectedMetricValue);
++      expect(metric?.value).toEqual(testData.expectedMetricValue);
+     });
+ 
+     /**
+diff --git a/packages/rosen-statistics-entity/tests/actions/lockedAssetsMetricAction.spec.ts b/packages/rosen-statistics-entity/tests/actions/lockedAssetsMetricAction.spec.ts
+index d936987f44e03c15ef5336422811ae430651902a..3e7cb36c14d290124df9c8f847f647314daf0ba5 100644
+--- a/packages/rosen-statistics-entity/tests/actions/lockedAssetsMetricAction.spec.ts
++++ b/packages/rosen-statistics-entity/tests/actions/lockedAssetsMetricAction.spec.ts
+@@ -1,7 +1,11 @@
+ import { beforeEach, describe, expect, it } from 'vitest';
+ 
+ import { type AbstractLogger, DummyLogger } from '@rosen-bridge/abstract-logger';
+-import type { DataSource, Repository } from '@rosen-bridge/extended-typeorm';
++import { DataSource, type Repository } from '@rosen-bridge/extended-typeorm';
++import {
++  LockedAssetEntity as AggregatorLockedAssetEntity,
++  TokenEntity as AggregatorTokenEntity,
++} from '@rosen-ui/asset-aggregator';
+ import { LockedAssetEntity, TokenEntity } from '@rosen-ui/asset-calculator';
+ 
+ import { LockedAssetsMetricAction } from '../../lib';
+@@ -28,6 +32,52 @@ describe('LockedAssetsMetricAction', () => {
+   });
+ 
+   describe('getLockedAssets', () => {
++    /**
++     * Builds the migrated fixture with Service2's genuine locked-asset/token pair.
++     * @param entityPrefix - Optional table prefix; uses synchronized entity metadata when present.
++     * @returns An initialized local SQLite DataSource owned by the calling test.
++     */
++    const createAggregatorDatabase = async (entityPrefix = ''): Promise<DataSource> => {
++      if (!Array.isArray(dataSource.options.entities)) {
++        throw new Error('Locked-asset fixture requires an explicit entity array');
++      }
++      const source = new DataSource({
++        ...dataSource.options,
++        ...(entityPrefix ? { entityPrefix, synchronize: true, migrations: [] } : {}),
++        entities: dataSource.options.entities.map((entity) => {
++          if (entity === TokenEntity) return AggregatorTokenEntity;
++          if (entity === LockedAssetEntity) return AggregatorLockedAssetEntity;
++          return entity;
++        }),
++      });
++      await source.initialize();
++      await source.runMigrations();
++      return source;
++    };
++
++    /**
++     * Inserts a real token relation and an exactly representable SQLite bigint above 2^53.
++     * @param source - Local migrated DataSource with a coherent genuine entity pair.
++     * @returns A promise resolving after the token and locked-asset rows are inserted.
++     */
++    const insertLargeLockedAsset = async (source: DataSource): Promise<void> => {
++      await source.getRepository<TokenEntity>('TokenEntity').insert({
++        id: 'precision-token',
++        name: 'Synthetic precision token',
++        decimal: 18,
++        significantDecimal: 6,
++        isNative: true,
++        chain: 'ergo',
++        ergoSideTokenId: 'synthetic-ergo-token',
++        isResident: true,
++      });
++      await source.getRepository<LockedAssetEntity>('LockedAssetEntity').insert({
++        tokenId: 'precision-token',
++        amount: 9007199254740994n,
++        address: 'synthetic-lock-address',
++      });
++    };
++
+     /**
+      * @target getLockedAssets should return empty array when no locked assets exist
+      * @dependencies
+@@ -45,8 +95,8 @@ describe('LockedAssetsMetricAction', () => {
+     });
+ 
+     /**
+-     * @target getLockedAssets should return correct locked assets ttokenIds, amounts, and significantDecimals
+-     * @dependenciesq
++     * @target getLockedAssets should return correct locked assets tokenIds, amounts, and significantDecimals
++     * @dependencies
+      * - database
+      * @scenario
+      * - Insert multiple TokenEntity records with different significantDecimals
+@@ -66,5 +116,101 @@ describe('LockedAssetsMetricAction', () => {
+       expect(result).toHaveLength(testData.expectedResults.length);
+       expect(result).toEqual(testData.expectedResults);
+     });
++
++    /**
++     * @target LockedAssetsMetricAction.getLockedAssets should preserve a calculator bigint and significant decimal
++     * @dependencies Genuine calculator entities, BigIntValueTransformer and migrated SQLite.
++     * @scenario Insert amount 9007199254740994n and its token with decimal 18 but significantDecimal 6.
++     * @expected The amount remains bigint and the metric selects significantDecimal 6 through the real relation.
++     */
++    it('should preserve a calculator bigint and significant decimal', async () => {
++      await insertLargeLockedAsset(dataSource);
++
++      expect(dataSource.getMetadata('locked_asset_entity').target).toBe(LockedAssetEntity);
++      expect(await action.getLockedAssets()).toEqual([
++        { tokenId: 'precision-token', amount: 9007199254740994n, significantDecimal: 6 },
++      ]);
++    });
++
++    /**
++     * @target LockedAssetsMetricAction.getLockedAssets should preserve an aggregator bigint and significant decimal
++     * @dependencies Genuine aggregator entity pair, BigIntValueTransformer and migrated SQLite.
++     * @scenario Register Service2's coherent entity pair and insert a related token and locked amount above 2^53.
++     * @expected The calculator class remains unregistered while the bigint amount and significantDecimal 6 are returned.
++     */
++    it('should preserve an aggregator bigint and significant decimal', async () => {
++      const source = await createAggregatorDatabase();
++      try {
++        await insertLargeLockedAsset(source);
++
++        expect(source.getMetadata('locked_asset_entity').target).toBe(AggregatorLockedAssetEntity);
++        expect(source.getMetadata('token_entity').target).toBe(AggregatorTokenEntity);
++        expect(source.hasMetadata(LockedAssetEntity)).toEqual(false);
++        expect(await new LockedAssetsMetricAction(source).getLockedAssets()).toEqual([
++          { tokenId: 'precision-token', amount: 9007199254740994n, significantDecimal: 6 },
++        ]);
++      } finally {
++        await source.destroy();
++      }
++    });
++
++    /**
++     * @target LockedAssetsMetricAction.getLockedAssets should return an empty aggregator metric
++     * @dependencies Genuine aggregator entity pair and its registered local SQLite repositories.
++     * @scenario Query a migrated aggregator fixture without inserting any locked assets or tokens.
++     * @expected The actual repository relation query returns an empty array without requiring calculator metadata.
++     */
++    it('should return an empty aggregator metric', async () => {
++      const source = await createAggregatorDatabase();
++      try {
++        expect(await new LockedAssetsMetricAction(source).getLockedAssets()).toEqual([]);
++      } finally {
++        await source.destroy();
++      }
++    });
++
++    /**
++     * @target LockedAssetsMetricAction.getLockedAssets should enforce the registered token foreign key
++     * @dependencies Genuine aggregator relation metadata, real SQLite constraints and registered repositories.
++     * @scenario Insert a locked asset whose tokenId has no row in the otherwise healthy token table.
++     * @expected SQLite rejects the invalid relation and the locked metric remains empty.
++     */
++    it('should enforce the registered token foreign key', async () => {
++      const source = await createAggregatorDatabase();
++      try {
++        await expect(
++          source.getRepository(AggregatorLockedAssetEntity).insert({
++            tokenId: 'missing-token',
++            amount: 7n,
++            address: 'synthetic-lock-address',
++          }),
++        ).rejects.toThrow('FOREIGN KEY constraint failed');
++        expect(await new LockedAssetsMetricAction(source).getLockedAssets()).toEqual([]);
++      } finally {
++        await source.destroy();
++      }
++    });
++
++    /**
++     * @target LockedAssetsMetricAction.getLockedAssets should preserve a configured locked table prefix
++     * @dependencies Genuine aggregator relation metadata and synchronized prefixed local SQLite tables.
++     * @scenario Insert a related token and bigint amount with entityPrefix set to fixture_.
++     * @expected The prefixed registered locked-asset repository returns the amount and token significant decimal.
++     */
++    it('should preserve a configured locked table prefix', async () => {
++      const source = await createAggregatorDatabase('fixture_');
++      try {
++        await insertLargeLockedAsset(source);
++
++        expect(source.getMetadata('LockedAssetEntity').tableName).toEqual(
++          'fixture_locked_asset_entity',
++        );
++        expect(await new LockedAssetsMetricAction(source).getLockedAssets()).toEqual([
++          { tokenId: 'precision-token', amount: 9007199254740994n, significantDecimal: 6 },
++        ]);
++      } finally {
++        await source.destroy();
++      }
++    });
+   });
+ });

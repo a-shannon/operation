@@ -1,0 +1,202 @@
+diff --git a/.changeset/watcher-generic-signing-action.md b/.changeset/watcher-generic-signing-action.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..eebcc4905e06bc91946680c84c366ee5dd147248
+--- /dev/null
++++ b/.changeset/watcher-generic-signing-action.md
+@@ -0,0 +1,5 @@
++---
++'@rosen-bridge/watcher': minor
++---
++
++Allow the existing Ergo transaction helpers to wrap signing after state-context acquisition and forward that optional wrapper through transaction construction.
+diff --git a/src/ergo/utils.ts b/src/ergo/utils.ts
+index cc791d676a4155730232f31b141d029d517f25be..bcaf4685bf22bad399514dc7154c3da113f6d84e 100644
+--- a/src/ergo/utils.ts
++++ b/src/ergo/utils.ts
+@@ -202,7 +202,8 @@ export class ErgoUtils {
+     builder: wasm.TxBuilder,
+     secret: wasm.SecretKey,
+     inputs: wasm.ErgoBoxes,
+-    dataInputs: wasm.ErgoBoxes = wasm.ErgoBoxes.from_boxes_json([])
++    dataInputs: wasm.ErgoBoxes = wasm.ErgoBoxes.from_boxes_json([]),
++    withSigning?: (sign: () => wasm.Transaction) => Promise<wasm.Transaction>
+   ) => {
+     const tx = builder.build();
+     logger.debug(
+@@ -215,7 +216,9 @@ export class ErgoUtils {
+     secrets.add(secret);
+     const wallet = wasm.Wallet.from_secrets(secrets);
+     const ctx = await ErgoNetwork.getErgoStateContext();
+-    return wallet.sign_transaction(ctx, tx, inputs, dataInputs);
++    /** Signs the built transaction with its resolved context, inputs and data inputs. */
++    const sign = () => wallet.sign_transaction(ctx, tx, inputs, dataInputs);
++    return withSigning ? withSigning(sign) : sign();
+   };
+ 
+   /**
+@@ -256,7 +259,8 @@ export class ErgoUtils {
+     candidates: Array<wasm.ErgoBoxCandidate>,
+     height: number,
+     dataInputs?: wasm.ErgoBoxes,
+-    changeContract?: wasm.Contract
++    changeContract?: wasm.Contract,
++    withSigning?: (sign: () => wasm.Transaction) => Promise<wasm.Transaction>
+   ): Promise<wasm.Transaction> => {
+     const change = ErgoUtils.createChangeBox(
+       boxes,
+@@ -300,7 +304,8 @@ export class ErgoUtils {
+       txBuilder,
+       secret,
+       boxes,
+-      dataInputs ? dataInputs : wasm.ErgoBoxes.from_boxes_json([])
++      dataInputs ? dataInputs : wasm.ErgoBoxes.from_boxes_json([]),
++      withSigning
+     );
+   };
+ 
+diff --git a/tests/ergo/utils.spec.ts b/tests/ergo/utils.spec.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..2117cc25a5793613fa4da04d1bd80d4ee3f72792
+--- /dev/null
++++ b/tests/ergo/utils.spec.ts
+@@ -0,0 +1,140 @@
++import '@rosen-bridge/extended-typeorm/bootstrap';
++import { afterEach, describe, expect, it, vi } from 'vitest';
++import * as wasm from 'ergo-lib-wasm-nodejs';
++
++import { ErgoUtils } from '../../src/ergo/utils';
++import { ErgoNetwork } from '../../src/ergo/network/ergoNetwork';
++
++import permitJson from '../ergoUtils/dataset/permitBox.json' assert { type: 'json' };
++import txJson from './dataset/tx.json' assert { type: 'json' };
++const transaction = wasm.Transaction.from_json(JSON.stringify(txJson));
++describe('ErgoUtils', () => {
++  afterEach(() => vi.restoreAllMocks());
++
++  describe('buildTxAndSign', () => {
++    const checkSigning = async (held: boolean) => {
++      const order: string[] = [];
++      let release!: () => void;
++      const context = new Promise<wasm.ErgoStateContext>((resolve) => {
++        release = () => {
++          order.push('context');
++          resolve({} as wasm.ErgoStateContext);
++        };
++      });
++      vi.spyOn(ErgoNetwork, 'getErgoStateContext').mockReturnValue(context);
++      const sign = vi
++        .spyOn(wasm.Wallet.prototype, 'sign_transaction')
++        .mockImplementation(() => {
++          order.push('sign');
++          return transaction;
++        });
++      const builder = {
++        build: () => ({ id: () => transaction.id(), to_json: () => '{}' }),
++      } as unknown as wasm.TxBuilder;
++      const check = vi
++        .fn()
++        .mockImplementation(async (sign: () => wasm.Transaction) => {
++          order.push('gate');
++          if (held) throw new Error('signing refused');
++          return sign();
++        });
++      const result = ErgoUtils.buildTxAndSign(
++        builder,
++        wasm.SecretKey.random_dlog(),
++        wasm.ErgoBoxes.from_boxes_json([]),
++        undefined,
++        check
++      );
++      expect(check).not.toHaveBeenCalled();
++      expect(sign).not.toHaveBeenCalled();
++      release();
++      let error: unknown;
++      try {
++        await result;
++      } catch (caught) {
++        error = caught;
++      }
++      expect(order).toEqual(
++        held ? ['context', 'gate'] : ['context', 'gate', 'sign']
++      );
++      expect(sign).toHaveBeenCalledTimes(held ? 0 : 1);
++      if (held) expect(String(error)).toContain('signing refused');
++      else expect(error).toEqual(undefined);
++    };
++
++    /**
++     * @target ErgoUtils.buildTxAndSign: checks safety after context acquisition and allows wallet signing
++     * @dependencies Real WASM transaction/boxes; mocked context acquisition,
++     * wallet signing and construction dependencies
++     * @scenario Hold context acquisition, complete it and apply the action
++     * wrapper before wallet signing.
++     * @expected Context resolves before the wrapper; wallet signing occurs
++     * exactly once when allowed.
++     */
++    it('checks safety after context acquisition and allows wallet signing', async () => {
++      await checkSigning(false);
++    });
++
++    /**
++     * @target ErgoUtils.buildTxAndSign: checks safety after context acquisition and blocks wallet signing
++     * @dependencies Real WASM transaction/boxes; mocked context acquisition,
++     * wallet signing and construction dependencies
++     * @scenario Hold context acquisition, complete it and apply the action
++     * wrapper before wallet signing.
++     * @expected Context resolves before the wrapper; wallet signing occurs
++     * exactly zero times when refused.
++     */
++    it('checks safety after context acquisition and blocks wallet signing', async () => {
++      await checkSigning(true);
++    });
++  });
++
++  describe('createAndSignTx', () => {
++    /**
++     * @target ErgoUtils.createAndSignTx: forwards the action wrapper through
++     * transaction construction to signing
++     * @dependencies Real WASM transaction/boxes; mocked context acquisition,
++     * wallet signing and construction dependencies
++     * @scenario Build a real transaction candidate with synthetic boxes; mock
++     * the signing dependency and capture its action wrapper.
++     * @expected Pass the identical wrapper through construction, invoke it
++     * once, and return the identical synthetic transaction.
++     */
++    it('forwards the action wrapper through transaction construction to signing', async () => {
++      const secret = wasm.SecretKey.random_dlog();
++      const box = wasm.ErgoBox.from_json(JSON.stringify(permitJson));
++      const inputs = new wasm.ErgoBoxes(box);
++      const candidate = new wasm.ErgoBoxCandidateBuilder(
++        wasm.BoxValue.from_i64(wasm.I64.from_str('1000000')),
++        wasm.Contract.pay_to_address(secret.get_address()),
++        1
++      ).build();
++      vi.spyOn(ErgoUtils, 'createChangeBox').mockReturnValue(null);
++      const wrapper = vi
++        .fn()
++        .mockImplementation(async (sign: () => wasm.Transaction) => sign());
++      const build = vi
++        .spyOn(ErgoUtils, 'buildTxAndSign')
++        .mockImplementation(
++          async (_builder, _secret, _inputs, _data, withSigning) => {
++            expect(withSigning).toEqual(wrapper);
++            if (!withSigning) throw new Error('Signing wrapper missing');
++            return withSigning(() => transaction);
++          }
++        );
++      expect(
++        await ErgoUtils.createAndSignTx(
++          secret,
++          inputs,
++          [candidate],
++          1,
++          undefined,
++          undefined,
++          wrapper
++        )
++      ).toEqual(transaction);
++      expect(build).toHaveBeenCalledTimes(1);
++      expect(wrapper).toHaveBeenCalledTimes(1);
++    });
++  });
++});

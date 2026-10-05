@@ -1,0 +1,348 @@
+diff --git a/.changeset/avalanche-codec-and-state-ownership.md b/.changeset/avalanche-codec-and-state-ownership.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..5b34fe0e8bbe101e7d972d8d682f6668e07b3df1
+--- /dev/null
++++ b/.changeset/avalanche-codec-and-state-ownership.md
+@@ -0,0 +1,5 @@
++---
++'@rosen-bridge/address-codec': minor
++---
++
++Support Avalanche C-Chain addresses in the encoder, decoder and validator.
+diff --git a/.changeset/avalanche-extractor-identity.md b/.changeset/avalanche-extractor-identity.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..959d6a6ef2143477c8a7f44eba396e7877160d41
+--- /dev/null
++++ b/.changeset/avalanche-extractor-identity.md
+@@ -0,0 +1,5 @@
++---
++'@rosen-bridge/rosen-extractor': minor
++---
++
++Register the native Avalanche chain identity while leaving its destination byte unassigned.
+diff --git a/packages/address-codec/lib/const.ts b/packages/address-codec/lib/const.ts
+index e6cab0e8bec893a02191d385d0c99c80c662229c..a0219fe37f988ad7a08b036aae3325c157a96eb0 100644
+--- a/packages/address-codec/lib/const.ts
++++ b/packages/address-codec/lib/const.ts
+@@ -1,3 +1,4 @@
+ export const ETHEREUM_CHAIN = 'ethereum';
+ export const BINANCE_CHAIN = 'binance';
+ export const BASE_CHAIN = 'base';
++export const AVALANCHE_CHAIN = 'avalanche';
+diff --git a/packages/address-codec/lib/decoder.ts b/packages/address-codec/lib/decoder.ts
+index 3bb28da49c1e160071587ebbfc898d97e41913a3..d97cfcc5e691fb76125cb37e9d962e4dd2a29443 100644
+--- a/packages/address-codec/lib/decoder.ts
++++ b/packages/address-codec/lib/decoder.ts
+@@ -28,7 +28,12 @@ import {
+   decodeHandshakeAddress,
+ } from '@rosen-bridge/address-codec-handshake';
+ 
+-import { BINANCE_CHAIN, BASE_CHAIN, ETHEREUM_CHAIN } from './const';
++import {
++  AVALANCHE_CHAIN,
++  BINANCE_CHAIN,
++  BASE_CHAIN,
++  ETHEREUM_CHAIN,
++} from './const';
+ import { UnsupportedChainError } from './types';
+ 
+ export const chainDecoders: Record<string, (address: string) => string> = {
+@@ -38,6 +43,7 @@ export const chainDecoders: Record<string, (address: string) => string> = {
+   [ETHEREUM_CHAIN]: generateEvmAddressDecoder(ETHEREUM_CHAIN),
+   [BINANCE_CHAIN]: generateEvmAddressDecoder(BINANCE_CHAIN),
+   [BASE_CHAIN]: generateEvmAddressDecoder(BASE_CHAIN),
++  [AVALANCHE_CHAIN]: generateEvmAddressDecoder(AVALANCHE_CHAIN),
+   [DOGE_CHAIN]: decodeDogeAddress,
+   [BITCOIN_RUNES_CHAIN]: decodeBitcoinRunesAddress,
+   [FIRO_CHAIN]: decodeFiroAddress,
+diff --git a/packages/address-codec/lib/encoder.ts b/packages/address-codec/lib/encoder.ts
+index 7490c443d01670ef48d04ca99d51f4423ecacb39..f5807b23efa8b003286bd11d1081d9462c29b196 100644
+--- a/packages/address-codec/lib/encoder.ts
++++ b/packages/address-codec/lib/encoder.ts
+@@ -28,7 +28,12 @@ import {
+   encodeHandshakeAddress,
+ } from '@rosen-bridge/address-codec-handshake';
+ 
+-import { BINANCE_CHAIN, BASE_CHAIN, ETHEREUM_CHAIN } from './const';
++import {
++  AVALANCHE_CHAIN,
++  BINANCE_CHAIN,
++  BASE_CHAIN,
++  ETHEREUM_CHAIN,
++} from './const';
+ import { UnsupportedChainError } from './types';
+ 
+ export const chainEncoders: Record<string, (address: string) => string> = {
+@@ -38,6 +43,7 @@ export const chainEncoders: Record<string, (address: string) => string> = {
+   [ETHEREUM_CHAIN]: generateEvmAddressEncoder(ETHEREUM_CHAIN),
+   [BINANCE_CHAIN]: generateEvmAddressEncoder(BINANCE_CHAIN),
+   [BASE_CHAIN]: generateEvmAddressEncoder(BASE_CHAIN),
++  [AVALANCHE_CHAIN]: generateEvmAddressEncoder(AVALANCHE_CHAIN),
+   [DOGE_CHAIN]: encodeDogeAddress,
+   [BITCOIN_RUNES_CHAIN]: encodeBitcoinRunesAddress,
+   [FIRO_CHAIN]: encodeFiroAddress,
+diff --git a/packages/address-codec/lib/validator.ts b/packages/address-codec/lib/validator.ts
+index f9f938a9cccc8d23f3812220468d8140a536ab99..fcc40e9938311858068cd3c3ddd5d4f679a47bca 100644
+--- a/packages/address-codec/lib/validator.ts
++++ b/packages/address-codec/lib/validator.ts
+@@ -28,7 +28,12 @@ import {
+   validateHandshakeAddress,
+ } from '@rosen-bridge/address-codec-handshake';
+ 
+-import { BINANCE_CHAIN, BASE_CHAIN, ETHEREUM_CHAIN } from './const';
++import {
++  AVALANCHE_CHAIN,
++  BINANCE_CHAIN,
++  BASE_CHAIN,
++  ETHEREUM_CHAIN,
++} from './const';
+ import { UnsupportedChainError } from './types';
+ 
+ export const chainValidators: Record<string, (address: string) => void> = {
+@@ -38,6 +43,7 @@ export const chainValidators: Record<string, (address: string) => void> = {
+   [ETHEREUM_CHAIN]: generateEvmAddressValidator(ETHEREUM_CHAIN),
+   [BINANCE_CHAIN]: generateEvmAddressValidator(BINANCE_CHAIN),
+   [BASE_CHAIN]: generateEvmAddressValidator(BASE_CHAIN),
++  [AVALANCHE_CHAIN]: generateEvmAddressValidator(AVALANCHE_CHAIN),
+   [DOGE_CHAIN]: validateDogeAddress,
+   [BITCOIN_RUNES_CHAIN]: validateBitcoinRunesAddress,
+   [FIRO_CHAIN]: validateFiroAddress,
+diff --git a/packages/address-codec/tests/decoder.spec.ts b/packages/address-codec/tests/decoder.spec.ts
+index cf20a949ed6eab2fd820a0fd1a307a0db4adfc24..acdf4d3c33775977657c9f681bc28387d1b96b18 100644
+--- a/packages/address-codec/tests/decoder.spec.ts
++++ b/packages/address-codec/tests/decoder.spec.ts
+@@ -1,6 +1,35 @@
+ import { UnsupportedChainError, decodeAddress } from '../lib';
+ 
+ describe('decodeAddress', () => {
++  describe.each(['ethereum', 'binance', 'base', 'avalanche'])(
++    '%s EVM decoder',
++    (chain) => {
++      /**
++       * @target decodeAddress decodes a 20-byte EVM address
++       * @dependencies EVM address codec
++       * @scenario Decode an unprefixed lowercase encoding on each supported EVM chain
++       * @expected The address contains the same bytes with a 0x prefix
++       */
++      it('decodes a 20-byte EVM address', () => {
++        expect(decodeAddress(chain, 'ab'.repeat(20))).toEqual(
++          '0x' + 'ab'.repeat(20),
++        );
++      });
++      /**
++       * @target decodeAddress rejects %s
++       * @dependencies EVM address codec
++       * @scenario Decode an encoding with an invalid size or prefix
++       * @expected The codec throws before returning an address
++       */
++      it.each([
++        ['short encoding', 'ab'.repeat(19)],
++        ['long encoding', 'ab'.repeat(21)],
++        ['prefixed encoding', '0x' + 'ab'.repeat(20)],
++      ])('rejects %s', (_name, invalid) => {
++        expect(() => decodeAddress(chain, invalid)).toThrow();
++      });
++    },
++  );
+   /**
+    * @target `decodeAddress` should throw error when chain is not supported
+    * @dependencies
+diff --git a/packages/address-codec/tests/encoder.spec.ts b/packages/address-codec/tests/encoder.spec.ts
+index 63abeec96554034e1500b03ac8777f9c0d5dedd8..d360bc700fed64f313154bf8596bfd98db070dad 100644
+--- a/packages/address-codec/tests/encoder.spec.ts
++++ b/packages/address-codec/tests/encoder.spec.ts
+@@ -1,6 +1,37 @@
+-import { UnsupportedChainError, encodeAddress } from '../lib';
++import { UnsupportedChainError, encodeAddress, decodeAddress } from '../lib';
+ 
+ describe('encodeAddress', () => {
++  describe.each(['ethereum', 'binance', 'base', 'avalanche'])(
++    '%s EVM encoder',
++    (chain) => {
++      const encoded = 'ab'.repeat(20);
++      /**
++       * @target encodeAddress encodes and round-trips a 20-byte EVM address
++       * @dependencies EVM address codec and decodeAddress
++       * @scenario Encode a lowercase address on each supported EVM chain and decode it
++       * @expected The unprefixed bytes and round-tripped address match exactly
++       */
++      it('encodes and round-trips a 20-byte EVM address', () => {
++        expect(encodeAddress(chain, '0x' + encoded)).toEqual(encoded);
++        expect(
++          decodeAddress(chain, encodeAddress(chain, '0x' + encoded)),
++        ).toEqual('0x' + encoded);
++      });
++      /**
++       * @target encodeAddress rejects %s
++       * @dependencies EVM address codec
++       * @scenario Encode an address with an invalid size or prefix
++       * @expected The codec throws before returning an encoding
++       */
++      it.each([
++        ['short address', '0x' + 'ab'.repeat(19)],
++        ['long address', '0x' + 'ab'.repeat(21)],
++        ['wrong prefix', '1x' + 'ab'.repeat(20)],
++      ])('rejects %s', (_name, invalid) => {
++        expect(() => encodeAddress(chain, invalid)).toThrow();
++      });
++    },
++  );
+   /**
+    * @target `encodeAddress` should throw error when chain is not supported
+    * @dependencies
+diff --git a/packages/address-codec/tests/validator.spec.ts b/packages/address-codec/tests/validator.spec.ts
+index 3511854d57fe3d26aca31a74353352e6b9c6753a..2c9f38184258fd27d5537e41cebd59244f77db48 100644
+--- a/packages/address-codec/tests/validator.spec.ts
++++ b/packages/address-codec/tests/validator.spec.ts
+@@ -1,6 +1,36 @@
+ import { UnsupportedChainError, validateAddress } from '../lib';
+ 
+ describe('validateAddress', () => {
++  describe.each(['ethereum', 'binance', 'base', 'avalanche'])(
++    '%s EVM validator',
++    (chain) => {
++      const address = '0x' + 'ab'.repeat(20);
++      /**
++       * @target validateAddress accepts a lowercase 20-byte EVM address
++       * @dependencies EVM address codec
++       * @scenario Validate a complete lowercase address on each supported EVM chain
++       * @expected Validation completes without an exception
++       */
++      it('accepts a lowercase 20-byte EVM address', () => {
++        expect(() => validateAddress(chain, address)).not.toThrow();
++      });
++      /**
++       * @target validateAddress rejects %s
++       * @dependencies EVM address codec
++       * @scenario Validate an address with invalid size, prefix, bytes or letter case
++       * @expected Validation throws for each independently invalid address
++       */
++      it.each([
++        ['short address', '0x' + 'ab'.repeat(19)],
++        ['long address', '0x' + 'ab'.repeat(21)],
++        ['wrong prefix', '1x' + 'ab'.repeat(20)],
++        ['nonhex characters', '0x' + 'gg'.repeat(20)],
++        ['mixed case', '0xAb' + 'ab'.repeat(19)],
++      ])('rejects %s', (_name, invalid) => {
++        expect(() => validateAddress(chain, invalid)).toThrow();
++      });
++    },
++  );
+   /**
+    * @target `validateAddress` should throw error when chain is not supported
+    * @dependencies
+diff --git a/packages/rosen-extractor/lib/getRosenData/const.ts b/packages/rosen-extractor/lib/getRosenData/const.ts
+index c903b4549c07b909321cf7a3e080df5e886b1c33..289252221ccd437a878178c76b9741a37b3b9e81 100644
+--- a/packages/rosen-extractor/lib/getRosenData/const.ts
++++ b/packages/rosen-extractor/lib/getRosenData/const.ts
+@@ -5,6 +5,8 @@ export const BITCOIN_CHAIN = 'bitcoin';
+ export const ETHEREUM_CHAIN = 'ethereum';
+ export const BINANCE_CHAIN = 'binance';
+ export const BASE_CHAIN = 'base';
++export const AVALANCHE_CHAIN = 'avalanche';
++export const AVALANCHE_NATIVE_TOKEN = 'avax';
+ export const CARDANO_CHAIN = 'cardano';
+ export const ERGO_CHAIN = 'ergo';
+ export const DOGE_CHAIN = 'doge';
+@@ -25,4 +27,7 @@ export const SUPPORTED_CHAINS = [
+   { chain: FIRO_CHAIN, index: 7 },
+   { chain: HANDSHAKE_CHAIN, index: 8 },
+   { chain: BASE_CHAIN, index: 9 },
++  // Rosen has not assigned an EVM destination byte for the native-only route.
++  // AVAX returns from Ergo using the chain name in R4.
++  { chain: AVALANCHE_CHAIN, index: undefined },
+ ];
+diff --git a/packages/rosen-extractor/tests/getRosenData/const.spec.ts b/packages/rosen-extractor/tests/getRosenData/const.spec.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..6f89688d3366a8ce245aa8adc27c89869027f61f
+--- /dev/null
++++ b/packages/rosen-extractor/tests/getRosenData/const.spec.ts
+@@ -0,0 +1,68 @@
++import { describe, expect, it } from 'vitest';
++
++import {
++  AVALANCHE_CHAIN,
++  AVALANCHE_NATIVE_TOKEN,
++  SUPPORTED_CHAINS,
++} from '../../lib/getRosenData/const';
++
++describe('SUPPORTED_CHAINS', () => {
++  /**
++   * @target SUPPORTED_CHAINS preserves every published destination assignment
++   * @dependencies Actual constant registry; no mocks or external requests
++   * @scenario Read the ten published chain identities and their byte indices.
++   * @expected Preserve indices 0 through 9, including Base at index 9.
++   */
++  it('preserves every published destination assignment', () => {
++    expect(SUPPORTED_CHAINS.filter(({ index }) => index !== undefined)).toEqual(
++      [
++        { chain: 'ergo', index: 0 },
++        { chain: 'cardano', index: 1 },
++        { chain: 'bitcoin', index: 2 },
++        { chain: 'ethereum', index: 3 },
++        { chain: 'binance', index: 4 },
++        { chain: 'doge', index: 5 },
++        { chain: 'bitcoin-runes', index: 6 },
++        { chain: 'firo', index: 7 },
++        { chain: 'handshake', index: 8 },
++        { chain: 'base', index: 9 },
++      ],
++    );
++  });
++
++  /**
++   * @target SUPPORTED_CHAINS registers Avalanche without allocating a byte
++   * @dependencies Actual constant registry; no mocks or external requests
++   * @scenario Select entries carrying the Avalanche chain name.
++   * @expected Find exactly one known identity with an unassigned byte.
++   */
++  it('registers Avalanche without allocating a byte', () => {
++    expect(
++      SUPPORTED_CHAINS.filter(({ chain }) => chain === 'avalanche'),
++    ).toEqual([{ chain: 'avalanche', index: undefined }]);
++  });
++});
++
++describe('AVALANCHE_CHAIN', () => {
++  /**
++   * @target AVALANCHE_CHAIN identifies the native route by its protocol name
++   * @dependencies Actual exported constant; no mocks or external requests
++   * @scenario Read the chain identity.
++   * @expected Match the text identity used by the Ergo return route.
++   */
++  it('identifies the native route by its protocol name', () => {
++    expect(AVALANCHE_CHAIN).toEqual('avalanche');
++  });
++});
++
++describe('AVALANCHE_NATIVE_TOKEN', () => {
++  /**
++   * @target AVALANCHE_NATIVE_TOKEN identifies native AVAX
++   * @dependencies Actual exported constant; no mocks or external requests
++   * @scenario Read the native token identity.
++   * @expected Match the native AVAX token identifier.
++   */
++  it('identifies native AVAX', () => {
++    expect(AVALANCHE_NATIVE_TOKEN).toEqual('avax');
++  });
++});
+diff --git a/packages/rosen-extractor/tests/utils.spec.ts b/packages/rosen-extractor/tests/utils.spec.ts
+index d8e09c390bfddd649879955712d3f4136615c831..dbb9ae43fbba27fed1d1ae6d9aba4d45b16f4a5e 100644
+--- a/packages/rosen-extractor/tests/utils.spec.ts
++++ b/packages/rosen-extractor/tests/utils.spec.ts
+@@ -36,4 +36,15 @@ describe('parseRosenData', () => {
+       parseRosenData(script);
+     }).toThrow(Error);
+   });
++
++  /**
++   * @target parseRosenData refuses an unassigned Avalanche destination byte
++   * @dependencies Actual parser and registered address codecs; no external calls
++   * @scenario Replace only the valid fixture's chain byte with unassigned 10.
++   * @expected Reject before address decoding; neither Base nor Avalanche aliases 10.
++   */
++  it('refuses an unassigned Avalanche destination byte', () => {
++    const script = '0a' + testData.opReturnScripts.valid.slice(2);
++    expect(() => parseRosenData(script)).toThrow(/invalid toChain code/);
++  });
+ });

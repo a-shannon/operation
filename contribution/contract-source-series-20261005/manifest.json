@@ -1,0 +1,54 @@
+{
+  "schema": "rosen-producer-contribution-series.v1",
+  "author": "A. Shannon",
+  "rcs": "7b9784dae9d8d5b66b80de7a6043d1ba36a3a4bf",
+  "repositories": [
+    {
+      "repo": "contract",
+      "head": "4302d8d34020b0012c3fcb25d7484aa602813cab"
+    }
+  ],
+  "groups": [
+    {
+      "id": "C-CONTRACT",
+      "repo": "contract",
+      "purpose": "Offline Avalanche mainnet AVAX/JOE contract and token configuration preparation",
+      "dependencies": [],
+      "externalReleasePrerequisites": [],
+      "beforeTree": "853b52f9838b3c280c897636ff52f77924ff3fa3",
+      "tree": "b7a81f0408026c99e4a3a520e01c4150ccb56421",
+      "patch": {
+        "path": "patches/C-CONTRACT.patch",
+        "bytes": 38272,
+        "sha256": "7195cc6a7c4bfdda98fbd429a60858c682cc83c9918beef8638fd6fb5474871b"
+      },
+      "files": [
+        {
+          "path": "src/main/scala/rosen/bridge/AvalanchePreparation.scala",
+          "bytes": 9046,
+          "sha256": "78c5da418726c1523039ef51f9daf8c2201475a983c455c8b7d07409c208c497"
+        },
+        {
+          "path": "src/main/scala/rosen/bridge/AvalancheOverlayMerge.scala",
+          "bytes": 8479,
+          "sha256": "75afed9bd4dc51a0b158f61b9410008845dae438601e681bc523a3c972f069a2"
+        },
+        {
+          "path": "src/test/scala/contracts/AvalanchePreparationSpec.scala",
+          "bytes": 6815,
+          "sha256": "f6636fae10b7331dd0e41773e3bebdf32054fb0d561140d638ea72df2f148e88"
+        },
+        {
+          "path": "src/test/scala/contracts/AvalancheOverlayMergeSpec.scala",
+          "bytes": 10628,
+          "sha256": "9b3510cee3ba05d57bb7058d7025698e985784930ec74d6bdd8a7c54d0588f84"
+        },
+        {
+          "path": "src/test/resources/avalanche/assigned-values.example.json",
+          "bytes": 1401,
+          "sha256": "30dc6ffbb10a282668a8dc112c7255ded5c6b5c2cd473dbafb7e5695bdb6c0a9"
+        }
+      ]
+    }
+  ]
+}

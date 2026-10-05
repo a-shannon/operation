@@ -1,0 +1,164 @@
+{
+  "schema": "rosen-producer-health-successor-validation.v1",
+  "predecessorManifest": {
+    "bytes": 23083,
+    "sha256": "b456106d92fbf4a67c2de3bfb09dec5efb981c4086419aa067b0c66b52d38cda"
+  },
+  "healthSourceFreeze": {
+    "bytes": 9023,
+    "sha256": "861efd6f64c9d34034ae560aeb152e5acb4406d1f1003a3b5e68219b7be14bff"
+  },
+  "changedGroup": "C-SCANNER",
+  "changedScannerRuntime": {
+    "bytes": 12099,
+    "sha256": "4dbf507f516c7b132077b5a198dae209754b8ac50e08e3be44ffeb86c62ea16a"
+  },
+  "changedScannerSpec": {
+    "bytes": 48912,
+    "sha256": "1e36e60131c04a9a8cb6f9e083b82e3304bac0283dd942285ef5ab8be4e9a7d9"
+  },
+  "packageSelection": {
+    "newDependency": "@rosen-bridge/semaphore ^0.1.0",
+    "existingSelectedLoaderRetained": true,
+    "installedVersion": "0.1.0"
+  },
+  "lockPreparation": {
+    "changes": [
+      {
+        "path": "packages/observation-extractors/evm-observation-extractor",
+        "before": {
+          "@rosen-bridge/abstract-logger": "^4.0.0",
+          "@rosen-bridge/abstract-observation-extractor": "^2.0.0",
+          "@rosen-bridge/extended-typeorm": "^1.1.0",
+          "@rosen-bridge/rosen-extractor": "^12.1.2",
+          "@rosen-bridge/scanner-interfaces": "^1.0.0",
+          "@rosen-bridge/tokens": "^6.0.2",
+          "blakejs": "^1.2.1",
+          "ethers": "6.16.0"
+        },
+        "after": {
+          "@rosen-bridge/abstract-logger": "^4.0.0",
+          "@rosen-bridge/abstract-observation-extractor": "^2.0.0",
+          "@rosen-bridge/extended-typeorm": "^1.1.1",
+          "@rosen-bridge/rosen-extractor": "^12.1.2",
+          "@rosen-bridge/scanner-interfaces": "^1.0.0",
+          "@rosen-bridge/tokens": "^6.0.2",
+          "blakejs": "^1.2.1",
+          "ethers": "6.16.0"
+        }
+      },
+      {
+        "path": "packages/raw-data-provider",
+        "before": {
+          "@cardano-ogmios/client": "^6.6.1",
+          "@cardano-ogmios/schema": "^6.6.1",
+          "@emurgo/cardano-serialization-lib-nodejs": "^13.2.1",
+          "@rosen-bridge/abstract-logger": "^4.0.0",
+          "@rosen-bridge/abstract-observation-extractor": "^2.0.0",
+          "@rosen-bridge/abstract-scanner": "^4.0.0",
+          "@rosen-bridge/bitcoin-observation-extractor": "^8.0.7",
+          "@rosen-bridge/bitcoin-runes-observation-extractor": "^3.0.8",
+          "@rosen-bridge/bitcoin-scanner": "^2.0.1",
+          "@rosen-bridge/cardano-observation-extractor": "^3.0.8",
+          "@rosen-bridge/ergo-observation-extractor": "^2.0.7",
+          "@rosen-bridge/evm-observation-extractor": "^7.0.7",
+          "@rosen-bridge/extended-typeorm": "^1.1.0",
+          "@rosen-bridge/json-bigint": "^1.1.0",
+          "@rosen-bridge/scanner-interfaces": "^1.0.0",
+          "@rosen-clients/cardano-koios": "^3.1.3",
+          "@rosen-clients/ergo-explorer": "^2.1.3",
+          "@rosen-clients/ergo-node": "^3.1.3",
+          "@rosen-clients/rate-limited-axios": "^2.0.1",
+          "ethers": "6.16.0"
+        },
+        "after": {
+          "@cardano-ogmios/client": "^6.6.1",
+          "@cardano-ogmios/schema": "^6.6.1",
+          "@emurgo/cardano-serialization-lib-nodejs": "^13.2.1",
+          "@rosen-bridge/abstract-logger": "^4.0.0",
+          "@rosen-bridge/abstract-observation-extractor": "^2.0.0",
+          "@rosen-bridge/abstract-scanner": "^4.0.0",
+          "@rosen-bridge/bitcoin-observation-extractor": "^8.0.7",
+          "@rosen-bridge/bitcoin-runes-observation-extractor": "^3.0.8",
+          "@rosen-bridge/bitcoin-scanner": "^2.0.1",
+          "@rosen-bridge/cardano-observation-extractor": "^3.0.8",
+          "@rosen-bridge/ergo-observation-extractor": "^2.0.7",
+          "@rosen-bridge/evm-observation-extractor": "^7.1.0",
+          "@rosen-bridge/extended-typeorm": "^1.1.1",
+          "@rosen-bridge/json-bigint": "^1.1.0",
+          "@rosen-bridge/scanner-interfaces": "^1.0.0",
+          "@rosen-clients/cardano-koios": "^3.1.3",
+          "@rosen-clients/ergo-explorer": "^2.1.3",
+          "@rosen-clients/ergo-node": "^3.1.3",
+          "@rosen-clients/rate-limited-axios": "^2.0.1",
+          "ethers": "6.16.0"
+        }
+      },
+      {
+        "path": "packages/scanners/evm-scanner",
+        "before": {
+          "@rosen-bridge/abstract-scanner": "^4.0.0",
+          "@rosen-bridge/scanner-interfaces": "^1.0.0",
+          "ethers": "6.16.0"
+        },
+        "after": {
+          "@rosen-bridge/abstract-scanner": "^4.0.0",
+          "@rosen-bridge/extended-typeorm": "1.1.1",
+          "@rosen-bridge/scanner-interfaces": "^1.0.0",
+          "ethers": "6.16.0",
+          "@rosen-bridge/semaphore": "^0.1.0"
+        }
+      }
+    ],
+    "existingRegistryEntriesRetained": true,
+    "ordinaryReleasedInstallation": false
+  },
+  "authorFocusedTests": {
+    "scanner": {
+      "pass": 59,
+      "unchanged": 42,
+      "new": 17
+    },
+    "guard": {
+      "pass": 18,
+      "unchanged": 16,
+      "new": 2
+    }
+  },
+  "priorOtherGroups": "Seven exact predecessor groups and their unchanged validation closure are reused.",
+  "sourceApplication": {
+    "status": "PASS eight fresh patch applications",
+    "finalScannerTree": "bd4f7837a5c5c480019a5c0c4b0295153f8738db",
+    "selectedScannerFiles": 26
+  },
+  "independentHealthReview": {
+    "receiptSha256": "d257fcabb7d517560e308716d18de44f75007f0193e8495bb70d9cbc2770ed2c",
+    "scannerPassed": 59,
+    "guardPassed": 18,
+    "additionalControlsPassed": 4,
+    "mutantsDetected": 5,
+    "blockingFindings": 0,
+    "deadlineScope": "Queue plus qualified balance or DAO read; additional shared-monitor network assertions retain their transport bounds."
+  },
+  "scannerReleasePreparation": {
+    "status": "PASS normal full and sequential Changesets status/version on exact source",
+    "previewPath": "release-previews.json",
+    "previewSha256": "f06d039f2e5fc20dcca8ca7b45e0f232e7f8ef0ad2bdc44ca1459413f511b34a",
+    "aggregatePlanEntries": 17,
+    "aggregateVersionChanges": 14,
+    "avalancheVersionChanges": 3,
+    "selectedVersions": {
+      "evmObservationExtractor": "7.2.0",
+      "evmScanner": "2.1.0",
+      "abstractScanner": "4.0.1",
+      "rawDataProvider": "0.3.0"
+    },
+    "staleWorkspaceLockRecordsAfterSequentialVersion": 17,
+    "registryLockRegeneration": "Pending actual producer publication; no registry resolutions invented."
+  },
+  "pending": [
+    "Ordinary release-selected registry lock/install/build after publication.",
+    "Final Guard source/startup/live API composition and operator inputs."
+  ],
+  "fullIntegrationCompliance": false
+}

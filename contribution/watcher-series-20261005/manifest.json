@@ -1,0 +1,341 @@
+{
+  "schema": "rosen-producer-contribution-series.v1",
+  "author": "A. Shannon",
+  "rcs": "7b9784dae9d8d5b66b80de7a6043d1ba36a3a4bf",
+  "repositories": [
+    {
+      "repo": "watcher",
+      "head": "4552b29b95dd48947f85406857641b1ecb2e5490"
+    }
+  ],
+  "groups": [
+    {
+      "id": "W03",
+      "repo": "watcher",
+      "purpose": "Generic runtime and RCS test compatibility",
+      "dependencies": [],
+      "beforeTree": "42a7ea1f3e9f0cf8da1b038cd848f39a541e14bf",
+      "tree": "42ccbba4fe06982fd2a0d568bdacd5ccc0ab8926",
+      "patch": {
+        "path": "patches/W03.patch",
+        "bytes": 6489,
+        "sha256": "0bfa80a20e71a3bbc461f32031de1c0142868aaf192b479db535598e73a8d4df"
+      },
+      "files": [
+        {
+          "path": ".changeset/watcher-runtime-test-compatibility.md",
+          "bytes": 238,
+          "sha256": "3b4fcb8275d9eeb9e9a4b10760a459e7c75d9d4e547819468aabfedb6609465f"
+        },
+        {
+          "path": ".mocharc.json",
+          "bytes": 268,
+          "sha256": "b34e8b87c65dc36bc2ac4f5a7622040fc2bb8ef454a186e58b4b80fcaa73b005"
+        },
+        {
+          "path": ".nvmrc",
+          "bytes": 8,
+          "sha256": "8fb7215a78fb2dacb282d6fca135a48bd69892ad6560efa3c5a9c12b0200ac7c"
+        },
+        {
+          "path": "Dockerfile",
+          "bytes": 1045,
+          "sha256": "d4e71e1dff1b2f22d8bc193daf9aa919572835113edac2d36e89fb4dbb15db3d"
+        },
+        {
+          "path": "package.json",
+          "bytes": 5400,
+          "sha256": "0065f960d49e7265687c9ab7f02d9607056b62d384c97f84291bda2fc249bb29"
+        },
+        {
+          "path": "tests/sharedSetup.ts",
+          "bytes": 477,
+          "sha256": "94bda2e0ffb1e3228b1fff0ffb830651aa3afd3ab1e39806e66ebbdb98714821"
+        },
+        {
+          "path": "tsconfig.shared.json",
+          "bytes": 275,
+          "sha256": "967f010141b1ae9a27bab6d6fda7c2c90de45e492b44301e9d2042909aae637d"
+        },
+        {
+          "path": "vitest.shared.config.ts",
+          "bytes": 465,
+          "sha256": "627de648a853e7b88b45dc61768b9906a2a012cb07726f845c7ed242432e947a"
+        }
+      ]
+    },
+    {
+      "id": "W01",
+      "repo": "watcher",
+      "purpose": "Generic Ergo signing action wrapper",
+      "dependencies": [
+        "W03"
+      ],
+      "beforeTree": "42ccbba4fe06982fd2a0d568bdacd5ccc0ab8926",
+      "tree": "4152d6a2217692a8247a25a12fe59aa0d31f30a4",
+      "patch": {
+        "path": "patches/W01.patch",
+        "bytes": 8053,
+        "sha256": "7bb529a566cf87ac966aa4cec62b2757fa000362a14f4003f6f8282c9aec7408"
+      },
+      "files": [
+        {
+          "path": ".changeset/watcher-generic-signing-action.md",
+          "bytes": 200,
+          "sha256": "895869b97f6ea0d43e7af21e2953295c91dab2697102b38ac40b61a0191cb752"
+        },
+        {
+          "path": "src/ergo/utils.ts",
+          "bytes": 20751,
+          "sha256": "e5d2393d29d09c859c047ccfbf667e1587d74630b0292fd988a93c44f81853d5"
+        },
+        {
+          "path": "tests/ergo/utils.spec.ts",
+          "bytes": 5417,
+          "sha256": "67aee52df962b3e099b2812e454017e70191970cd833d733334193b326b482a9"
+        }
+      ]
+    },
+    {
+      "id": "W02",
+      "repo": "watcher",
+      "purpose": "Await queue reset persistence",
+      "dependencies": [
+        "W03"
+      ],
+      "beforeTree": "4152d6a2217692a8247a25a12fe59aa0d31f30a4",
+      "tree": "c726522020194221160195e8175e3ea4677ac8db",
+      "patch": {
+        "path": "patches/W02.patch",
+        "bytes": 5916,
+        "sha256": "5f26c214f86f5de7abffc21ac145a6fc9c20eb0bd89a1216884445cced34ea51"
+      },
+      "files": [
+        {
+          "path": ".changeset/watcher-await-queue-reset.md",
+          "bytes": 181,
+          "sha256": "e953d28e2efc08d8f6e97b9a70b11178f6d97237e90fb65c9fddc614d852c944"
+        },
+        {
+          "path": "src/ergo/transaction/queue.ts",
+          "bytes": 7517,
+          "sha256": "27e5820d702d97ec696d9ad2d699bbe630c3c87cee6100885da18919c90fe776"
+        },
+        {
+          "path": "tests/ergo/transaction/queue.spec.ts",
+          "bytes": 4168,
+          "sha256": "c1d1a7dd6091a93ae69512d6f75da08920ab3451a0dc75cdf47ed471b0e634fb"
+        }
+      ]
+    },
+    {
+      "id": "C-WATCHER",
+      "repo": "watcher",
+      "purpose": "Avalanche C-Chain registration and observation leases",
+      "dependencies": [
+        "W03",
+        "W01",
+        "W02"
+      ],
+      "beforeTree": "c726522020194221160195e8175e3ea4677ac8db",
+      "tree": "a61591623580b0a358afd83ac18cf146e17b4188",
+      "patch": {
+        "path": "patches/C-WATCHER.patch",
+        "bytes": 192045,
+        "sha256": "8bc9b22aea04c22599261dce5c3fb318bfba410163ce3a74a32259df34946d61"
+      },
+      "files": [
+        {
+          "path": ".changeset/avalanche-watcher-support.md",
+          "bytes": 225,
+          "sha256": "b99a1e0b226456a49605a9bcd371a3a040eafcc4956aca01272b03e65150f36f"
+        },
+        {
+          "path": ".mocharc.json",
+          "bytes": 961,
+          "sha256": "795fb83d823aeb86dbb47cca8b47d76d23af645b524e8603f1466d2318b9e24e"
+        },
+        {
+          "path": "config/dataSource.ts",
+          "bytes": 2480,
+          "sha256": "d12de87cdc80cebc7189a1360864df4e4c839b1e8f3208afab80ea28412cdac2"
+        },
+        {
+          "path": "config/default.yaml",
+          "bytes": 9510,
+          "sha256": "496d6595a8999a8c8b830545632e9988f48d847c74c04644d61c7b0929044a47"
+        },
+        {
+          "path": "docker/custom-environment-variables.yaml",
+          "bytes": 1558,
+          "sha256": "cb1edb1931e4f13b6f1a4d9165e5913108a025f7e325bc72fa309453229966be"
+        },
+        {
+          "path": "package.json",
+          "bytes": 5611,
+          "sha256": "a9c1c948b22d9c207beffe08fe11b8e39bf7a330c2161ccc662b75d729e541c4"
+        },
+        {
+          "path": "src/config/config.ts",
+          "bytes": 35067,
+          "sha256": "eb819265f5cae8da3cbedd82f4881b7d8380f23204b66e2a608b0c7bb2d3e7b3"
+        },
+        {
+          "path": "src/config/constants.ts",
+          "bytes": 1932,
+          "sha256": "7cbc85075431df2372af55b8bbf894c165cb72c42229034c1e56f764bf32095b"
+        },
+        {
+          "path": "src/ergo/transaction/queue.ts",
+          "bytes": 8017,
+          "sha256": "1008541cff3880f491b87f7fd7aec59673a779a3e1550fa1b8d971487d0f13b7"
+        },
+        {
+          "path": "src/jobs/initScanner.ts",
+          "bytes": 4150,
+          "sha256": "f2f83cb3bb4b53a26e640973e79bf36ed88b0110a020d69dc3c9edcd40b5a48f"
+        },
+        {
+          "path": "src/transactions/commitmentCreation.ts",
+          "bytes": 7503,
+          "sha256": "a8480b42c8102b0098ac72d51b1f40bebf88508b0974317b932df91f4d65b1ff"
+        },
+        {
+          "path": "src/transactions/commitmentReveal.ts",
+          "bytes": 6224,
+          "sha256": "4cc7e2b9d4a3d1d2818fa72e03b6dc97690288faec41b3bb781279220b2cd854"
+        },
+        {
+          "path": "src/types/config.ts",
+          "bytes": 498,
+          "sha256": "ef72a3ed7f7979bc11f162a51cc1580b978c388600cca29400e6438f84c37c83"
+        },
+        {
+          "path": "src/utils/avalancheSafety.ts",
+          "bytes": 2942,
+          "sha256": "2fd2e2fbb9e6c03b02d5dd14966e13045e51341b5bf315bdcdec9089bb471eed"
+        },
+        {
+          "path": "src/utils/avalancheScanner.ts",
+          "bytes": 2254,
+          "sha256": "385f4bdbd555a8ea2f5b0ab94ff83a1771eeb2ac427768079f6c5f85b575a971"
+        },
+        {
+          "path": "src/utils/healthCheck.ts",
+          "bytes": 12943,
+          "sha256": "030d813b958236bbdfd5e059f7c0bbcf7689ceb5b5fd0da887c860051b1c16dd"
+        },
+        {
+          "path": "src/utils/scanner.ts",
+          "bytes": 26954,
+          "sha256": "70e43f216c48448f48c5c566946a354b29734f6afc6937f9bff5f6be498f47a0"
+        },
+        {
+          "path": "tests/avalancheTestData.ts",
+          "bytes": 684,
+          "sha256": "d41fc5880beed00c01cfa643973d5d24cf069bed458ab4bb2c8f925379fdc377"
+        },
+        {
+          "path": "tests/avalancheTestUtils.ts",
+          "bytes": 715,
+          "sha256": "f21cf5cafe159171e17610da5b45555bd40193c00f35a914a820f1473890b613"
+        },
+        {
+          "path": "tests/config/avalancheConfig.spec.ts",
+          "bytes": 43333,
+          "sha256": "c9076b271abd0eeba47ba86559c98914f1a0ed1341cb264fb432b8afc5f12914"
+        },
+        {
+          "path": "tests/database/avalancheSafetyState.spec.ts",
+          "bytes": 2934,
+          "sha256": "3db775aae26f45640c8eec3b4dc37f339e1a07101067dea8381b7dac938d44f8"
+        },
+        {
+          "path": "tests/ergo/transaction/avalancheQueue.spec.ts",
+          "bytes": 22223,
+          "sha256": "a087e8cab0cc4659fcd582dd0df5ab4c6d0a9e455213cdc913e54555e5009628"
+        },
+        {
+          "path": "tests/jobs/initScanner.spec.ts",
+          "bytes": 3055,
+          "sha256": "bfa9a7986baa83e9e5e7cd75124567a2c28e4268fafc5915ce25b2c02d88b1e0"
+        },
+        {
+          "path": "tests/jobs/mocked/scanning.mock.ts",
+          "bytes": 875,
+          "sha256": "734bb7288a27d5e6f6bf2deb8eb534ee51ad065267bfcfd6b0977011853f9e29"
+        },
+        {
+          "path": "tests/jobs/testData.ts",
+          "bytes": 519,
+          "sha256": "6a203da7b768bc82915b9f84d6a6ff13f236a79ebcbb6e19fbc930d49bd9835c"
+        },
+        {
+          "path": "tests/jobs/testUtils.ts",
+          "bytes": 1952,
+          "sha256": "a9bbf0b5a8912face5a30dce911b63f8d55976f6799bbbb1b9d75bb6bedd29fc"
+        },
+        {
+          "path": "tests/resources/inMemoryDb.ts",
+          "bytes": 2109,
+          "sha256": "8fa74ca2676de8c17ddcbf6e86ac4b246aeb1fd8b7b5ed1587e3d71dadb387ae"
+        },
+        {
+          "path": "tests/setup-tests.ts",
+          "bytes": 477,
+          "sha256": "94bda2e0ffb1e3228b1fff0ffb830651aa3afd3ab1e39806e66ebbdb98714821"
+        },
+        {
+          "path": "tests/transactions/avalancheCommitmentCreation.spec.ts",
+          "bytes": 4257,
+          "sha256": "3a68cb987ebaaaf5b3b6abfdf27274baf1b0c3dbd6f18036aa585ee42a7019f6"
+        },
+        {
+          "path": "tests/transactions/avalancheCommitmentReveal.spec.ts",
+          "bytes": 3952,
+          "sha256": "35fbd5480bd12aead968b4e44fe6da706de873086dd6becfc1c949b6662d0b7a"
+        },
+        {
+          "path": "tests/utils/avalancheSafety.spec.ts",
+          "bytes": 18749,
+          "sha256": "ee3d955ef3f7f0bf011f70b52680dd05d1ab90aabbc5b9533c30b3ac11286e11"
+        },
+        {
+          "path": "tests/utils/avalancheScanner.spec.ts",
+          "bytes": 18525,
+          "sha256": "d0ec4f3dfdd582bd558c52b84747b82e866e00cc325301fadae032a996f1b375"
+        },
+        {
+          "path": "tests/utils/avalancheScannerTestData.ts",
+          "bytes": 1168,
+          "sha256": "ff289b81462f9186842270cf809224dc4d294f4965cf41ff4ecd44f448c71bd4"
+        },
+        {
+          "path": "tests/utils/data/avalanche-merged-contracts.json",
+          "bytes": 7063,
+          "sha256": "911236500cc3bd52a85895c1fc9ae3d04e70f52b746915933f0f19942315d280"
+        },
+        {
+          "path": "tests/utils/data/avalanche-merged-tokens.json",
+          "bytes": 1354,
+          "sha256": "6c2106bfb0aef7b9f5c6ce5536338a59ece5b762b075d4c5b872cd9067ad7cfb"
+        },
+        {
+          "path": "tests/utils/mocked/avalancheScanner.mock.ts",
+          "bytes": 4907,
+          "sha256": "65589f39871d3c1b8f5b5802fda29623a8719a2dad7f6748b886b61800c2d2e7"
+        },
+        {
+          "path": "tsconfig.avalanche.json",
+          "bytes": 867,
+          "sha256": "48aeaf2075ff2e2575fd72152c1095414d520e7eeced64a2da01ddca1301b66e"
+        },
+        {
+          "path": "vitest.avalanche.config.ts",
+          "bytes": 796,
+          "sha256": "ae8f66d190f981003758bc4a7bb55d4ca0fad40e6990a2288f24315b4e4b4965"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,1341 @@
+{
+  "changesets": [
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/rosen-app",
+          "type": "patch"
+        },
+        {
+          "name": "@rosen-bridge/guard-app",
+          "type": "patch"
+        },
+        {
+          "name": "@rosen-bridge/watcher-app",
+          "type": "patch"
+        }
+      ],
+      "summary": "Add strongly-typed, validated environment variables using `zod/v4-mini` and `@t3-oss/env-nextjs`",
+      "id": "add-typed-env-validation"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/rosen-service2",
+          "type": "patch"
+        }
+      ],
+      "summary": "Update depenedencies\n\n- @rosen-bridge/abstract-observation-extractor@0.2.3\n- @rosen-bridge/abstract-scanner@0.2.3\n- @rosen-bridge/bitcoin-observation-extractor@6.4.1\n- @rosen-bridge/bitcoin-scanner@0.2.3\n- @rosen-bridge/cardano-observation-extractor@1.1.1\n- @rosen-bridge/cardano-scanner@1.0.1\n- @rosen-bridge/ergo-observation-extractor@0.3.1\n- @rosen-bridge/ergo-scanner@0.1.4\n- @rosen-bridge/evm-observation-extractor@5.4.1\n- @rosen-bridge/evm-scanner@0.1.4\n- @rosen-bridge/scanner-sync-check@8.1.0",
+      "id": "afraid-beers-rush"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/rosen-service2",
+          "type": "minor"
+        }
+      ],
+      "summary": "add `AssetDataAdapterService` to provide unified blockchain data adapters and assets total-supply tracking",
+      "id": "all-donuts-hammer"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-ui/data-source",
+          "type": "patch"
+        },
+        {
+          "name": "@rosen-ui/rosen-statistics-entity",
+          "type": "patch"
+        },
+        {
+          "name": "@rosen-ui/rosen-statistics",
+          "type": "patch"
+        },
+        {
+          "name": "@rosen-bridge/rosen-app",
+          "type": "patch"
+        },
+        {
+          "name": "@rosen-bridge/rosen-service",
+          "type": "patch"
+        },
+        {
+          "name": "@rosen-bridge/rosen-service2",
+          "type": "patch"
+        }
+      ],
+      "summary": "Align database entity and extractor dependencies across Rosen applications and\nstatistics with current scanner families. Require compatible\nlegacy scanners so their registered extractors share the current query interface\nand database entity constructors.",
+      "id": "avalanche-database-producer-families"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-ui/utils",
+          "type": "minor"
+        }
+      ],
+      "summary": "Add address and transaction links for explicitly selected Avalanche C-Chain networks.",
+      "id": "avalanche-explorer-selection"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-network/avalanche",
+          "type": "patch"
+        }
+      ],
+      "summary": "Decode cached Guard AVAX and ERC20 hot and cold pages with exact wrapped integer units, significant decimals and validated deployment explorer links. Refuse malformed metadata without combining independently paginated custody pages.",
+      "id": "avalanche-guard-deployment-links"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-network/evm",
+          "type": "minor"
+        }
+      ],
+      "summary": "Support configured Rosen destination indexes for registered Avalanche networks.",
+      "id": "avalanche-lock-metadata"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-network/base",
+          "type": "minor"
+        }
+      ],
+      "summary": "Allow network maximum-transfer queries to receive the selected asset so Avalanche can calculate AVAX and mapped ERC20 limits.",
+      "id": "avalanche-max-transfer-asset"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-ui/asset-calculator",
+          "type": "minor"
+        }
+      ],
+      "summary": "Add an optional Avalanche calculator for AVAX and mapped ERC20 assets using\nexplicit C-Chain identity, qualified finalized balances and captured token-map\npolicy.",
+      "id": "avalanche-native-asset-calculator"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/icons",
+          "type": "minor"
+        }
+      ],
+      "summary": "Add the Avalanche network icon.",
+      "id": "avalanche-network-icon"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-network/avalanche",
+          "type": "minor"
+        }
+      ],
+      "summary": "Initialize the package.",
+      "id": "avalanche-network-initialization"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-ui/constants",
+          "type": "minor"
+        }
+      ],
+      "summary": "Add native Avalanche C-Chain metadata with an explicitly assigned Rosen destination index.",
+      "id": "avalanche-network-metadata"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/rosen-service2",
+          "type": "patch"
+        }
+      ],
+      "summary": "Upgrade scanner base dependencies",
+      "id": "brave-insects-end"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/rosen-app",
+          "type": "patch"
+        }
+      ],
+      "summary": "Replace the current `Joi` validation implementation with the `Zod` npm package",
+      "id": "bumpy-buckets-divide"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/rosen-service2",
+          "type": "minor"
+        }
+      ],
+      "summary": "add format, serviceName, createSymlink and symlinkName options for log in config, file type\nupdate the winston-logger from 3.0.1 to 3.1.0",
+      "id": "bumpy-steaks-turn"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/rosen-app",
+          "type": "patch"
+        }
+      ],
+      "summary": "Fix `Bridged` cell responsive behavior in `Assets page` in row view",
+      "id": "cold-schools-strive"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-ui/asset-aggregator",
+          "type": "patch"
+        }
+      ],
+      "summary": "Inherit Action classes of Lock & Bridged from AbstractAssetAction",
+      "id": "easy-shirts-begin"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/rosen-app",
+          "type": "minor"
+        }
+      ],
+      "summary": "Implement guard progress details and improve labels and loading state",
+      "id": "eight-files-visit"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/rosen-service2",
+          "type": "minor"
+        }
+      ],
+      "summary": "Configuration file now supports multiple connections for each method on any chain",
+      "id": "eleven-parents-move"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/rosen-service2",
+          "type": "minor"
+        }
+      ],
+      "summary": "Update supported node version to the 22.18.0 and update rosen-clients versions",
+      "id": "empty-carrots-open"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-ui/asset-aggregator",
+          "type": "patch"
+        }
+      ],
+      "summary": "Update dependencies\n\n- @rosen-bridge/abstract-logger@4.0.0\n- @rosen-bridge/json-bigint@1.1.0\n- @rosen-bridge/tokens@6.0.0",
+      "id": "empty-memes-press"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-network/evm",
+          "type": "patch"
+        }
+      ],
+      "summary": "Validate unsigned 64-bit lock fees and one-byte address lengths, and encode canonical lowercase address bytes.",
+      "id": "evm-lock-metadata-bounds"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/rosen-service2",
+          "type": "minor"
+        }
+      ],
+      "summary": "Add token map boxes extractor using @rosen-bridge/address-extractor",
+      "id": "few-carrots-knock"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/rosen-app",
+          "type": "patch"
+        }
+      ],
+      "summary": "Warn users bridging from Firo to use the latest Campfire, Stack Wallet, or Firo-Qt wallet to avoid losing funds with unsupported wallets.",
+      "id": "firo-source-wallet-warning"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/rosen-service2",
+          "type": "minor"
+        }
+      ],
+      "summary": "implement blockchain scanners",
+      "id": "four-bats-think"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-ui/rosen-statistics",
+          "type": "patch"
+        }
+      ],
+      "summary": "Update dependencies\n\n- @rosen-bridge/abstract-logger@4.0.0\n- @rosen-bridge/token-price-entity@0.2.1\n- @rosen-bridge/tokens@6.0.0",
+      "id": "fresh-cloths-doubt"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/rosen-app",
+          "type": "minor"
+        }
+      ],
+      "summary": "Remove unnecessary Event Status tooltip in event details page",
+      "id": "fruity-bottles-taste"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-ui/asset-aggregator",
+          "type": "patch"
+        },
+        {
+          "name": "@rosen-ui/rosen-statistics",
+          "type": "patch"
+        }
+      ],
+      "summary": "Update depenedencies:\n\n- @rosen-bridge/extended-typeorm@1.1.0",
+      "id": "fuzzy-bars-build-new"
+    },
+    {
+      "releases": [],
+      "summary": "",
+      "id": "green-mangos-refuse"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/guard-app",
+          "type": "patch"
+        }
+      ],
+      "summary": "Allow existing balance rows and address cards to accept precise integer balances, custody labels and prepared explorer links while preserving legacy defaults.",
+      "id": "guard-prepared-balance-links"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/guard-app",
+          "type": "patch"
+        }
+      ],
+      "summary": "Register Avalanche Guard balances through the existing Networks cards and independently paginated hot and cold Assets tables. Hide pagination when the selected custody page is unavailable.",
+      "id": "guard-unavailable-balance-pagination"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/rosen-app",
+          "type": "minor"
+        },
+        {
+          "name": "@rosen-bridge/rosen-service",
+          "type": "minor"
+        },
+        {
+          "name": "@rosen-bridge/icons",
+          "type": "minor"
+        },
+        {
+          "name": "@rosen-network/handshake",
+          "type": "minor"
+        },
+        {
+          "name": "@rosen-ui/asset-calculator",
+          "type": "minor"
+        },
+        {
+          "name": "@rosen-ui/constants",
+          "type": "minor"
+        },
+        {
+          "name": "@rosen-ui/shake-wallet",
+          "type": "minor"
+        },
+        {
+          "name": "@rosen-ui/utils",
+          "type": "minor"
+        }
+      ],
+      "summary": "Add Handshake network and Shake wallet support.",
+      "id": "handshake-review-cleanup"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/rosen-service2",
+          "type": "minor"
+        }
+      ],
+      "summary": "Add `EventCountMetricService` to handle event count metrics calculation",
+      "id": "heavy-emus-vanish"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/watcher-app",
+          "type": "patch"
+        },
+        {
+          "name": "@rosen-bridge/guard-app",
+          "type": "patch"
+        }
+      ],
+      "summary": "Fix start script for static export builds",
+      "id": "hot-maps-prove"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/rosen-app",
+          "type": "minor"
+        }
+      ],
+      "summary": "Improve dynamic route ID validation to enforce hex format",
+      "id": "hot-parents-pump"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/ui-kit",
+          "type": "minor"
+        }
+      ],
+      "summary": "Refine `Amount` component logic to emphasize integer or fractional part based on numeric value",
+      "id": "hungry-pears-occur"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-ui/rosen-statistics",
+          "type": "patch"
+        }
+      ],
+      "summary": "Update dependencies\n\n- @rosen-bridge/abstract-scanner@2.0.3\n- @rosen-bridge/token-price-entity@0.2.2\n- @rosen-bridge/watcher-data-extractor@13.0.10",
+      "id": "kind-items-move"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/rosen-service2",
+          "type": "patch"
+        }
+      ],
+      "summary": "update Dependencies:\n\n- @rosen-bridge/abstract-observation-extractor@0.2.1\n- @rosen-bridge/abstract-scanner@0.2.2\n- @rosen-bridge/bitcoin-observation-extractor@6.3.1\n- @rosen-bridge/bitcoin-scanner@0.2.2\n- @rosen-bridge/cardano-observation-extractor@1.0.0\n- @rosen-bridge/cardano-scanner@1.0.0\n- @rosen-bridge/config@1.1.0\n- @rosen-bridge/discord-notification@1.0.0\n- @rosen-bridge/ergo-observation-extractor@0.2.1\n- @rosen-bridge/ergo-scanner@0.1.3\n- @rosen-bridge/evm-observation-extractor@5.3.1\n- @rosen-bridge/evm-scanner@0.1.3\n- @rosen-bridge/extended-typeorm@1.0.1\n- @rosen-bridge/service-manager@1.0.1\n- @rosen-bridge/tokens@4.0.1\n- @rosen-bridge/watcher-data-extractor@12.3.0",
+      "id": "lazy-planets-like"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/rosen-app",
+          "type": "patch"
+        }
+      ],
+      "summary": "Fix Asset Details API route ID validation for different token ID formats",
+      "id": "lemon-worms-yell"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/rosen-app",
+          "type": "minor"
+        }
+      ],
+      "summary": "Improve the address and amount input fields in the Bridge form to provide a smoother and more intuitive user experience",
+      "id": "little-rabbits-stand"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/rosen-service2",
+          "type": "minor"
+        }
+      ],
+      "summary": "- Integrate Commitment Extractor into rosen-service2",
+      "id": "long-insects-press"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/rosen-service2",
+          "type": "minor"
+        }
+      ],
+      "summary": "Health status report file is now supported",
+      "id": "many-icons-wash"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/rosen-service2",
+          "type": "minor"
+        }
+      ],
+      "summary": "Add support for AssetDataAdapter sub-service in rosen-service2",
+      "id": "many-maps-lose"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-ui/metamask-wallet",
+          "type": "minor"
+        }
+      ],
+      "summary": "Support configured Avalanche C-Chain networks and validate AVAX and mapped ERC20 transfers before wallet submission.",
+      "id": "metamask-avalanche"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/ui-kit",
+          "type": "minor"
+        }
+      ],
+      "summary": "Implement `Pagination` component",
+      "id": "modern-doors-itch"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/rosen-service2",
+          "type": "minor"
+        }
+      ],
+      "summary": "Merged scanners into the ErgoScanner and ChainsHealthCheck into the BaseHealthCheck",
+      "id": "moody-pandas-fold"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/ui-kit",
+          "type": "minor"
+        }
+      ],
+      "summary": "Add `React Compiler`",
+      "id": "old-lizards-dress"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/guard-app",
+          "type": "patch"
+        },
+        {
+          "name": "@rosen-bridge/watcher-app",
+          "type": "patch"
+        }
+      ],
+      "summary": "Make `API_BASE_URL` env variable optional",
+      "id": "optional-api-base-url"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/rosen-service2",
+          "type": "patch"
+        }
+      ],
+      "summary": "Update dependencies\n\n- @rosen-bridge/abstract-extractor@3.0.1\n- @rosen-bridge/abstract-logger@4.0.0\n- @rosen-bridge/abstract-observation-extractor@1.0.2\n- @rosen-bridge/abstract-scanner@1.0.1\n- @rosen-bridge/address-extractor@7.0.1\n- @rosen-bridge/bitcoin-observation-extractor@7.0.2\n- @rosen-bridge/bitcoin-scanner@1.0.1\n- @rosen-bridge/callback-logger@2.0.0\n- @rosen-bridge/cardano-observation-extractor@2.0.2\n- @rosen-bridge/cardano-scanner@2.0.1\n- @rosen-bridge/ergo-observation-extractor@1.0.2\n- @rosen-bridge/ergo-scanner@1.0.1\n- @rosen-bridge/evm-observation-extractor@6.0.2\n- @rosen-bridge/evm-scanner@1.0.1\n- @rosen-bridge/log-level-check@4.0.0\n- @rosen-bridge/scanner-interfaces@0.2.2\n- @rosen-bridge/scanner-sync-check@8.2.0\n- @rosen-bridge/service-manager@1.0.2\n- @rosen-bridge/tokens@6.0.0\n- @rosen-bridge/watcher-data-extractor@13.0.2\n- @rosen-bridge/winston-logger@3.0.0\n- @rosen-clients/ergo-explorer@2.1.1\n- ethers@6.16.0",
+      "id": "pink-windows-wait"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/rosen-service2",
+          "type": "minor"
+        }
+      ],
+      "summary": "add blockchain scanners status to health-check",
+      "id": "pretty-falcons-fly"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-ui/rosen-statistics",
+          "type": "patch"
+        }
+      ],
+      "summary": "Update dependencies\n\n- @rosen-bridge/watcher-data-extractor@13.0.6\n- @rosen-clients/ergo-node@3.1.3\n- @rosen-bridge/abstract-scanner@1.0.4",
+      "id": "puny-oranges-swim"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/rosen-app",
+          "type": "minor"
+        }
+      ],
+      "summary": "Add an explicitly configured Avalanche C-Chain network and MetaMask transfer route for AVAX and mapped ERC20 assets.",
+      "id": "rosen-app-avalanche"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/rosen-service",
+          "type": "minor"
+        }
+      ],
+      "summary": "Support explicitly configured Avalanche C-Chain scanning, persisted safety, AVAX and mapped ERC20 balances, and scanner health in Rosen Service.",
+      "id": "rosen-service-avalanche"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/rosen-service2",
+          "type": "patch"
+        }
+      ],
+      "summary": "update Dependencies:\n\n- @rosen-bridge/abstract-observation-extractor@0.1.2\n- @rosen-bridge/abstract-scanner@0.2.0\n- @rosen-bridge/bitcoin-observation-extractor@6.2.2\n- @rosen-bridge/bitcoin-scanner@0.2.0\n- @rosen-bridge/cardano-observation-extractor@0.1.2\n- @rosen-bridge/cardano-scanner@0.2.0\n- @rosen-bridge/ergo-observation-extractor@0.1.2\n- @rosen-bridge/ergo-scanner@0.1.1\n- @rosen-bridge/evm-observation-extractor@5.2.2\n- @rosen-bridge/evm-scanner@0.1.1\n- @rosen-bridge/extended-typeorm@1.0.0\n- @rosen-bridge/health-check@7.0.1\n- @rosen-bridge/config@1.0.0\n- @rosen-bridge/discord-notification@0.2.0\n- @rosen-bridge/service-manager@1.0.0\n- @rosen-bridge/tokens@4.0.0\n- @rosen-bridge/watcher-data-extractor@12.2.1\n- @rosen-bridge/json-bigint@1.0.0",
+      "id": "rotten-socks-help"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/ui-kit",
+          "type": "minor"
+        },
+        {
+          "name": "@rosen-bridge/rosen-app",
+          "type": "minor"
+        }
+      ],
+      "summary": "Update React contexts to use the new Provider syntax",
+      "id": "salty-trees-taste"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/rosen-service2",
+          "type": "patch"
+        }
+      ],
+      "summary": "Pass the scanner's default block cleanup parameters to Cardano Ogmios and provide\nthe configured Ergo network and commitment address when creating commitment\nextractors with the current watcher interface.",
+      "id": "service2-current-scanner-interfaces"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-ui/rosen-statistics-entity",
+          "type": "patch"
+        }
+      ],
+      "summary": "Resolve bridge metrics token joins and locked-asset lookups through registered\nentity names. This allows Rosen Service2's asset aggregator and the App's asset\ncalculator to supply their own constructors while preserving token decimals,\nevent range filters, locked amounts, token relations and table prefixes.",
+      "id": "service2-statistics-token-identity"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-ui/rosen-statistics",
+          "type": "patch"
+        }
+      ],
+      "summary": "Update dependencies\n\n- @rosen-bridge/abstract-scanner@1.0.2\n- @rosen-bridge/watcher-data-extractor@13.0.4",
+      "id": "seven-bobcats-learn"
+    },
+    {
+      "releases": [],
+      "summary": "",
+      "id": "seven-ties-switch"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/rosen-service2",
+          "type": "minor"
+        }
+      ],
+      "summary": "Add `BridgeAmountMetricService` to handle bridge amount metrics calculation\nAdd `BridgeFeeMetricService` to handle bridge fee metrics calculation\nAdd `WatcherCountMetricService` to handle watcher count metrics calculation",
+      "id": "shaky-cases-judge"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/rosen-service2",
+          "type": "minor"
+        }
+      ],
+      "summary": "- Integrate Firo into rosen-service2.",
+      "id": "sharp-boats-train"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/rosen-service2",
+          "type": "patch"
+        }
+      ],
+      "summary": "Update ChainConfigsReader to support new contracts config format",
+      "id": "sharp-facts-win"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/rosen-service2",
+          "type": "minor"
+        }
+      ],
+      "summary": "Add `LockedAssetsMetricService` to handle locked assets metrics calculation",
+      "id": "shy-poems-enter"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-ui/asset-aggregator",
+          "type": "minor"
+        }
+      ],
+      "summary": "Implement the AssetAggregator class and related tests",
+      "id": "slimy-candies-bathe"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/rosen-service2",
+          "type": "minor"
+        }
+      ],
+      "summary": "Add bitcoin-runes network in rosen-service2",
+      "id": "slimy-rings-lose"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/ui-kit",
+          "type": "patch"
+        }
+      ],
+      "summary": "Make EventProcesses component responsive",
+      "id": "solid-rabbits-run"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/rosen-service2",
+          "type": "patch"
+        }
+      ],
+      "summary": "Rename runes chain to bitcoinRunes",
+      "id": "solid-spiders-visit"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/ui-kit",
+          "type": "patch"
+        }
+      ],
+      "summary": "Fix sidebar width on tablet and larger screens",
+      "id": "stale-jars-dig"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-ui/public-status",
+          "type": "minor"
+        }
+      ],
+      "summary": "Use `triggerTxId` instead of `eventTriggerId` in `EventStatusOverrideEntity` for event identification",
+      "id": "tame-eagles-jump"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/rosen-app",
+          "type": "patch"
+        }
+      ],
+      "summary": "Add guards progress rail to event details page",
+      "id": "tame-guards-jump"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/ui-kit",
+          "type": "minor"
+        }
+      ],
+      "summary": "Add support for all event statuses",
+      "id": "tame-otters-jump"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-ui/rosen-statistics",
+          "type": "patch"
+        }
+      ],
+      "summary": "Update dependencies\n\n- @rosen-bridge/abstract-scanner@2.0.0\n- @rosen-bridge/watcher-data-extractor@13.0.7",
+      "id": "thirty-carrots-cross"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/ui-kit",
+          "type": "minor"
+        }
+      ],
+      "summary": "Add Rail component for rendering a chevron-style, gradient progress timeline",
+      "id": "tidy-rails-glow"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/rosen-service2",
+          "type": "patch"
+        }
+      ],
+      "summary": "Remove `LastSavedBlock` interface",
+      "id": "tiny-olives-trade"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/ui-kit",
+          "type": "minor"
+        }
+      ],
+      "summary": "Make the Rail component labels clickable",
+      "id": "tired-seas-punch"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/rosen-service2",
+          "type": "patch"
+        }
+      ],
+      "summary": "Update dependencies:\n\n- @rosen-bridge/abstract-logger@3.0.1\n- @rosen-bridge/callback-logger@1.0.1\n- @rosen-bridge/health-check@8.0.0\n- @rosen-bridge/json-bigint@1.1.0\n- @rosen-bridge/log-level-check@3.0.0\n- @rosen-bridge/scanner-interfaces@0.2.1\n- @rosen-bridge/scanner-sync-check@8.0.0\n- @rosen-bridge/winston-logger@2.0.1",
+      "id": "tricky-lines-doubt"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/rosen-service2",
+          "type": "minor"
+        }
+      ],
+      "summary": "Add `GeneralMetricsService` to handle general metrics calculation",
+      "id": "twenty-rings-sink"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-ui/asset-aggregator",
+          "type": "patch"
+        },
+        {
+          "name": "@rosen-ui/rosen-statistics",
+          "type": "patch"
+        }
+      ],
+      "summary": "Update depenedencies:\n\n- @rosen-bridge/tokens@6.0.2",
+      "id": "two-heads-lay"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/ui-kit",
+          "type": "patch"
+        }
+      ],
+      "summary": "Fix carousel indicator behavior when changing slides",
+      "id": "upset-candles-show"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-ui/utils",
+          "type": "patch"
+        }
+      ],
+      "summary": "Export the existing Avalanche explorer selector for consumers that carry an explicit supported deployment.",
+      "id": "utils-avalanche-explorer-export"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-ui/asset-aggregator",
+          "type": "patch"
+        }
+      ],
+      "summary": "Initialize Asset-Aggregator package",
+      "id": "vast-knives-cheat"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/guard-app",
+          "type": "patch"
+        },
+        {
+          "name": "@rosen-bridge/watcher-app",
+          "type": "patch"
+        }
+      ],
+      "summary": "Fix Nginx configuration to support the new Nextjs build structure",
+      "id": "whole-colts-pull"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/rosen-service2",
+          "type": "minor"
+        }
+      ],
+      "summary": "Add AssetAggregatorService class to the rosen-service2",
+      "id": "wide-ideas-remain"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/rosen-service2",
+          "type": "minor"
+        }
+      ],
+      "summary": "Add `UserEventsMetricService` to handle user events metrics calculation",
+      "id": "wide-papers-build"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/rosen-app",
+          "type": "minor"
+        }
+      ],
+      "summary": "Add support for all event statuses and improve status details display",
+      "id": "wild-events-glow"
+    },
+    {
+      "releases": [
+        {
+          "name": "@rosen-bridge/rosen-service2",
+          "type": "patch"
+        }
+      ],
+      "summary": "Update `@rosen-bridge/extended-typeorm` dependency to `0.2.1`",
+      "id": "young-clouds-cheat"
+    }
+  ],
+  "releases": [
+    {
+      "name": "@rosen-bridge/rosen-app",
+      "type": "minor",
+      "oldVersion": "5.7.3",
+      "changesets": [
+        "add-typed-env-validation",
+        "avalanche-database-producer-families",
+        "bumpy-buckets-divide",
+        "cold-schools-strive",
+        "eight-files-visit",
+        "firo-source-wallet-warning",
+        "fruity-bottles-taste",
+        "handshake-review-cleanup",
+        "hot-parents-pump",
+        "lemon-worms-yell",
+        "little-rabbits-stand",
+        "rosen-app-avalanche",
+        "salty-trees-taste",
+        "tame-guards-jump",
+        "wild-events-glow"
+      ],
+      "newVersion": "5.8.0"
+    },
+    {
+      "name": "@rosen-bridge/guard-app",
+      "type": "patch",
+      "oldVersion": "4.5.2",
+      "changesets": [
+        "add-typed-env-validation",
+        "guard-prepared-balance-links",
+        "guard-unavailable-balance-pagination",
+        "hot-maps-prove",
+        "optional-api-base-url",
+        "whole-colts-pull"
+      ],
+      "newVersion": "4.5.3"
+    },
+    {
+      "name": "@rosen-bridge/watcher-app",
+      "type": "patch",
+      "oldVersion": "4.5.2",
+      "changesets": [
+        "add-typed-env-validation",
+        "hot-maps-prove",
+        "optional-api-base-url",
+        "whole-colts-pull"
+      ],
+      "newVersion": "4.5.3"
+    },
+    {
+      "name": "@rosen-bridge/rosen-service2",
+      "type": "minor",
+      "oldVersion": "0.0.2",
+      "changesets": [
+        "afraid-beers-rush",
+        "all-donuts-hammer",
+        "avalanche-database-producer-families",
+        "brave-insects-end",
+        "bumpy-steaks-turn",
+        "eleven-parents-move",
+        "empty-carrots-open",
+        "few-carrots-knock",
+        "four-bats-think",
+        "heavy-emus-vanish",
+        "lazy-planets-like",
+        "long-insects-press",
+        "many-icons-wash",
+        "many-maps-lose",
+        "moody-pandas-fold",
+        "pink-windows-wait",
+        "pretty-falcons-fly",
+        "rotten-socks-help",
+        "service2-current-scanner-interfaces",
+        "shaky-cases-judge",
+        "sharp-boats-train",
+        "sharp-facts-win",
+        "shy-poems-enter",
+        "slimy-rings-lose",
+        "solid-spiders-visit",
+        "tiny-olives-trade",
+        "tricky-lines-doubt",
+        "twenty-rings-sink",
+        "wide-ideas-remain",
+        "wide-papers-build",
+        "young-clouds-cheat"
+      ],
+      "newVersion": "0.1.0"
+    },
+    {
+      "name": "@rosen-ui/data-source",
+      "type": "patch",
+      "oldVersion": "0.3.0",
+      "changesets": [
+        "avalanche-database-producer-families"
+      ],
+      "newVersion": "0.3.1"
+    },
+    {
+      "name": "@rosen-ui/rosen-statistics-entity",
+      "type": "patch",
+      "oldVersion": "0.4.2",
+      "changesets": [
+        "avalanche-database-producer-families",
+        "service2-statistics-token-identity"
+      ],
+      "newVersion": "0.4.3"
+    },
+    {
+      "name": "@rosen-ui/rosen-statistics",
+      "type": "patch",
+      "oldVersion": "0.0.0",
+      "changesets": [
+        "avalanche-database-producer-families",
+        "fresh-cloths-doubt",
+        "fuzzy-bars-build-new",
+        "kind-items-move",
+        "puny-oranges-swim",
+        "seven-bobcats-learn",
+        "thirty-carrots-cross",
+        "two-heads-lay"
+      ],
+      "newVersion": "0.0.1"
+    },
+    {
+      "name": "@rosen-bridge/rosen-service",
+      "type": "minor",
+      "oldVersion": "4.4.2",
+      "changesets": [
+        "avalanche-database-producer-families",
+        "handshake-review-cleanup",
+        "rosen-service-avalanche"
+      ],
+      "newVersion": "4.5.0"
+    },
+    {
+      "name": "@rosen-ui/utils",
+      "type": "minor",
+      "oldVersion": "1.1.0",
+      "changesets": [
+        "avalanche-explorer-selection",
+        "handshake-review-cleanup",
+        "utils-avalanche-explorer-export"
+      ],
+      "newVersion": "1.2.0"
+    },
+    {
+      "name": "@rosen-network/avalanche",
+      "type": "minor",
+      "oldVersion": "0.0.0",
+      "changesets": [
+        "avalanche-guard-deployment-links",
+        "avalanche-network-initialization"
+      ],
+      "newVersion": "0.1.0"
+    },
+    {
+      "name": "@rosen-network/evm",
+      "type": "minor",
+      "oldVersion": "0.3.8",
+      "changesets": [
+        "avalanche-lock-metadata",
+        "evm-lock-metadata-bounds"
+      ],
+      "newVersion": "0.4.0"
+    },
+    {
+      "name": "@rosen-network/base",
+      "type": "minor",
+      "oldVersion": "0.5.5",
+      "changesets": [
+        "avalanche-max-transfer-asset"
+      ],
+      "newVersion": "0.6.0"
+    },
+    {
+      "name": "@rosen-ui/asset-calculator",
+      "type": "minor",
+      "oldVersion": "2.4.0",
+      "changesets": [
+        "avalanche-native-asset-calculator",
+        "handshake-review-cleanup"
+      ],
+      "newVersion": "2.5.0"
+    },
+    {
+      "name": "@rosen-bridge/icons",
+      "type": "minor",
+      "oldVersion": "4.0.0",
+      "changesets": [
+        "avalanche-network-icon",
+        "handshake-review-cleanup"
+      ],
+      "newVersion": "4.1.0"
+    },
+    {
+      "name": "@rosen-ui/constants",
+      "type": "minor",
+      "oldVersion": "1.1.0",
+      "changesets": [
+        "avalanche-network-metadata",
+        "handshake-review-cleanup"
+      ],
+      "newVersion": "1.2.0"
+    },
+    {
+      "name": "@rosen-ui/asset-aggregator",
+      "type": "minor",
+      "oldVersion": "0.1.0",
+      "changesets": [
+        "easy-shirts-begin",
+        "empty-memes-press",
+        "fuzzy-bars-build-new",
+        "slimy-candies-bathe",
+        "two-heads-lay",
+        "vast-knives-cheat"
+      ],
+      "newVersion": "0.2.0"
+    },
+    {
+      "name": "@rosen-network/handshake",
+      "type": "minor",
+      "oldVersion": "0.0.0",
+      "changesets": [
+        "handshake-review-cleanup"
+      ],
+      "newVersion": "0.1.0"
+    },
+    {
+      "name": "@rosen-ui/shake-wallet",
+      "type": "minor",
+      "oldVersion": "0.0.0",
+      "changesets": [
+        "handshake-review-cleanup"
+      ],
+      "newVersion": "0.1.0"
+    },
+    {
+      "name": "@rosen-bridge/ui-kit",
+      "type": "minor",
+      "oldVersion": "6.1.0",
+      "changesets": [
+        "hungry-pears-occur",
+        "modern-doors-itch",
+        "old-lizards-dress",
+        "salty-trees-taste",
+        "solid-rabbits-run",
+        "stale-jars-dig",
+        "tame-otters-jump",
+        "tidy-rails-glow",
+        "tired-seas-punch",
+        "upset-candles-show"
+      ],
+      "newVersion": "6.2.0"
+    },
+    {
+      "name": "@rosen-ui/metamask-wallet",
+      "type": "minor",
+      "oldVersion": "2.2.5",
+      "changesets": [
+        "metamask-avalanche"
+      ],
+      "newVersion": "2.3.0"
+    },
+    {
+      "name": "@rosen-ui/public-status",
+      "type": "minor",
+      "oldVersion": "0.3.0",
+      "changesets": [
+        "tame-eagles-jump"
+      ],
+      "newVersion": "0.4.0"
+    },
+    {
+      "name": "@rosen-network/cardano",
+      "type": "patch",
+      "oldVersion": "2.5.9",
+      "changesets": [],
+      "newVersion": "2.5.10"
+    },
+    {
+      "name": "@rosen-ui/eternl-wallet",
+      "type": "patch",
+      "oldVersion": "3.1.11",
+      "changesets": [],
+      "newVersion": "3.1.12"
+    },
+    {
+      "name": "@rosen-ui/firo-wallet",
+      "type": "patch",
+      "oldVersion": "0.1.3",
+      "changesets": [],
+      "newVersion": "0.1.4"
+    },
+    {
+      "name": "@rosen-ui/lace-wallet",
+      "type": "patch",
+      "oldVersion": "3.1.11",
+      "changesets": [],
+      "newVersion": "3.1.12"
+    },
+    {
+      "name": "@rosen-network/binance",
+      "type": "patch",
+      "oldVersion": "0.4.10",
+      "changesets": [],
+      "newVersion": "0.4.11"
+    },
+    {
+      "name": "@rosen-network/ethereum",
+      "type": "patch",
+      "oldVersion": "0.4.10",
+      "changesets": [],
+      "newVersion": "0.4.11"
+    },
+    {
+      "name": "@rosen-network/bitcoin",
+      "type": "patch",
+      "oldVersion": "2.4.9",
+      "changesets": [],
+      "newVersion": "2.4.10"
+    },
+    {
+      "name": "@rosen-network/bitcoin-runes",
+      "type": "patch",
+      "oldVersion": "1.0.9",
+      "changesets": [],
+      "newVersion": "1.0.10"
+    },
+    {
+      "name": "@rosen-network/doge",
+      "type": "patch",
+      "oldVersion": "0.4.9",
+      "changesets": [],
+      "newVersion": "0.4.10"
+    },
+    {
+      "name": "@rosen-network/ergo",
+      "type": "patch",
+      "oldVersion": "2.5.10",
+      "changesets": [],
+      "newVersion": "2.5.11"
+    },
+    {
+      "name": "@rosen-network/firo",
+      "type": "patch",
+      "oldVersion": "0.1.3",
+      "changesets": [],
+      "newVersion": "0.1.4"
+    },
+    {
+      "name": "@rosen-ui/wallet-api",
+      "type": "patch",
+      "oldVersion": "3.2.2",
+      "changesets": [],
+      "newVersion": "3.2.3"
+    },
+    {
+      "name": "@rosen-ui/asset-data-adapter",
+      "type": "patch",
+      "oldVersion": "0.3.0",
+      "changesets": [],
+      "newVersion": "0.3.1"
+    },
+    {
+      "name": "@rosen-ui/types",
+      "type": "patch",
+      "oldVersion": "0.5.1",
+      "changesets": [],
+      "newVersion": "0.5.2"
+    },
+    {
+      "name": "@rosen-ui/my-doge-wallet",
+      "type": "patch",
+      "oldVersion": "1.1.13",
+      "changesets": [],
+      "newVersion": "1.1.14"
+    },
+    {
+      "name": "@rosen-ui/nautilus-wallet",
+      "type": "patch",
+      "oldVersion": "3.1.11",
+      "changesets": [],
+      "newVersion": "3.1.12"
+    },
+    {
+      "name": "@rosen-ui/okx-wallet",
+      "type": "patch",
+      "oldVersion": "2.2.6",
+      "changesets": [],
+      "newVersion": "2.2.7"
+    },
+    {
+      "name": "@rosen-ui/wallet-connect",
+      "type": "patch",
+      "oldVersion": "0.3.4",
+      "changesets": [],
+      "newVersion": "0.3.5"
+    },
+    {
+      "name": "@rosen-ui/xverse-wallet",
+      "type": "patch",
+      "oldVersion": "0.5.4",
+      "changesets": [],
+      "newVersion": "0.5.5"
+    }
+  ]
+}

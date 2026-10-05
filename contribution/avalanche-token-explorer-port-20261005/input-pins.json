@@ -1,0 +1,73 @@
+{
+  "schema": "rosen-ui-token-explorer-inputs.v1",
+  "packageVersion": "6.1.0",
+  "typescriptVersion": "5.8.3",
+  "inputs": [
+    {
+      "path": "node_modules/@rosen-bridge/ui-kit/package.json",
+      "bytes": 1653,
+      "sha256": "6f965fecc61f22218163ff3611f28ef7fc892cb9ad644d4a19ff1bc67b7ecf3e"
+    },
+    {
+      "path": "node_modules/@rosen-bridge/ui-kit/dist/index.d.ts",
+      "bytes": 103203,
+      "sha256": "231f74e489d722a64890226a726ea687dbdb5cc14427da0b5d93b5895c9ad237"
+    },
+    {
+      "path": "node_modules/@rosen-bridge/ui-kit/dist/index.js",
+      "bytes": 332657,
+      "sha256": "073b1ff68361f59b88a8cb98b9d5b7f9b165895d8dba304f7467da78091c31e1"
+    },
+    {
+      "path": "packages/utils/src/getTokenUrl.ts",
+      "bytes": 873,
+      "sha256": "056a41ea341fbb187934245ceacda61866b68787745c0e6146744deec8524005"
+    },
+    {
+      "path": "packages/utils/dist/getTokenUrl.d.ts",
+      "bytes": 184,
+      "sha256": "feb038929fa70a72ef27a5af92e7579e8f625e29c7f8201578aa7fd3b9523132"
+    },
+    {
+      "path": "packages/utils/dist/getTokenUrl.js",
+      "bytes": 3319,
+      "sha256": "c73335cf920af0eb1f4a6279e7c2cd77b14fb5c10b02807fc7351a9d5fa3c4c7"
+    },
+    {
+      "path": "packages/utils/src/avalancheExplorerUrl.ts",
+      "bytes": 318,
+      "sha256": "e8dde89de9b791d8e79cad5924a065da30a8b52b307fe72d2c597cb460d4c5a3"
+    },
+    {
+      "path": "packages/utils/dist/avalancheExplorerUrl.js",
+      "bytes": 1252,
+      "sha256": "3b012c8617b922eb5e2bc4ef8bb78aa4be48903497cdf1d26cc0f44e4956e835"
+    },
+    {
+      "path": "networks/avalanche/src/guardAssetsBalance.ts",
+      "bytes": 3826,
+      "sha256": "eb599ad4c38a615a68a1c208af6d26f48a8371850f51e69b38fbe25af8132406"
+    },
+    {
+      "path": "networks/avalanche/dist/guardAssetsBalance.js",
+      "bytes": 14273,
+      "sha256": "457fd16a39fbd90d0723cef8ba16414554904d08380a555bff3cbae8697f5a1e"
+    },
+    {
+      "path": "apps/guard/src/app/(dashboard)/@tokens/page.tsx",
+      "bytes": 2283,
+      "sha256": "7374cb9fdc8e4ab743ac91c65ef2efdbc614fb057b554f9522c4fafa1cbb1538"
+    },
+    {
+      "path": "apps/guard/src/hooks/useBalance.ts",
+      "bytes": 588,
+      "sha256": "b18f20805854da5d46615cc317396402ce2d379705148c6c862f1e52acc77c61"
+    },
+    {
+      "path": "apps/guard/src/types/api.ts",
+      "bytes": 2587,
+      "sha256": "0f4d872bd68e965b98318a7477af1fa67d2f90437d9cf9d0fc7885bb329715ae"
+    }
+  ],
+  "scope": "Installed ui-kit API and exact prepared existing URL producer; ordinary registry qualification remains separate"
+}

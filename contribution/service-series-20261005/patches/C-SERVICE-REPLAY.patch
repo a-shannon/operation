@@ -1,0 +1,1972 @@
+diff --git a/contribution/service-mainnet-replay-20261005/README.md b/contribution/service-mainnet-replay-20261005/README.md
+new file mode 100644
+index 0000000..725d3fb
+--- /dev/null
++++ b/contribution/service-mainnet-replay-20261005/README.md
+@@ -0,0 +1,34 @@
++# Avalanche Rosen Service process replay
++
++Check process-family cleanup without starting or stopping real processes:
++
++```powershell
++& $Node22 ./owned-processes.spec.cjs
++```
++
++These controls retain captured descendants after their parent exits, refuse a
++reused parent PID and preserve an independently tracked PostgreSQL family.
++
++Run with Node 22.18.0 on Windows. Supply the Rosen Service checkout, the source workspace containing the scanner and asset-calculator packages, a prepared dependency directory, npm 11.6.2, and PostgreSQL 17 binaries. Nothing is installed.
++
++```powershell
++& $Node22 ./replay.cjs `
++  --service-root $ServiceCheckout `
++  --source-root $SourceWorkspace `
++  --dependency-root $PreparedNodeModules `
++  --node $Node22 `
++  --npm-cli $NpmCli `
++  --postgres-bin $PostgresBin `
++  --scratch $NewScratchDirectory `
++  --receipt $NewReceiptFile
++```
++
++The scratch directory and receipt must be new, with existing parents outside the supplied source and dependency directories. Keep both outside contribution source and version control. Both output volumes need at least 10 GiB free; process tracking uses PowerShell and `taskkill`.
++
++The runner copies the Service source, configuration and package manifest into scratch, connects the supplied dependencies read-only, and runs the declared `npm run start:prod` command. An owned loopback RPC serves a synthetic C-Chain mainnet identity, chain ID 43114. The AVAX and JOE fixtures produce one JOE observation, two locked-asset rows and two bridged-asset rows through the actual scanner, extractor, calculator and PostgreSQL datasource.
++
++Five phases are checked. First startup must reach healthy Avalanche scanner readiness. A PostgreSQL restart and a separate Service process must retain the same state, block, observation, asset, bridged-asset and token rows. Persisted holds and a wrong chain ID must refuse startup before any calculator balance or supply reads. A single no-op fault on the created scanner's update must also refuse readiness and calculator reads.
++
++Eight unrelated chain start functions are isolated explicitly. Their jobs and combined service health need separate qualification. This replay also leaves normal registry installation, whole-Service acceptance and production activation open. It uses synthetic addresses, token counterparts and proofs; it performs no live signing, broadcast, deployment or funds operations.
++
++Receipts pin the copied source, dependency bytes, support files, generated copies and toolchain. Every outbound HTTP, fetch and socket connection is restricted to the owned loopback ports. The RPC fixture limits requests to 128 KiB, batches to 64 calls, connections to 16 and total requests to 5,000, with 15-second socket and request timeouts. The runner stops its captured process identities, stops its fresh PostgreSQL cluster, closes the RPC listener, removes the ephemeral password file and checks that source and dependency bytes are unchanged. Logs and database files remain in scratch for inspection.
+diff --git a/contribution/service-mainnet-replay-20261005/bootstrap.mjs b/contribution/service-mainnet-replay-20261005/bootstrap.mjs
+new file mode 100644
+index 0000000..9cbb170
+--- /dev/null
++++ b/contribution/service-mainnet-replay-20261005/bootstrap.mjs
+@@ -0,0 +1,2 @@
++import { register } from "node:module";
++register("./loader.mjs", import.meta.url);
+diff --git a/contribution/service-mainnet-replay-20261005/contracts.json b/contribution/service-mainnet-replay-20261005/contracts.json
+new file mode 100644
+index 0000000..2456efd
+--- /dev/null
++++ b/contribution/service-mainnet-replay-20261005/contracts.json
+@@ -0,0 +1,43 @@
++{
++  "version": "existing-contract-release",
++  "tokens": {
++    "RWTRepoNFT": "0101010101010101010101010101010101010101010101010101010101010101",
++    "GuardNFT": "0202020202020202020202020202020202020202020202020202020202020202",
++    "RSN": "0303030303030303030303030303030303030303030303030303030303030303",
++    "MinFeeNFT": "0404040404040404040404040404040404040404040404040404040404040404",
++    "EmissionNFT": "0505050505050505050505050505050505050505050505050505050505050505",
++    "ERSN": "0606060606060606060606060606060606060606060606060606060606060606"
++  },
++  "ergo": {
++    "addresses": {
++      "lock": "existing-ergo-lock"
++    }
++  },
++  "ethereum": {
++    "addresses": {
++      "lock": "existing-ethereum-lock"
++    }
++  },
++  "avalanche": {
++    "addresses": {
++      "RWTRepo": "NY4PEzZ7VfjohJPfSwMSA3PA8C1qCcU5MwZBUvfc9qpXbGCaPX3vm8YJFeHjcvJ14VmardeY8JwcNmPu6ahuL4sJFXPiqDyoutGyBbmKwR6aPs6YSNeZ97g3ns2dJ4WkCMrisMyxver1anfXdsxWtJ1SymGbG5bArKVCXmdaLxWjpw3Uy8pgqgkCVrsjXgZn7zrrHCAdmY8LcrVjACfspbfsao8M1LibC2bEDo9fx7etjCoP2T815PCcgJV6EM8xAmsjuM7z4MhNWND2Zqjtv9QEFAcx8BcP2sEu77gZG7PqDwktBW1XeRoyyHtpmLpBsRJ9cjFYEbKETzpyr6SwSDU2g4D3Jqe6hgqqLpATzChkz88824o8sTTJ6oF6CkH8XKij5q24WvW8YJvHXL4XAiq8xWtfMY52C5hVY8xo2Mis9rt6s3jy56Nx6LarKvYNqhup9xn5YVZK31MrhmN16AKJ5yqCwnyrF4QDAosRfbcZCQZArRdvUaY4Tr6NWRKGwnydxQGUcP6QPS3aU4do8GRs4nDT7E9WTxzN4tXPEDTjyrTPkTX8ReoFwo1fFimVdxrC6iidkCVQkPDNUqpTAvoVrapxcqJxGMjs7f8bVyvawfC4mEHyMQ7Z5Wu4rcKY6CsUumG9SbK9XRUz2jLxKC6pjd5FGm1ek1bsxcwyW58m9oX2JkSnWFuGGximNNwC3V1G4adeQpy91mfuoiNTJu7dY5ALyr1Jx2wNCiCynKiuqJQYZ34sAvwt3otTErm61DZqn2vzkpV4HtYMEGTwgfoyFitPTw9wSSF7JsHkSg9xZB8W9pgE2wVxBjCv6b5nQp48cN6v7MGmwmjkBmVjYpHeDCJUgMjjQjT5B2SMufRGL1k62C7dCrfSD81AdRAFGtSvsnKcVkVr4T13UKp5bAHMBg5F5w2jpXbbfqQWWZwY9BpCTNE1fdEfUFErzqxAM8MPGXzPuc1BgbTPVMDKZruYoCAmaZE1ggJ5UJ4Ma3yT17on3doyvu3gbQ1fSjVRv7Q9TrN1us6ThAhgTNtE3j8bLiiWXFNzafnKpwfzAd8EJEgVHQseDmAYPyZEVoY17xpWya61zFf2ckK9CM13C6PJBj4Vgqg2YkdVhi4ocW8xbn8RbshxnqufN3MYLGp52PsvAegdrsaKNMha2MfDZQxvjTQJ7u9A5f7rDxMccDidXtEJdEsGbvR5PT5DcpjRzR76UweLQhSH8yzgBgyHq8y6hPA3si",
++      "WatcherPermit": "2Eit2LFRqu2Mo33z3pYTJRHNCMWh1NevG3uiPR5wULq9th92wdcxJ5rGipLeUGwQo9tFKPWggfwhQmSfArX8yqrPUPuFeyYYoVaPjgK6sxSVUe7vQXCriNzy5bUwux4Btj7MHExDFZsxGkEuAi4BB1ukcx6gCf9s1iZjqPwNmx2GdsQ1H5GWjLV3e1BgD9N3NRep19d1BsrAoRKAdR8a68xccWB4PnZUNe3yFk7spXubhh7RQADcQfnovWFyhDyWWzb4rz18V6L1HifMxWtj2ADoXB9s56FhLB1FJvB5ZVAN1YMy8xxnb8Me8Vtymy1Ba3UmcPozU3G66RcLQgSMjT1yGL1MN7X5A4C1KATBFspGbiSUky1C6wxTzas1NC1sA76fUV9pGzzhvwjAVRiXJg8hZM9Cq5KcD2p4apBvrqXCq9dm3m8eK86w8EHdWGvGAY68XZyczgheDtQv53kJyiEnz5YkUMLMY7T1aPQoyptvxb7PHaHDtWEWyfSW53yCy9pLYV9VmipxwZHbeBsnDWNXtxEjXnp5XKMaKAPVkH9zPydR8MPVQ9rhxvgS2jnx8J7LBjei9exLSapeUT6dKify5etL3C2rd8g6Yu9oELzzn982WPjih4A5m3CYApUzZJr8xV5r1EXZ1T4cWoiheFyX26EB1RM3Jkk2w2rTDzfPK73EXi4tdqPiVyW28WnBuE9AM6",
++      "Fraud": "2U1Bm1VfBKJQzNr6Zu6yAh2ZUttB2oaaaxQeBENSPaTEF3t26NcexepJUtKL9vuA98QHuFXXQ65n4QiQsiHDJ2WqYZzuxkzU6QK2ZekdS5tCwS7gvXwextovNdGJoHU38wVmkuj4BPZ1uTmE9Lytr79FRbVSTuQtDHBevnL5c3VungAcncDbLZWnd6JJfaR31PiASt4tog2KSsEY1zxWVxt4HjSMXJo6UHU3cT6VgTD58FnZxnwoPAa",
++      "lock": "0x1111111111111111111111111111111111111111",
++      "cold": "0x2222222222222222222222222222222222222222",
++      "guardSign": "3FBpC6dt4xNpexUbLSZDR4YbuMWwLyKDUjbnHPCQf6VpUfqqLGzQ6P6uKkfoF1Eudh9YSU9uTEwYYJ3J8hDERT2mhM6wvCciz4HvZPLMUtdjeg5mCtJMyi6Wy2wTeQQ6UxyuwKCNGxU669QN1HNz7MF5JMg1xy84cEFVcTCcU2rKqiYpHNotatUq6uP6K3fAraF",
++      "Commitment": "5ivrmzxYa4V1dEssGV9a8Twzt9EXTp8a3jFG34m2EZvzJNhUa4vFSEgfD8XFC4h9HL3aHxbSC5V8d4XXXD9rc99WoDBXrRLDQWGMrCCDxs9cPFwA43A8A9nM4jDJxVQ5ARpKpnzzP7gHV1bZArHFuUKVvX6VHv1PLrU1Z6wPdqmq7BbMaUYJt2CQ9NUhJw3rYp2G8pDKzVFwB5SjhYM3svFJXe9Lzd8NPpmgEACnbd8K2EnLsCT1PqztAmP99VwQRirFaw9oD1Q2mr8TP8Du4hAuW8RXbyBtCbbDhaw73YyUthYaKF5vA5HrgncHYZC6kiq1ES5BdDNQvHGogabhPFBchGRCrrXY4V6Us5mHqGZBrHzT2c438SXv6rW7nVgFdDCeZe2CCMQXdyHfCsiNSqDK3JoPk2Kt3xP4D6WGkLhmpC8ewYBk7KAELt5iJwMC68A9t4bVuMVaDrA6BDeEJkMW2nZW5do1nHz4uJuoT3iMmA5JPGSuHHMxe82SrN5xEFtZLmWQ81LVM2E7VkmSgUJkp1r2EgFLC2v5s16Uq1ynqg5dsq3ZhyTKxGXcnppnSFKdCwY8qJYxbAr7gTfGBzk66V4M1GeZeWQSBjBhSn3njNpuFMt64ok2TTeChiYo59qqBg7ShraBoKZhHjh8rtK6FkV81aFTvRK2u6DAY3vG3UetKndyZCFJchTSeHG3dpiqdkA3nPnULmRwUSEpkqGY2Xwo6c2iqRsQnddMfSU3nnr3kPoXApjexqUenedtbmQvqwEunArd8eJW6LA2cHFAPQtrwx8Qp61mza3t2hfHF5WnqBjB7T4S8MU58dBy7Siie2TvRxWW2ao9LvLxBQofweMt9PjkrEUAgaPWPTqYCxXYZ2SKdRfbhcJgx1ANVoeqG4oa3RJyPHKk52EqT5cLQw1V45DdS47SskBXcDe8ipiZGshntuDFZMWzJCFVnqB5RkQGJHo46zhYi1B2xDwc7K6rH9fK3uLbNQoUKSysV269H4nfAtUbuQLwXbvWFVrHRnwcf5qJhMpZjBcY9MoYF6AtLwFot5Py2SFM1kkVF4Kqadqgy4BqJpiYQrzkEoSiAzFJBxqHoorUvS4A1bkVTuSN6TMkohHE7jGv3d9rFougMqhdZP2nSB7vVTNuddCcudjSairx6NM6u81vHsEUfULvCYjkGWCRLgYeFxzHZy9aUUE11ffojtJXytjX4eDxi5efLREE7UfxBoziaveAhxPHQxvZ7vNmJ2fM4BEX4deewTCHFHQXUrgadMVmsPhf4DTA89M4cGACgryFd",
++      "WatcherTriggerEvent": "ZsPNMsGz8D8y11MAneZTVjJndCjgTUq8N3ZWgqKuU5ajroVuTxThHsTMC1fm3PCKvpdFNiqyZuHwKxzgpcuP35vYvMXXQDVtTbtcWVLhz8thp2hYCNPScvhbZ8o3FL6s9cWvoS2uMUYo1TXMeSDPQM2HD4gWZxnjRVoA9UYZWKsA8gpev35dT3fJyz4bjyzsAWZFUZ9JFDxqr8vxYnMmJbLPhftCsviZ7ZcRpSfpFrQRAi7xjirNwN3Cf5csySzPoSLghcwNKWuZf2TZ2aRRATVEjQvS6LFt3Mu9Fz13TuGz9YgfnSKKzw4crEofbFMoyLt9KJfgabxVU6Vhs6nvSW6vPZVwzxaocm4H4fwjtyHNdcGbAnh8KHUBVWvDTgftge3mYqU39MR9YnXa8TsmiRo8rS8VyDDvP44QfGNZHVNZShxRjrqR39YEDf31AE8FwewVQuCb4C4eCPuAL89eAiyogFaybHoRPZK6iSAQKwmzQ23tsVkYzrTjJuNvo8TSs7acHx",
++      "WatcherCollateral": "SiDFfCzE1MKdUevpzJZXzsMmBfivPgLhdkZGib2hRAAZfLVXfpcMLrYkd6NtbfSV9XNFrP2ivTbcNAUpLDEJ6DFarL2foAfaEs6vcRcJh3A7jcTFfaijn7P5bBTFkY5WEWTpWpSYvAkcffEHsJeoqKBacZMF5uC3U7yRnBfKSSmYXhYLUrp7kDdcEUxnxxqkKpDBLhbfz6BHxk3z6g4tD29KQe5yqUpA6hRaQcdto49gbbtPqq8zsRKDneBm2GKc7p41zenP318LMEYpvMYLcrmeP8JbTEdykNzzTaDuE3qTYdtkVm6c7WnWX1DJsvk8bR7emqXe3bAaA199YsGijupHFd4QdFLbS5rtzGoqWBLwtzj7L7CpTKUdXwKyMMjXZiiEG5AqXKgNwT9MjT6Vz7sieoq6bPqV769fA9UCVKDiWjkkw72x6yTXXvFBeNXxTEGy35J3qzDKwHkgDGnV4wBEUsjq9cwcVBgsjXFxhGnvG3JK9ekJ2rdzn4RK75QkG2RUgRnLQS3LfkyRFo2ajJSkHxS4hGwvruxmEqdUhQcjK7nxbFmM76Q85jie8qorfYhM8b7gD9B7EbKqDVz1xwTF",
++      "RepoConfig": "prufxZid3SJMyUVh9KsW47thQWP4ecG4k5GLgozNXrfmvKb7aebQoyqUt6EgYcL9JFspkudXF9NkbGJZfeFoTftwMYu6hgsK1AT7XiNcBbmJt56vTZJQm8iySiWEDX68VYwYVQV2t4XQpDagfCEESqjEByXUVRexS6QNZ2owYhbWjXk2EEviuc6DFPjnACiuXHhvDjRQJUjMWq4r39Qu",
++      "Emission": "USNVj4qoyg7U7C6EpdFEUdpHH9dDeDQHvhQcuVjzmqHo3gzuqvgBQEdu1CwZe5ruNuPe656kYGPsGZ9CBQ6WuPmQoQr4fkMzAp83gBMLwZATXXL3RZogdFkNWSjZ4Gc7mLVx6LswwAjWUGGJPSJQTX6AYsVZrjf78qecPoALyk771DirX2rGx1481XG7UA77N4jXJF1qjNfo92hj8UZZRD8BfhLsagpdRnLQbdd8QTGpstNDwkiMBnnQs6DKEwBcT47ZWtuzag6zU6BNfXBnwEQUU1y5HK8BrqmDqaNUVAnerund1Ynys6KtyMrF56CweuzSLFYcH7BrG3tRUtKAz6LokR9u5RKjT9sTsbXVUrJdAedQkTrTYqUECrJRPwYcnRCd2qo3ei1cNZzrP2M9MNhqW6ArVZxNL4MQMJRJcLAwmrjsSF8DFfAGtJ2MiqiDbWUEZrnZhzFFQ7U8NrdWNEApm9PtGNb8eGyY9XuS"
++    },
++    "tokens": {
++      "CleanupNFT": "0808080808080808080808080808080808080808080808080808080808080808",
++      "RWTId": "0707070707070707070707070707070707070707070707070707070707070707",
++      "AwcNFT": "0909090909090909090909090909090909090909090909090909090909090909",
++      "RepoConfigNFT": "0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a"
++    },
++    "cleanupConfirm": 21600
++  }
++}
+diff --git a/contribution/service-mainnet-replay-20261005/legacy.mjs b/contribution/service-mainnet-replay-20261005/legacy.mjs
+new file mode 100644
+index 0000000..df4831b
+--- /dev/null
++++ b/contribution/service-mainnet-replay-20261005/legacy.mjs
+@@ -0,0 +1,10 @@
++const chain = new URL(import.meta.url).searchParams.get("chain");
++const start = async () => ({ name: () => chain });
++export const startErgoScanner = start;
++export const startCardanoScanner = start;
++export const startBitcoinScanner = start;
++export const startEthereumScanner = start;
++export const startBinanceScanner = start;
++export const startDogeScanner = start;
++export const startFiroScanner = start;
++export const startHandshakeScanner = start;
+diff --git a/contribution/service-mainnet-replay-20261005/loader.mjs b/contribution/service-mainnet-replay-20261005/loader.mjs
+new file mode 100644
+index 0000000..4e81b05
+--- /dev/null
++++ b/contribution/service-mainnet-replay-20261005/loader.mjs
+@@ -0,0 +1,57 @@
++const legacy = new Set([
++  "ergo",
++  "cardano",
++  "bitcoin",
++  "ethereum",
++  "binance",
++  "doge",
++  "firo",
++  "handshake",
++]);
++/** Isolates only explicitly unrelated process starts; no package or protected source entry redirection. */
++export async function resolve(specifier, context, nextResolve) {
++  if (
++    context.parentURL ===
++      new URL(
++        "file:///" +
++          process.env.SERVICE_FIXTURE_ROOT.replaceAll("\\", "/") +
++          "/src/scanner/scanner-service.ts",
++      ).href &&
++    specifier.startsWith("./chains/") &&
++    legacy.has(specifier.slice("./chains/".length))
++  )
++    return {
++      url: new URL(
++        "./legacy.mjs?chain=" + specifier.slice("./chains/".length),
++        import.meta.url,
++      ).href,
++      shortCircuit: true,
++    };
++  return nextResolve(specifier, context);
++}
++/** Applies a single actual created-scanner update fault only in the declared negative phase. */
++export async function load(url, context, nextLoad) {
++  const result = await nextLoad(url, context);
++  if (
++    process.env.SERVICE_FIXTURE_MUTANT === "scanner-update-noop" &&
++    url ===
++      new URL(
++        "file:///" +
++          process.env.SERVICE_FIXTURE_ROOT.replaceAll("\\", "/") +
++          "/src/avalanche/scanner.ts",
++      ).href
++  ) {
++    const source = Buffer.from(result.source).toString("utf8"),
++      marker = "await scanner.registerExtractor(";
++    if (source.split(marker).length - 1 !== 1)
++      throw Error("One-fault marker count");
++    return {
++      ...result,
++      source: source.replace(
++        marker,
++        "scanner.update = async () => {}; " + marker,
++      ),
++    };
++  }
++  return result;
++}
+diff --git a/contribution/service-mainnet-replay-20261005/manifest.json b/contribution/service-mainnet-replay-20261005/manifest.json
+new file mode 100644
+index 0000000..1ead8bf
+--- /dev/null
++++ b/contribution/service-mainnet-replay-20261005/manifest.json
+@@ -0,0 +1,126 @@
++{
++  "schema": "rosen-avalanche-deployment-candidate/v1",
++  "chainId": 43114,
++  "activated": false,
++  "minted": false,
++  "broadcast": false,
++  "generatorVersion": "7.1.1",
++  "javaVersion": "1.8.0_504",
++  "scalaVersion": "2.12.7",
++  "inputs": [
++    {
++      "role": "assigned-values",
++      "sha256": "98e536149ddfea595fdccd30fb6849a56425f16554e3361212e2b5bf242910c5"
++    },
++    {
++      "role": "contracts-base",
++      "sha256": "2741ff0bc2366629111f21fbf05e899f41a18e5eb25e7be6a951beee5450e9e0"
++    },
++    {
++      "role": "tokens-base",
++      "sha256": "1bf4492afa2a5a31fab6e622a83b8aadd92d3db2135a3e01920588e2db36e402"
++    }
++  ],
++  "sources": [
++    {
++      "path": "build.sbt",
++      "sha256": "f7e80e34005a18f21cec3f22253e155b62c7b9abce118694d1fbd41b7834cd43"
++    },
++    {
++      "path": "project/build.properties",
++      "sha256": "72e9e3c2752fdac42e064522cc6961dcb08789d8059bd6a6db9d60a506eb4f20"
++    },
++    {
++      "path": "project/plugins.sbt",
++      "sha256": "f8d2f5e8d7de2da8630e91c6a54325f51007b73ccade72665cca3ff2058d55c8"
++    },
++    {
++      "path": "src/main/scala/helpers/Configs.scala",
++      "sha256": "7b0b3b9d45f27b6764411c525aa6d2ce53f89f81593633a5fed3586110bf5ae4"
++    },
++    {
++      "path": "src/main/scala/helpers/Models.scala",
++      "sha256": "14f75b1d3a6c07d9e1d27c81c885b6f2fe42b0397ec104671b821a4237f0e1fd"
++    },
++    {
++      "path": "src/main/scala/helpers/Templates.scala",
++      "sha256": "22f13e060f67cc44f215ec2f13af07a5eae612c23dae712a1157d188666483b2"
++    },
++    {
++      "path": "src/main/scala/helpers/Utils.scala",
++      "sha256": "c7a4464139ee226317e3db0771adcecb06aecb0a8c241878a57e0b628aca7bbb"
++    },
++    {
++      "path": "src/main/scala/rosen/bridge/AvalancheOverlayMerge.scala",
++      "sha256": "0c2c86c516e106ec7c6bd08be0673bab29cc8f739f40b095d0934681b8fa08e1"
++    },
++    {
++      "path": "src/main/scala/rosen/bridge/AvalanchePreparation.scala",
++      "sha256": "78c5da418726c1523039ef51f9daf8c2201475a983c455c8b7d07409c208c497"
++    },
++    {
++      "path": "src/main/scala/rosen/bridge/Contracts.scala",
++      "sha256": "961dc8aa0f8674aa671293580f97ff49497d37723975915aef8e36a69b42dbe2"
++    },
++    {
++      "path": "src/main/scala/rosen/bridge/Main.scala",
++      "sha256": "951f02912e54e4cf8df3cdbdf98d6612074d2bbe7452d112fc735f847b427d49"
++    },
++    {
++      "path": "src/main/scala/rosen/bridge/TokensMap.scala",
++      "sha256": "1a39c615f2a9780cc242a9d29e83f6d88bae09f77ce6a0f166c177ea62d740e6"
++    },
++    {
++      "path": "src/main/scala/rosen/bridge/scripts/Collateral.es",
++      "sha256": "c4a0bfe2015bdb14262c0d556b5eb62b6d321e13ebc64c280642758654d3b27a"
++    },
++    {
++      "path": "src/main/scala/rosen/bridge/scripts/Commitment.es",
++      "sha256": "982920eb56e019e1b9e4966b800b4a0130d34491b5dbb1178dee09fab508c525"
++    },
++    {
++      "path": "src/main/scala/rosen/bridge/scripts/Emission.es",
++      "sha256": "e170717863a6fb59b197ca9d2a6a266be228848680a55dd220a89da2f222576e"
++    },
++    {
++      "path": "src/main/scala/rosen/bridge/scripts/EventTrigger.es",
++      "sha256": "cddcbae6aeb63d0721d90557da1d71d4112e4afda6282aa38b4e43a3e8389f30"
++    },
++    {
++      "path": "src/main/scala/rosen/bridge/scripts/Fraud.es",
++      "sha256": "b118de32da5aa2d3e4f1e393bc0436276e1d7fbd971f686d4ec9b03ea991d5a3"
++    },
++    {
++      "path": "src/main/scala/rosen/bridge/scripts/GuardSign.es",
++      "sha256": "cbf83ca408e251ea676b092297a1d866d8297b10ba10e806db3bf24c88dd6a66"
++    },
++    {
++      "path": "src/main/scala/rosen/bridge/scripts/Lock.es",
++      "sha256": "71682ca528909c7a2e144ca5f871077f28415373299245b1d4776ab412991779"
++    },
++    {
++      "path": "src/main/scala/rosen/bridge/scripts/Permit.es",
++      "sha256": "5d6141ae64fd18e49a0fdee70911e9b65501486e43c8ff0f58347e5856714a1e"
++    },
++    {
++      "path": "src/main/scala/rosen/bridge/scripts/RepoConfig.es",
++      "sha256": "ba39f827794b47ec79c8814abc5f1f82625adc0bcb5e8415ba56203508229c20"
++    },
++    {
++      "path": "src/main/scala/rosen/bridge/scripts/RwtRepo.es",
++      "sha256": "c0187d0764cea7b93a39e3db2c3534c8ccf6085ede17aba052bbf0833539b22b"
++    }
++  ],
++  "files": [
++    {
++      "path": "contracts.json",
++      "bytes": 7063,
++      "sha256": "911236500cc3bd52a85895c1fc9ae3d04e70f52b746915933f0f19942315d280"
++    },
++    {
++      "path": "tokens.json",
++      "bytes": 1354,
++      "sha256": "6c2106bfb0aef7b9f5c6ce5536338a59ece5b762b075d4c5b872cd9067ad7cfb"
++    }
++  ]
++}
+diff --git a/contribution/service-mainnet-replay-20261005/network-guard.mjs b/contribution/service-mainnet-replay-20261005/network-guard.mjs
+new file mode 100644
+index 0000000..274c0ef
+--- /dev/null
++++ b/contribution/service-mainnet-replay-20261005/network-guard.mjs
+@@ -0,0 +1,134 @@
++import assert from "node:assert/strict";
++import http from "node:http";
++import https from "node:https";
++import net from "node:net";
++import { syncBuiltinESMExports } from "node:module";
++import { urlToHttpOptions } from "node:url";
++
++const allowedHosts = new Set(["127.0.0.1", "localhost", "::1", "[::1]"]);
++const allowedPorts = new Set(
++  (process.env.SERVICE_FIXTURE_PORTS ?? "")
++    .split(",")
++    .filter(Boolean)
++    .map(Number),
++);
++assert.ok(
++  allowedPorts.size > 0 &&
++    [...allowedPorts].every(
++      (port) => Number.isInteger(port) && port > 0 && port < 65536,
++    ),
++  "Explicit fixture ports required",
++);
++
++/** Refuses transport outside the exact owned loopback listener ports. */
++const validateDestination = (hostname, port) => {
++  assert.ok(
++    typeof hostname === "string" && allowedHosts.has(hostname),
++    "Fixture prohibits non-loopback transport",
++  );
++  assert.ok(
++    allowedPorts.has(Number(port)),
++    "Fixture prohibits unowned loopback port",
++  );
++};
++
++/** Captures the effective HTTP destination after Node's URL/options merge. */
++const validateHttp = (first, second, protocol) => {
++  let merged;
++  if (typeof first === "string" || first instanceof URL) {
++    const url = first instanceof URL ? first : new URL(first);
++    merged = {
++      ...urlToHttpOptions(url),
++      ...(second && typeof second === "object" ? second : {}),
++    };
++  } else {
++    assert.ok(
++      first && typeof first === "object",
++      "Invalid fixture HTTP options",
++    );
++    merged = { ...first };
++  }
++  assert.ok(!merged.socketPath, "Fixture prohibits socket-path transport");
++  const hostname = merged.hostname || merged.host || "localhost";
++  const port =
++    merged.port || ((merged.protocol || protocol) === "https:" ? 443 : 80);
++  validateDestination(hostname, port);
++  if (merged.host)
++    assert.ok(
++      allowedHosts.has(merged.host),
++      "Fixture prohibits non-loopback host override",
++    );
++};
++
++for (const [transport, protocol] of [
++  [http, "http:"],
++  [https, "https:"],
++]) {
++  for (const method of ["request", "get"]) {
++    const original = transport[method];
++    transport[method] = function guardedHttp(first, ...args) {
++      validateHttp(first, args[0], protocol);
++      return original.call(this, first, ...args);
++    };
++  }
++}
++
++/** Normalizes public and Node-internal socket overloads before connection. */
++const validateSocket = (args) => {
++  let first = args[0];
++  if (Array.isArray(first)) first = first[0];
++  if (first && typeof first === "object") {
++    assert.ok(!first.path, "Fixture prohibits socket-path transport");
++    validateDestination(
++      first.host || first.hostname || "localhost",
++      first.port,
++    );
++  } else {
++    assert.ok(
++      typeof first === "number" ||
++        (typeof first === "string" && /^\d+$/.test(first)),
++      "Fixture prohibits socket-path transport",
++    );
++    validateDestination(
++      typeof args[1] === "string" ? args[1] : "localhost",
++      first,
++    );
++  }
++};
++
++const connect = net.Socket.prototype.connect;
++net.Socket.prototype.connect = function guardedConnect(...args) {
++  validateSocket(args);
++  return connect.apply(this, args);
++};
++
++/** Checks Request/URL input and prevents redirects or custom dispatcher bypass. */
++const guardedFetch = async (input, init) => {
++  assert.ok(
++    typeof input === "string" ||
++      input instanceof URL ||
++      input instanceof Request,
++    "Invalid fixture fetch input",
++  );
++  const url = new URL(input instanceof Request ? input.url : input);
++  assert.ok(
++    ["http:", "https:"].includes(url.protocol),
++    "Fixture prohibits non-HTTP transport",
++  );
++  validateDestination(
++    url.hostname,
++    url.port || (url.protocol === "https:" ? 443 : 80),
++  );
++  assert.ok(!init?.dispatcher, "Fixture prohibits custom fetch dispatcher");
++  return originalFetch(input, { ...init, redirect: "error" });
++};
++const originalFetch = globalThis.fetch;
++globalThis.fetch = guardedFetch;
++syncBuiltinESMExports();
++
++export const snapshot = Object.freeze({
++  hosts: [...allowedHosts],
++  ports: [...allowedPorts],
++  redirect: "error",
++  mergedHttpOptions: true,
++});
+diff --git a/contribution/service-mainnet-replay-20261005/observer.mjs b/contribution/service-mainnet-replay-20261005/observer.mjs
+new file mode 100644
+index 0000000..5095fa5
+--- /dev/null
++++ b/contribution/service-mainnet-replay-20261005/observer.mjs
+@@ -0,0 +1,166 @@
++import fs from "node:fs";
++import path from "node:path";
++import assert from "node:assert/strict";
++import { createRequire } from "node:module";
++import { fileURLToPath, pathToFileURL } from "node:url";
++const own = path.dirname(fileURLToPath(import.meta.url)).replaceAll("\\", "/"),
++  out = process.env.SERVICE_FIXTURE_OUTPUT,
++  fixture = process.env.SERVICE_FIXTURE_ROOT;
++if (process.argv[1]?.replaceAll("\\", "/").endsWith("/src/main.ts")) {
++  const req = createRequire(fixture + "/package.json"),
++    phase = process.env.SERVICE_FIXTURE_PHASE,
++    expected = JSON.parse(fs.readFileSync(out + "/expected.json"));
++  let polling = false;
++  const timer = setInterval(async () => {
++    if (polling) return;
++    polling = true;
++    try {
++      const logModule = await import(
++        pathToFileURL(req.resolve("@rosen-bridge/abstract-logger")).href
++      );
++      try {
++        logModule.DefaultLogger.getInstance();
++      } catch (error) {
++        if (String(error).includes("DefaultLogger.init")) return;
++        throw error;
++      }
++      const scannerService = (
++          await import(
++            pathToFileURL(fixture + "/src/scanner/scanner-service.ts").href
++          )
++        ).default,
++        scanner = scannerService.getAvalancheScanner();
++      if (!scanner) return;
++      const source = (
++          await import(pathToFileURL(fixture + "/src/data-source.ts").href)
++        ).default,
++        evm = await import(
++          pathToFileURL(req.resolve("@rosen-bridge/evm-scanner")).href
++        ),
++        core = await import(
++          pathToFileURL(req.resolve("@rosen-bridge/abstract-scanner")).href
++        ),
++        obs = await import(
++          pathToFileURL(
++            req.resolve("@rosen-bridge/abstract-observation-extractor"),
++          ).href
++        ),
++        calc = await import(
++          pathToFileURL(req.resolve("@rosen-ui/asset-calculator")).href
++        );
++      assert.ok(scanner instanceof evm.AvalancheRpcScanner);
++      await scanner.assertUsable();
++      const state = await source
++          .getRepository(evm.AvalancheSafetyState)
++          .findOneByOrFail({ scanner: "avalanche" }),
++        blocks = await source
++          .getRepository(core.BlockEntity)
++          .findBy({ scanner: "avalanche" }),
++        observations = await source.getRepository(obs.ObservationEntity).find(),
++        assets = (
++          await source.getRepository(calc.LockedAssetEntity).find()
++        ).sort((a, b) => a.tokenId.localeCompare(b.tokenId)),
++        bridged = (
++          await source.getRepository(calc.BridgedAssetEntity).find()
++        ).sort((a, b) => a.tokenId.localeCompare(b.tokenId)),
++        tokens = (await source.getRepository(calc.TokenEntity).find()).sort(
++          (a, b) => a.id.localeCompare(b.id),
++        );
++      if (
++        !fs.existsSync(process.env.SERVICE_FIXTURE_HEALTH_REPORT) ||
++        assets.length !== 2 ||
++        bridged.length !== 2
++      )
++        return;
++      const health = JSON.parse(
++        fs.readFileSync(process.env.SERVICE_FIXTURE_HEALTH_REPORT),
++      );
++      if (health.avalanche_scanner !== "Healthy") return;
++      assert.equal(state.chainId, "43114");
++      assert.equal(state.sourceId, "provider-a");
++      assert.equal(state.initialHeight, 0);
++      assert.equal(state.holdReason, null);
++      assert.equal(state.finalizedHeight, 1);
++      assert.equal(state.finalizedHash, "0x" + "aa".repeat(32));
++      assert.equal(blocks.length, 1, "block count");
++      assert.equal(blocks[0].status, core.PROCEED, "block status");
++      assert.equal(observations.length, 1, "observation count");
++      const observation = observations[0];
++      for (const [key, value] of Object.entries({
++        fromChain: "avalanche",
++        toChain: "ergo",
++        sourceChainTokenId: expected.joe.avalanche.tokenId,
++        targetChainTokenId: expected.joe.ergo.tokenId,
++        amount: "100",
++        bridgeFee: "2",
++        networkFee: "3",
++        fromAddress: expected.transactionFrom.toLowerCase(),
++        toAddress: "9iMjQx8PzwBKXRvsFUJFJAPoy31znfEeBUGz8DRkcnJX4rJYjVd",
++        height: 1,
++        extractor: "avalanche-rpc-extractor",
++        sourceTxId: expected.transactionHash,
++        sourceBlockId: "0x" + "aa".repeat(32),
++      }))
++        assert.equal(observation[key], value, key);
++      for (const [id, amount] of [
++        ["avax", 3000000000n],
++        [expected.joe.avalanche.tokenId, 7000000000n],
++      ]) {
++        const asset = assets.find((row) => row.tokenId === id);
++        assert.equal(asset.address.toLowerCase(), expected.balanceAddress);
++        assert.equal(asset.amount, amount);
++        const token = tokens.find((row) => row.id === id);
++        assert.equal(token.decimal, 18);
++        assert.equal(token.significantDecimal, 9);
++        assert.equal(
++          token.ergoSideTokenId,
++          id === "avax" ? "0b".repeat(32) : expected.joe.ergo.tokenId,
++        );
++        const bridge = bridged.find((row) => row.tokenId === id);
++        assert.equal(bridge.chain, "ergo");
++        assert.equal(bridge.bridgedTokenId, token.ergoSideTokenId);
++        assert.equal(bridge.amount, 20000000000n);
++      }
++      const result = {
++        phase,
++        pid: process.pid,
++        actualNpmMain: true,
++        entities: source.entityMetadatas.length,
++        migrations: (await source.query("SELECT name FROM migrations")).length,
++        state,
++        blocks,
++        observations,
++        assets,
++        bridged,
++        tokens,
++        health,
++        assetAmountTypes: assets.map((row) => typeof row.amount),
++      };
++      assert.equal(result.entities, 22);
++      assert.equal(result.migrations, 40);
++      fs.writeFileSync(
++        out + "/result-" + phase + ".json",
++        JSON.stringify(
++          result,
++          (_k, v) => (typeof v === "bigint" ? v.toString() : v),
++          2,
++        ) + "\n",
++        { flag: "wx" },
++      );
++      clearInterval(timer);
++      console.log("SERVICE_FIXTURE_READY:" + phase);
++      const shutdown = setInterval(() => {
++        if (fs.existsSync(out + "/shutdown-" + phase)) {
++          clearInterval(shutdown);
++          process.emit("SIGTERM");
++        }
++      }, 50);
++    } catch (error) {
++      clearInterval(timer);
++      console.error("SERVICE_FIXTURE_PROBE_FAILURE:" + String(error));
++      process.exit(1);
++    } finally {
++      polling = false;
++    }
++  }, 100);
++}
+diff --git a/contribution/service-mainnet-replay-20261005/owned-processes.spec.cjs b/contribution/service-mainnet-replay-20261005/owned-processes.spec.cjs
+new file mode 100644
+index 0000000..3b71413
+--- /dev/null
++++ b/contribution/service-mainnet-replay-20261005/owned-processes.spec.cjs
+@@ -0,0 +1,89 @@
++const fs = require("node:fs");
++const path = require("node:path");
++const vm = require("node:vm");
++const assert = require("node:assert/strict");
++
++const source = fs.readFileSync(path.join(__dirname, "replay.cjs"), "utf8");
++const start = source.indexOf("const processRows = (parent) => {");
++const end = source.indexOf("const verifyInputs = () => {", start);
++assert(start > 0 && end > start, "Exact process helpers must be present");
++const helpers = source.slice(start, end);
++const identity = (id, created = "captured", name = "node.exe") => ({
++  ProcessId: id,
++  created,
++  Name: name,
++});
++const cases = [
++  {
++    title: "retains captured descendants after parent exit",
++    captured: [identity(100), identity(101)],
++    child: { pid: 100, exitCode: 0, signalCode: null },
++    live: new Map([[101, [identity(101)]]]),
++    expected: [101],
++  },
++  {
++    title: "refuses a reused parent and its unrelated descendants",
++    captured: [identity(100), identity(101)],
++    child: { pid: 100, exitCode: null, signalCode: null },
++    live: new Map([
++      [100, [identity(100, "reused"), identity(102, "unowned")]],
++      [101, [identity(101)]],
++      [102, [identity(102, "unowned")]],
++    ]),
++    expected: [101],
++  },
++  {
++    title: "preserves an independently captured database family",
++    captured: [
++      identity(100),
++      identity(101),
++      identity(200, "database", "postgres.exe"),
++    ],
++    child: { pid: 100, exitCode: null, signalCode: null },
++    live: new Map([
++      [100, [identity(100), identity(101)]],
++      [101, [identity(101)]],
++      [200, [identity(200, "database", "postgres.exe")]],
++    ]),
++    expected: [101, 100],
++  },
++];
++for (const fixture of cases) {
++  const stopped = [];
++  const sandbox = {
++    assert,
++    tracked: fixture.captured.slice(),
++    cp: {
++      spawnSync(executable, args) {
++        if (executable === "powershell.exe") {
++          const id = Number(/\$ids=@\((\d+)\)/.exec(args.at(-1))[1]);
++          return {
++            status: 0,
++            stdout: JSON.stringify(fixture.live.get(id) ?? []),
++          };
++        }
++        assert.equal(executable, "taskkill.exe");
++        const id = Number(args[1]);
++        stopped.push(id);
++        fixture.live.delete(id);
++        return { status: 0 };
++      },
++    },
++  };
++  vm.createContext(sandbox);
++  vm.runInContext(
++    helpers +
++      "\nglobalThis.cleanup = stopOwned; globalThis.families = processFamilies;",
++    sandbox,
++  );
++  sandbox.families.set(100, {
++    parent: fixture.captured[0],
++    rows: fixture.captured.filter((row) => row.ProcessId < 200),
++  });
++  sandbox.cleanup(fixture.child);
++  assert.deepEqual(stopped, fixture.expected, fixture.title);
++  console.log("PASS " + fixture.title);
++}
++console.log(
++  "3 process-family controls passed; all process operations were simulated.",
++);
+diff --git a/contribution/service-mainnet-replay-20261005/replay.cjs b/contribution/service-mainnet-replay-20261005/replay.cjs
+new file mode 100644
+index 0000000..93609ca
+--- /dev/null
++++ b/contribution/service-mainnet-replay-20261005/replay.cjs
+@@ -0,0 +1,1194 @@
++const fs = require("node:fs"),
++  path = require("node:path"),
++  crypto = require("node:crypto"),
++  cp = require("node:child_process"),
++  net = require("node:net"),
++  http = require("node:http"),
++  assert = require("node:assert/strict"),
++  { pathToFileURL } = require("node:url"),
++  { createRequire } = require("node:module");
++
++const options = {};
++for (let i = 2; i < process.argv.length; i += 2) {
++  const key = process.argv[i],
++    value = process.argv[i + 1];
++  assert.ok(
++    [
++      "--service-root",
++      "--source-root",
++      "--dependency-root",
++      "--node",
++      "--npm-cli",
++      "--postgres-bin",
++      "--scratch",
++      "--receipt",
++    ].includes(key),
++    "Unknown option",
++  );
++  assert.ok(value && !options[key], "Missing or duplicate option");
++  options[key] = path.resolve(value);
++}
++for (const key of [
++  "--service-root",
++  "--source-root",
++  "--dependency-root",
++  "--node",
++  "--npm-cli",
++  "--postgres-bin",
++  "--scratch",
++  "--receipt",
++])
++  assert.ok(options[key], "Provide " + key);
++assert.equal(
++  process.platform,
++  "win32",
++  "Owned process identity tracking currently requires Windows",
++);
++assert.equal(process.versions.node, "22.18.0");
++assert.equal(
++  fs.realpathSync(options["--node"]).toLowerCase(),
++  fs.realpathSync(process.execPath).toLowerCase(),
++);
++const canonicalNew = (file) =>
++  path.join(fs.realpathSync(path.dirname(file)), path.basename(file));
++options["--scratch"] = canonicalNew(options["--scratch"]);
++options["--receipt"] = canonicalNew(options["--receipt"]);
++const root = options["--source-root"],
++  own = __dirname.split(path.sep).join("/"),
++  out = options["--scratch"].split(path.sep).join("/"),
++  fixture = out + "/service",
++  bin = options["--postgres-bin"].split(path.sep).join("/"),
++  data = out + "/cluster-service-v5",
++  source = options["--service-root"],
++  dependencies = options["--dependency-root"],
++  receiptTarget = options["--receipt"];
++const nested = (a, b) => {
++  const relative = path.relative(fs.realpathSync(a), b);
++  return (
++    relative === "" ||
++    (!relative.startsWith(".." + path.sep) &&
++      relative !== ".." &&
++      !path.isAbsolute(relative))
++  );
++};
++for (const base of [
++  source,
++  dependencies,
++  own,
++  bin,
++  path.dirname(options["--npm-cli"]),
++  root + "/scanner/packages/scanners/evm-scanner/lib",
++  root +
++    "/scanner/packages/observation-extractors/evm-observation-extractor/lib",
++  root + "/ui/packages/asset-calculator/lib",
++]) {
++  assert.ok(!nested(base, out), "Scratch must stay outside inputs");
++  assert.ok(!nested(base, receiptTarget), "Receipt must stay outside inputs");
++}
++assert.ok(!fs.existsSync(out), "Scratch must be fresh");
++assert.ok(!fs.existsSync(receiptTarget), "Receipt must be new");
++assert.ok(
++  fs.existsSync(path.dirname(out)) &&
++    fs.existsSync(path.dirname(receiptTarget)),
++  "Scratch and receipt parents must exist",
++);
++const free = fs.statfsSync(path.dirname(out), { bigint: true });
++assert.ok(
++  free.bavail * free.bsize >= 10n * 1024n ** 3n,
++  "Replay needs 10 GiB free",
++);
++const receiptFree = fs.statfsSync(path.dirname(receiptTarget), {
++  bigint: true,
++});
++assert.ok(
++  receiptFree.bavail * receiptFree.bsize >= 10n * 1024n ** 3n,
++  "Receipt needs 10 GiB free",
++);
++const digest = (file) =>
++    crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex"),
++  sourcePins = [],
++  dependencyPins = [],
++  supportPins = [],
++  generatedPins = [],
++  toolchainPins = [];
++const pin = (file, relative) => ({
++  path: relative.split(path.sep).join("/"),
++  bytes: fs.statSync(file).size,
++  sha256: digest(file),
++});
++const walk = (base, relative, records) => {
++  for (const entry of fs.readdirSync(path.join(base, relative), {
++    withFileTypes: true,
++  })) {
++    const next = path.join(relative, entry.name);
++    assert.ok(
++      !entry.isSymbolicLink(),
++      "Input tree symlinks require a materialized dependency closure",
++    );
++    if (entry.isDirectory()) walk(base, next, records);
++    else records.push(pin(path.join(base, next), next));
++  }
++};
++assert.equal(
++  cp
++    .execFileSync(options["--node"], [options["--npm-cli"], "--version"], {
++      encoding: "utf8",
++      windowsHide: true,
++      timeout: 15000,
++    })
++    .trim(),
++  "11.6.2",
++);
++assert.match(
++  cp.execFileSync(bin + "/pg_ctl.exe", ["--version"], {
++    encoding: "utf8",
++    windowsHide: true,
++    timeout: 15000,
++  }),
++  /PostgreSQL\) 17\.11/,
++);
++walk(dependencies, "", dependencyPins);
++for (const name of [
++  "replay.cjs",
++  "bootstrap.mjs",
++  "loader.mjs",
++  "observer.mjs",
++  "legacy.mjs",
++  "network-guard.mjs",
++  "contracts.json",
++  "tokens.json",
++  "manifest.json",
++])
++  supportPins.push(pin(own + "/" + name, name));
++for (const [base, name] of [
++  [options["--node"], "node"],
++  [options["--npm-cli"], "npm-cli"],
++  ...["initdb.exe", "pg_ctl.exe", "postgres.exe", "createdb.exe"].map(
++    (name) => [bin + "/" + name, name],
++  ),
++])
++  toolchainPins.push(pin(base, name));
++for (const relative of [
++  "scanner/packages/scanners/evm-scanner/lib",
++  "scanner/packages/observation-extractors/evm-observation-extractor/lib",
++  "ui/packages/asset-calculator/lib",
++])
++  walk(root, relative, sourcePins);
++fs.mkdirSync(out);
++fs.mkdirSync(fixture);
++const copy = (relative) => {
++  const input = path.join(source, relative),
++    target = path.join(fixture, relative);
++  assert.ok(!fs.lstatSync(input).isSymbolicLink());
++  if (fs.statSync(input).isDirectory()) {
++    fs.mkdirSync(target, { recursive: true });
++    for (const name of fs.readdirSync(input)) copy(path.join(relative, name));
++  } else {
++    const before = pin(input, relative);
++    fs.copyFileSync(input, target, fs.constants.COPYFILE_EXCL);
++    assert.equal(digest(target), before.sha256);
++    sourcePins.push({ ...before, root: "service" });
++    generatedPins.push(pin(target, "service/" + relative));
++  }
++};
++for (const relative of ["src", "config", "package.json"]) copy(relative);
++assert.equal(
++  JSON.parse(fs.readFileSync(fixture + "/package.json")).scripts["start:prod"],
++  "tsx ./src/main.ts",
++);
++fs.symlinkSync(dependencies, fixture + "/node_modules", "junction");
++const req = createRequire(fixture + "/package.json"),
++  { Transaction } = req("ethers"),
++  credential = crypto.randomBytes(32).toString("hex"),
++  events = [],
++  calls = [],
++  tracked = [];
++/** Reads process identities without exposing command lines or environment values. */
++const processRows = (parent) => {
++  const script =
++    "$all=@(Get-CimInstance Win32_Process); $ids=@(" +
++    parent +
++    '); do {$old=$ids.Count; $ids=@($ids + @($all | Where-Object {$ids -contains $_.ParentProcessId} | ForEach-Object {$_.ProcessId}) | Select-Object -Unique)} while ($old -ne $ids.Count); @($all | Where-Object {$ids -contains $_.ProcessId} | Select-Object ProcessId,Name,@{n="created";e={$_.CreationDate.ToUniversalTime().ToString("o")}}) | ConvertTo-Json -Compress';
++  const r = cp.spawnSync("powershell.exe", ["-NoProfile", "-Command", script], {
++    windowsHide: true,
++    encoding: "utf8",
++    timeout: 15000,
++  });
++  assert.equal(r.status, 0);
++  return r.stdout.trim() ? [].concat(JSON.parse(r.stdout)) : [];
++};
++const processFamilies = new Map();
++const track = (pid) => {
++  const family = processFamilies.get(pid);
++  if (family && !sameIdentity(family.parent)) return [];
++  const rows = processRows(pid);
++  const parent = rows.find((row) => row.ProcessId === pid);
++  if (!parent) return [];
++  const owned = family ?? { parent, rows: [] };
++  processFamilies.set(pid, owned);
++  for (const row of rows) {
++    if (
++      !owned.rows.some(
++        (p) => p.ProcessId === row.ProcessId && p.created === row.created,
++      )
++    )
++      owned.rows.push(row);
++    if (
++      !tracked.some(
++        (p) => p.ProcessId === row.ProcessId && p.created === row.created,
++      )
++    )
++      tracked.push(row);
++  }
++  return rows;
++};
++const sameIdentity = (row) =>
++  processRows(row.ProcessId).find(
++    (current) =>
++      current.ProcessId === row.ProcessId &&
++      current.created === row.created &&
++      current.Name === row.Name,
++  );
++/** Stops only captured identities, never a newly reused PID or an unowned process tree. */
++const stopOwned = (child) => {
++  if (!child) return;
++  const family = processFamilies.get(child.pid);
++  if (!family) return;
++  if (sameIdentity(family.parent)) track(child.pid);
++  for (const row of [...family.rows].reverse())
++    if (sameIdentity(row)) {
++      const result = cp.spawnSync(
++        "taskkill.exe",
++        ["/PID", String(row.ProcessId), "/F"],
++        { windowsHide: true, encoding: "utf8", timeout: 10000 },
++      );
++      assert.equal(result.status, 0, "Owned process stop failed");
++    }
++};
++const verifyInputs = () => {
++  for (const p of generatedPins.filter((p) => p.role !== "copied-preimage"))
++    assert.equal(digest(path.join(out, p.path)), p.sha256);
++  for (const p of toolchainPins) {
++    const file =
++      p.path === "node"
++        ? options["--node"]
++        : p.path === "npm-cli"
++          ? options["--npm-cli"]
++          : path.join(bin, p.path);
++    assert.equal(digest(file), p.sha256);
++  }
++  for (const p of sourcePins)
++    assert.equal(
++      digest(path.join(p.root === "service" ? source : root, p.path)),
++      p.sha256,
++    );
++  for (const p of dependencyPins)
++    assert.equal(digest(path.join(dependencies, p.path)), p.sha256);
++  for (const p of supportPins)
++    assert.equal(digest(path.join(own, p.path)), p.sha256);
++};
++
++assert.ok(!fs.existsSync(data));
++assert.ok(
++  fs.statfsSync(out, { bigint: true }).bavail *
++    fs.statfsSync(out, { bigint: true }).bsize >=
++    10n * 1024n ** 3n,
++);
++fs.mkdirSync(out + "/runtime-config-v5");
++const tokenTarget = fixture + "/config/tokensMap.json";
++fs.copyFileSync(own + "/tokens.json", tokenTarget);
++const copiedTokenMap = generatedPins.find(
++  (p) => p.path === "service/config/tokensMap.json",
++);
++if (copiedTokenMap) copiedTokenMap.role = "copied-preimage";
++generatedPins.push({
++  ...pin(tokenTarget, "service/config/tokensMap.json"),
++  role: "runtime",
++});
++const contracts = JSON.parse(fs.readFileSync(own + "/contracts.json")),
++  manifest = JSON.parse(fs.readFileSync(own + "/manifest.json")),
++  tokens = JSON.parse(fs.readFileSync(tokenTarget)).tokens,
++  joe = tokens.find((set) => set.avalanche?.name === "JOE");
++assert.equal(manifest.chainId, 43114);
++const lock = contracts.avalanche.addresses.lock.toLowerCase(),
++  balanceAddress = contracts.avalanche.addresses.cold.toLowerCase(),
++  hash = "0x" + "aa".repeat(32),
++  parentHash = "0x" + "bb".repeat(32),
++  zero = "0x" + "00".repeat(32),
++  quantity = (n) => "0x" + BigInt(n).toString(16),
++  timestamp = Math.floor(Date.now() / 1000) - 2;
++const joeAmount = 100000000000n,
++  joeData =
++    "0xa9059cbb" +
++    lock.slice(2).padStart(64, "0") +
++    joeAmount.toString(16).padStart(64, "0") +
++    "00000000000000000200000000000000032103f999da8e6e42660e4464d17d29e63bc006734a6710a24eb489b466323d3a9339";
++const signed = Transaction.from({
++  type: 2,
++  to: joe.avalanche.tokenId,
++  data: joeData,
++  nonce: 10,
++  gasLimit: 80000n,
++  maxPriorityFeePerGas: 500000000n,
++  maxFeePerGas: 48978500000n,
++  value: 0n,
++  chainId: BigInt(manifest.chainId),
++  accessList: [],
++  signature: {
++    r: "0x" + "01".repeat(32),
++    s: "0x" + "02".repeat(32),
++    yParity: 0,
++  },
++});
++fs.writeFileSync(
++  out + "/expected.json",
++  JSON.stringify(
++    {
++      lock,
++      balanceAddress,
++      joe,
++      transactionHash: signed.hash,
++      transactionFrom: signed.from,
++      joeAmount: joeAmount.toString(),
++      data: joeData,
++      nativeBalance: "3000000000000000000",
++      tokenBalance: "7000000000000000000",
++      chainId: manifest.chainId,
++    },
++    null,
++    2,
++  ) + "\n",
++  { flag: "wx" },
++);
++const tx = {
++  hash: signed.hash,
++  from: signed.from,
++  to: signed.to,
++  nonce: quantity(signed.nonce),
++  gas: quantity(signed.gasLimit),
++  gasPrice: quantity(signed.maxFeePerGas),
++  maxFeePerGas: quantity(signed.maxFeePerGas),
++  maxPriorityFeePerGas: quantity(signed.maxPriorityFeePerGas),
++  value: quantity(signed.value),
++  input: signed.data,
++  chainId: quantity(signed.chainId),
++  type: "0x2",
++  accessList: [],
++  r: signed.signature.r,
++  s: signed.signature.s,
++  v: "0x0",
++  yParity: "0x0",
++  blockHash: hash,
++  blockNumber: "0x1",
++  transactionIndex: "0x0",
++};
++const receipt = {
++  transactionHash: signed.hash,
++  transactionIndex: "0x0",
++  blockHash: hash,
++  blockNumber: "0x1",
++  from: signed.from,
++  to: signed.to,
++  cumulativeGasUsed: "0x5208",
++  gasUsed: "0x5208",
++  effectiveGasPrice: quantity(signed.maxFeePerGas),
++  contractAddress: null,
++  logs: [
++    {
++      address: joe.avalanche.tokenId,
++      topics: [
++        "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
++        "0x" + signed.from.slice(2).toLowerCase().padStart(64, "0"),
++        "0x" + lock.slice(2).padStart(64, "0"),
++      ],
++      data: "0x" + joeAmount.toString(16).padStart(64, "0"),
++      blockHash: hash,
++      blockNumber: "0x1",
++      transactionHash: signed.hash,
++      transactionIndex: "0x0",
++      logIndex: "0x0",
++      removed: false,
++    },
++  ],
++  logsBloom: "0x" + "00".repeat(256),
++  status: "0x1",
++  type: "0x2",
++};
++const block = (full) => ({
++  number: "0x1",
++  hash,
++  parentHash,
++  timestamp: quantity(timestamp),
++  nonce: "0x0000000000000000",
++  difficulty: "0x0",
++  totalDifficulty: "0x0",
++  gasLimit: "0x1c9c380",
++  gasUsed: "0x5208",
++  miner: balanceAddress,
++  extraData: "0x",
++  baseFeePerGas: "0x1",
++  size: "0x200",
++  sha3Uncles: zero,
++  transactions: [full ? tx : signed.hash],
++  uncles: [],
++});
++
++/** Allocates an owned loopback port. */
++const freePort = () =>
++  new Promise((resolve, reject) => {
++    const server = net.createServer();
++    server.on("error", reject);
++    server.listen(0, "127.0.0.1", () => {
++      const port = server.address().port;
++      server.close(() => resolve(port));
++    });
++  });
++/** Executes and retains an attributed command with sanitized output. */
++const command = (name, exe, args, env = process.env) => {
++  if (name.endsWith("-stop")) {
++    const pid = Number(
++      fs.readFileSync(data + "/postmaster.pid", "utf8").split(/\r?\n/)[0],
++    );
++    assert.ok(
++      tracked.some(
++        (row) =>
++          row.ProcessId === pid &&
++          row.Name === "postgres.exe" &&
++          sameIdentity(row),
++      ),
++      "Refuse to stop an unowned PostgreSQL identity",
++    );
++  }
++  const file = out + "/v5-" + name + ".log",
++    fd = fs.openSync(file, "wx");
++  let result;
++  try {
++    result = cp.spawnSync(exe, args, {
++      cwd: out,
++      env,
++      encoding: "utf8",
++      windowsHide: true,
++      timeout: 90000,
++      maxBuffer: 16 * 1024 ** 2,
++      stdio: ["ignore", fd, fd],
++    });
++  } finally {
++    fs.closeSync(fd);
++  }
++  assert.ok(!fs.readFileSync(file, "utf8").includes(credential));
++  if (name.includes("-start") && fs.existsSync(data + "/postmaster.pid"))
++    track(
++      Number(
++        fs.readFileSync(data + "/postmaster.pid", "utf8").split(/\r?\n/)[0],
++      ),
++    );
++  events.push({ name, exit: result.status });
++  assert.equal(result.status, 0, name + " failed");
++  return result;
++};
++let server,
++  rpcPort,
++  pgPort,
++  initialized = false,
++  running = false,
++  activeChild,
++  passed = false;
++/** Builds the exact inherited synthetic configuration for one phase. */
++const configFor = (phase, database) => {
++  const addresses = {
++      lock: "synthetic",
++      eventTrigger: "synthetic",
++      permit: "synthetic",
++      fraud: "synthetic",
++      commitment: "synthetic",
++    },
++    config = {
++      logs: [{ type: "console", level: "info" }],
++      postgres: {
++        url:
++          "postgresql://fixture:" +
++          credential +
++          "@127.0.0.1:" +
++          pgPort +
++          "/" +
++          database,
++        logging: false,
++        useSSL: false,
++      },
++      notification: { discordWebhookUrl: "" },
++      calculator: { interval: 60, addresses: {} },
++      healthCheck: {
++        avalancheScannerWarnDiff: 1000,
++        avalancheScannerCriticalDiff: 2000,
++        interval: 0.2,
++        duration: 600,
++        maxAllowedErrorCount: 99,
++        maxAllowedWarnCount: 99,
++        reportPath: out + "/health-" + phase + ".json",
++      },
++      avalanche: {
++        enabled: true,
++        chainId: manifest.chainId,
++        initialHeight: 0,
++        selectedSourceId: "provider-a",
++        endpoints: [
++          {
++            sourceId: "provider-a",
++            url: "http://127.0.0.1:" + rpcPort + "/rpc",
++            timeoutMs: 2000,
++          },
++          {
++            sourceId: "provider-b",
++            url: "http://localhost:" + rpcPort + "/rpc",
++            timeoutMs: 2000,
++          },
++        ],
++        addresses: {
++          lock,
++          eventTrigger: contracts.avalanche.addresses.WatcherTriggerEvent,
++          permit: contracts.avalanche.addresses.WatcherPermit,
++          fraud: contracts.avalanche.addresses.Fraud,
++          commitment: contracts.avalanche.addresses.Commitment,
++        },
++        tokens: { rwt: contracts.avalanche.tokens.RWTId },
++        calculatorAddresses: [balanceAddress],
++        intervalMs: 60000,
++        health: { blockTime: 2 },
++      },
++    };
++  for (const chain of [
++    "ergo",
++    "cardano",
++    "bitcoin",
++    "bitcoin-runes",
++    "ethereum",
++    "binance",
++    "doge",
++    "firo",
++    "handshake",
++  ]) {
++    config[chain] = {
++      addresses,
++      tokens: { rwt: "22".repeat(32) },
++      initialHeight: 0,
++      explorerUrl: "http://127.0.0.1:" + rpcPort,
++      koiosUrl: "http://127.0.0.1:" + rpcPort,
++      koiosAuthToken: "",
++      esploraUrl: "http://127.0.0.1:" + rpcPort,
++      rpc: { url: "http://127.0.0.1:" + rpcPort },
++      rpcUrl: "http://127.0.0.1:" + rpcPort,
++      rpcConnections: [],
++      blockcypherUrl: "http://127.0.0.1:" + rpcPort,
++      unisatUrl: "http://127.0.0.1:" + rpcPort,
++      unisatApiKey: "",
++      electrumx: { host: "127.0.0.1", port: rpcPort, reconnectDelay: 1000 },
++    };
++    config.calculator.addresses[chain] = [];
++    if (chain !== "bitcoin-runes") {
++      config.healthCheck[chain + "ScannerWarnDiff"] = 3;
++      config.healthCheck[chain + "ScannerCriticalDiff"] = 5;
++    }
++  }
++
++  if (phase === "repository") {
++    const wasm = req("ergo-lib-wasm-nodejs"),
++      tree = wasm.ErgoTree.from_base16_bytes("10010100d17300"),
++      address = wasm.Address.recreate_from_ergo_tree(tree).to_base58(
++        wasm.NetworkPrefix.Testnet,
++      );
++    assert.equal(
++      wasm.Address.from_base58(address).to_ergo_tree().to_base16_bytes(),
++      "10010100d17300",
++    );
++    for (const value of Object.values(config)) {
++      if (value && value.addresses && typeof value.addresses === "object") {
++        value.addresses = { ...value.addresses };
++        for (const field of ["eventTrigger", "permit", "fraud", "commitment"])
++          value.addresses[field] = address;
++      }
++    }
++    config.ergo.addresses.lock = address;
++    const btc = req("bitcoinjs-lib"),
++      redeem = { output: Buffer.from("51", "hex") };
++    config.bitcoin.addresses.lock = btc.payments.p2wsh({ redeem }).address;
++    config["bitcoin-runes"].addresses.lock = config.bitcoin.addresses.lock;
++    config.doge.addresses.lock = btc.payments.p2sh({
++      redeem,
++      network: { ...btc.networks.bitcoin, scriptHash: 0x16 },
++    }).address;
++    config.firo.addresses.lock = btc.payments.p2sh({
++      redeem,
++      network: { ...btc.networks.bitcoin, scriptHash: 0x07 },
++    }).address;
++    config.handshake.addresses.lock = btc.payments.p2wsh({
++      redeem,
++      network: { ...btc.networks.bitcoin, bech32: "hs" },
++    }).address;
++    config.ethereum.addresses.lock = lock;
++    config.binance.addresses.lock = lock;
++    fs.writeFileSync(
++      out + "/repository-address-inputs-v5.json",
++      JSON.stringify(
++        {
++          ergoTestnetTree: "10010100d17300",
++          ergoAddress: address,
++          legacyLocks: Object.fromEntries(
++            [
++              "ergo",
++              "cardano",
++              "bitcoin",
++              "bitcoin-runes",
++              "doge",
++              "firo",
++              "handshake",
++              "ethereum",
++              "binance",
++            ].map((chain) => [chain, config[chain].addresses.lock]),
++          ),
++          scope:
++            "Only direct repository registration fixture; actual installed WASM/bitcoinjs script address encoders, no keys/funds/live endpoints; main configuration unchanged",
++        },
++        null,
++        2,
++      ) + "\n",
++      { flag: "wx" },
++    );
++  }
++  return config;
++};
++/** Runs the actual unchanged npm start:prod and observes original producer/consumer state. */
++const startNpm = async (phase, database = "avalanche_fixture", mutant = "") => {
++  const config = configFor(phase, database);
++  fs.writeFileSync(
++    out + "/config-" + phase + ".json",
++    JSON.stringify(
++      {
++        ...config,
++        postgres: {
++          ...config.postgres,
++          url: config.postgres.url.replace(
++            credential,
++            "[ephemeral fixture credential]",
++          ),
++        },
++      },
++      null,
++      2,
++    ) + "\n",
++    { flag: "wx" },
++  );
++  const nodeOptions =
++      "--import " +
++      pathToFileURL(own + "/network-guard.mjs").href +
++      " --import " +
++      pathToFileURL(fixture + "/node_modules/tsx/dist/loader.mjs").href +
++      " --import " +
++      pathToFileURL(own + "/bootstrap.mjs").href +
++      " --import " +
++      pathToFileURL(own + "/observer.mjs").href,
++    env = {
++      ...process.env,
++      NODE_OPTIONS: nodeOptions,
++      NODE_CONFIG: JSON.stringify(config),
++      NODE_CONFIG_DIR: out + "/runtime-config-v5",
++      NODE_ENV: "test",
++      NODE_BACKEND: "js",
++      SERVICE_FIXTURE_PORTS: pgPort + "," + rpcPort,
++      SERVICE_FIXTURE_PHASE: phase,
++      SERVICE_FIXTURE_ROOT: fixture,
++      SERVICE_FIXTURE_OUTPUT: out,
++      SERVICE_FIXTURE_MUTANT: mutant,
++      SERVICE_FIXTURE_HEALTH_REPORT: config.healthCheck.reportPath,
++      HTTP_PROXY: "",
++      HTTPS_PROXY: "",
++      ALL_PROXY: "",
++      NO_PROXY: "127.0.0.1,localhost,::1",
++      PATH: path.dirname(process.execPath) + ";" + process.env.PATH,
++    };
++  const result = await new Promise((resolve, reject) => {
++    const child = cp.spawn(
++      options["--node"],
++      [options["--npm-cli"], "run", "start:prod"],
++      {
++        cwd: fixture,
++        env,
++        windowsHide: true,
++        stdio: ["ignore", "pipe", "pipe"],
++      },
++    );
++    activeChild = child;
++    let log = "",
++      ready = false,
++      timedOut = false;
++    const consume = (chunk) => {
++      log += chunk;
++      if (!ready && log.includes("SERVICE_FIXTURE_READY:" + phase)) {
++        ready = true;
++        track(child.pid);
++        fs.writeFileSync(
++          out + "/shutdown-" + phase,
++          "owned graceful shutdown\n",
++          { flag: "wx" },
++        );
++      }
++    };
++    child.stdout.on("data", consume);
++    child.stderr.on("data", consume);
++    track(child.pid);
++    const timer = setTimeout(() => {
++      timedOut = true;
++      stopOwned(child);
++    }, 45000);
++    child.on("error", (error) => {
++      clearTimeout(timer);
++      reject(error);
++    });
++    child.on("exit", (exit, signal) => {
++      clearTimeout(timer);
++      try {
++        stopOwned(child);
++      } catch (error) {
++        reject(error);
++        return;
++      }
++      activeChild = undefined;
++      resolve({ exit, signal, ready, timedOut, pid: child.pid, log });
++    });
++  });
++  fs.writeFileSync(
++    out + "/npm-" + phase + ".log",
++    result.log.replaceAll(credential, "[ephemeral fixture credential]"),
++    { flag: "wx" },
++  );
++  delete result.log;
++  events.push({ name: "actual-npm-start-prod-" + phase, ...result });
++  return result;
++};
++(async () => {
++  try {
++    pgPort = await freePort();
++    let requests = 0;
++    server = http.createServer({ maxHeaderSize: 16384 }, async (req, res) => {
++      try {
++        assert.ok(++requests <= 5000, "Fixture request bound");
++        if (req.method === "GET") {
++          calls.push({ method: "ergo-token-supply", path: req.url });
++          res.setHeader("content-type", "application/json");
++          const id = req.url.split("/").at(-1),
++            set = tokens.find((set) => set.ergo?.tokenId === id);
++          assert.ok(set);
++          res.end(
++            JSON.stringify({
++              id,
++              emissionAmount: 20000000000,
++              name: set.ergo.name,
++              decimals: set.ergo.decimals,
++            }),
++          );
++          return;
++        }
++        let bytes = "",
++          byteCount = 0;
++        for await (const chunk of req) {
++          byteCount += chunk.length;
++          assert.ok(byteCount <= 131072, "Fixture body bound");
++          bytes += chunk;
++        }
++        const body = JSON.parse(bytes);
++        assert.ok(
++          !Array.isArray(body) || body.length <= 64,
++          "Fixture batch bound",
++        );
++        const respond = (request) => {
++          calls.push({ method: request.method, params: request.params });
++          let result;
++          switch (request.method) {
++            case "eth_chainId":
++              result = quantity(manifest.chainId);
++              break;
++            case "eth_getBlockByNumber":
++              assert.ok(["finalized", "0x1"].includes(request.params[0]));
++              result = block(Boolean(request.params[1]));
++              break;
++            case "eth_getBlockByHash":
++              assert.equal(request.params[0], hash);
++              result = block(Boolean(request.params[1]));
++              break;
++            case "eth_getTransactionReceipt":
++              assert.equal(request.params[0], signed.hash);
++              result = receipt;
++              break;
++            case "eth_getBalance":
++              assert.equal(request.params[0].toLowerCase(), balanceAddress);
++              assert.equal(request.params[1], "0x1");
++              result = quantity(3000000000000000000n);
++              break;
++            case "eth_call":
++              assert.equal(
++                request.params[0].to.toLowerCase(),
++                joe.avalanche.tokenId,
++              );
++              assert.equal(request.params[1], "0x1");
++              assert.equal(
++                request.params[0].data.toLowerCase(),
++                "0x70a08231" + balanceAddress.slice(2).padStart(64, "0"),
++              );
++              result =
++                "0x" + 7000000000000000000n.toString(16).padStart(64, "0");
++              break;
++            default:
++              throw Error("Unexpected RPC method " + request.method);
++          }
++          return { jsonrpc: "2.0", id: request.id, result };
++        };
++        res.setHeader("content-type", "application/json");
++        res.end(
++          JSON.stringify(
++            Array.isArray(body) ? body.map(respond) : respond(body),
++          ),
++        );
++      } catch (error) {
++        events.push({
++          name: "transport-fixture-error",
++          message: String(error),
++        });
++        res.writeHead(500);
++        res.end("fixture rejected request");
++      }
++    });
++    server.maxConnections = 16;
++    server.requestTimeout = 15000;
++    server.headersTimeout = 15000;
++    server.timeout = 15000;
++    server.keepAliveTimeout = 1000;
++    await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
++    rpcPort = server.address().port;
++
++    const password = out + "/ephemeral-password";
++    fs.writeFileSync(password, credential + "\n", { flag: "wx" });
++    try {
++      command("pg-initdb", bin + "/initdb.exe", [
++        "-D",
++        data,
++        "-U",
++        "fixture",
++        "--auth=scram-sha-256",
++        "--encoding=UTF8",
++        "--locale=C",
++        "--pwfile=" + password,
++      ]);
++      initialized = true;
++    } finally {
++      fs.unlinkSync(password);
++    }
++    command("pg-start", bin + "/pg_ctl.exe", [
++      "-D",
++      data,
++      "-l",
++      out + "/v5-postgres.log",
++      "-o",
++      "-h 127.0.0.1 -p " + pgPort,
++      "-w",
++      "start",
++    ]);
++    running = true;
++    track(
++      Number(
++        fs.readFileSync(data + "/postmaster.pid", "utf8").split(/\r?\n/)[0],
++      ),
++    );
++    command(
++      "pg-createdb",
++      bin + "/createdb.exe",
++      [
++        "-h",
++        "127.0.0.1",
++        "-p",
++        String(pgPort),
++        "-U",
++        "fixture",
++        "avalanche_fixture",
++      ],
++      { ...process.env, PGPASSWORD: credential },
++    );
++    const repositoryConfig = configFor("repository", "avalanche_fixture"),
++      repositoryEnv = {
++        ...process.env,
++        NODE_OPTIONS:
++          "--import " +
++          pathToFileURL(own + "/network-guard.mjs").href +
++          " --import " +
++          pathToFileURL(fixture + "/node_modules/tsx/dist/loader.mjs").href,
++        NODE_CONFIG: JSON.stringify(repositoryConfig),
++        NODE_CONFIG_DIR: out + "/runtime-config-v5",
++        NODE_ENV: "test",
++        NODE_BACKEND: "js",
++        SERVICE_FIXTURE_PORTS: pgPort + "," + rpcPort,
++      };
++    events.push({
++      name: "legacy-registration-outside-portable-process-scope",
++      isolatedStarts: 8,
++      claim: "No new full legacy job qualification",
++    });
++    const first = await startNpm("v5-first");
++    assert.equal(first.exit, 0);
++    assert.ok(first.ready && !first.timedOut);
++    const firstResult = JSON.parse(
++      fs.readFileSync(out + "/result-v5-first.json"),
++    );
++    const serverBefore = Number(
++      fs.readFileSync(data + "/postmaster.pid", "utf8").split(/\r?\n/)[0],
++    );
++    command("pg-restart-stop", bin + "/pg_ctl.exe", [
++      "-D",
++      data,
++      "-w",
++      "-m",
++      "fast",
++      "stop",
++    ]);
++    running = false;
++    command("pg-restart-start", bin + "/pg_ctl.exe", [
++      "-D",
++      data,
++      "-l",
++      out + "/v5-postgres-restart.log",
++      "-o",
++      "-h 127.0.0.1 -p " + pgPort,
++      "-w",
++      "start",
++    ]);
++    running = true;
++    track(
++      Number(
++        fs.readFileSync(data + "/postmaster.pid", "utf8").split(/\r?\n/)[0],
++      ),
++    );
++    const serverAfter = Number(
++      fs.readFileSync(data + "/postmaster.pid", "utf8").split(/\r?\n/)[0],
++    );
++    assert.notEqual(serverBefore, serverAfter);
++    const second = await startNpm("v5-second");
++    assert.equal(second.exit, 0);
++    assert.ok(second.ready && !second.timedOut);
++    const secondResult = JSON.parse(
++      fs.readFileSync(out + "/result-v5-second.json"),
++    );
++    assert.notEqual(firstResult.pid, secondResult.pid);
++    for (const field of [
++      "state",
++      "blocks",
++      "observations",
++      "assets",
++      "bridged",
++      "tokens",
++    ])
++      assert.deepEqual(
++        secondResult[field],
++        firstResult[field],
++        field + " durable restart",
++      );
++    events.push({
++      name: "actual-PG-and-Service-process-restart",
++      serverPids: [serverBefore, serverAfter],
++      servicePids: [firstResult.pid, secondResult.pid],
++    });
++    const { Client } = req("pg"),
++      db = new Client({ connectionString: repositoryConfig.postgres.url });
++    await db.connect();
++    try {
++      for (const [field, value, pattern] of [
++        ["holdReason", "fixture-held", /held/],
++        ["chainId", "43113", /policy|identity|held/],
++      ]) {
++        const before = calls.length;
++        await db.query(
++          'UPDATE avalanche_safety_state SET "' +
++            field +
++            '"=$1 WHERE scanner=$2',
++          [value, "avalanche"],
++        );
++        const negative = await startNpm("v5-poison-" + field);
++        assert.equal(negative.exit, 1);
++        assert.ok(!negative.ready && !negative.timedOut);
++        const log = fs.readFileSync(
++          out + "/npm-v5-poison-" + field + ".log",
++          "utf8",
++        );
++        assert.ok(pattern.test(log));
++        assert.ok(!log.includes("calculator service started successfully"));
++        assert.equal(
++          calls
++            .slice(before)
++            .filter((x) =>
++              ["eth_getBalance", "eth_call", "ergo-token-supply"].includes(
++                x.method,
++              ),
++            ).length,
++          0,
++        );
++        assert.equal(
++          (
++            await db.query(
++              "SELECT count(*)::int AS count FROM observation_entity",
++            )
++          ).rows[0].count,
++          1,
++        );
++        const state = (
++          await db.query(
++            "SELECT * FROM avalanche_safety_state WHERE scanner=$1",
++            ["avalanche"],
++          )
++        ).rows[0];
++        assert.equal(state[field], value);
++        await db.query(
++          'UPDATE avalanche_safety_state SET "chainId"=$1,"holdReason"=$2 WHERE scanner=$3',
++          [
++            firstResult.state.chainId,
++            firstResult.state.holdReason,
++            "avalanche",
++          ],
++        );
++        events.push({
++          name: "isolated-persisted-" + field + "-refusal",
++          exit: 1,
++          newBalanceReads: 0,
++          observations: 1,
++        });
++      }
++    } finally {
++      await db.end();
++    }
++    command(
++      "pg-createdb-mutant",
++      bin + "/createdb.exe",
++      [
++        "-h",
++        "127.0.0.1",
++        "-p",
++        String(pgPort),
++        "-U",
++        "fixture",
++        "avalanche_mutant",
++      ],
++      { ...process.env, PGPASSWORD: credential },
++    );
++    const before = calls.length,
++      mutant = await startNpm(
++        "v5-mutant",
++        "avalanche_mutant",
++        "scanner-update-noop",
++      );
++    assert.equal(mutant.exit, 1);
++    assert.ok(!mutant.ready && !mutant.timedOut);
++    const mutantLog = fs.readFileSync(out + "/npm-v5-mutant.log", "utf8");
++    assert.ok(/unavailable|qualified|safety|frontier/i.test(mutantLog));
++    assert.ok(!mutantLog.includes("calculator service started successfully"));
++    assert.equal(
++      calls
++        .slice(before)
++        .filter((x) =>
++          ["eth_getBalance", "eth_call", "ergo-token-supply"].includes(
++            x.method,
++          ),
++        ).length,
++      0,
++    );
++    events.push({
++      name: "one-actual-created-scanner-update-noop-refused",
++      exit: 1,
++      newBalanceReads: 0,
++    });
++    assert.equal(
++      events.filter((x) => x.name === "transport-fixture-error").length,
++      0,
++    );
++    passed = true;
++    console.log(
++      "Actual mainnet AVAX+JOE Service PG/start/restart/poison/mutant PASS",
++    );
++  } finally {
++    stopOwned(activeChild);
++    if (running || fs.existsSync(data + "/postmaster.pid")) {
++      command("pg-final-stop", bin + "/pg_ctl.exe", [
++        "-D",
++        data,
++        "-w",
++        "-m",
++        "fast",
++        "stop",
++      ]);
++      running = false;
++    }
++    assert.ok(!initialized || !fs.existsSync(data + "/postmaster.pid"));
++    if (server) {
++      server.closeAllConnections();
++      await new Promise((resolve) => server.close(resolve));
++    }
++    for (const row of tracked)
++      assert.ok(!sameIdentity(row), "Owned process identity remains active");
++    verifyInputs();
++    const lifecycle = {
++      events,
++      calls,
++      tracked,
++      ownClusterStopped:
++        initialized && !fs.existsSync(data + "/postmaster.pid"),
++      ephemeralPasswordAbsent: !fs.existsSync(out + "/ephemeral-password"),
++    };
++    fs.writeFileSync(
++      receiptTarget,
++      JSON.stringify(
++        {
++          schema: "rosen-service-portable-process-replay.v1",
++          pass: passed,
++          lifecycle,
++          sourcePins,
++          dependencyPins,
++          supportPins,
++          generatedPins: generatedPins.filter(
++            (p) => p.role !== "copied-preimage",
++          ),
++          copiedPreimages: generatedPins.filter(
++            (p) => p.role === "copied-preimage",
++          ),
++          toolchainPins,
++          sourceWrites: 0,
++          dependencyWrites: 0,
++          limits: [
++            "Synthetic loopback mainnet-chain fixture",
++            "Eight unrelated legacy starts isolated; their full jobs remain unqualified",
++            "Prepared dependency closure, not normal registry installation",
++            "No public actions, live signing, broadcast, deployment or funds",
++          ],
++        },
++        null,
++        2,
++      ) + "\n",
++      { flag: "wx" },
++    );
++    fs.writeFileSync(
++      out + "/runtime-lifecycle-v5.json",
++      JSON.stringify(
++        {
++          events,
++          calls,
++          ownClusterStopped:
++            initialized && !fs.existsSync(data + "/postmaster.pid"),
++          ephemeralPasswordAbsent: !fs.existsSync(out + "/ephemeral-password"),
++          processScope:
++            "Actual npm start:prod, original Avalanche/main/datasource/calculator/health; eight unrelated starts explicitly isolated",
++        },
++        null,
++        2,
++      ) + "\n",
++      { flag: "wx" },
++    );
++  }
++})().catch((error) => {
++  console.error(
++    String(error).replaceAll(credential, "[ephemeral fixture credential]"),
++  );
++  process.exitCode = 1;
++});
+diff --git a/contribution/service-mainnet-replay-20261005/tokens.json b/contribution/service-mainnet-replay-20261005/tokens.json
+new file mode 100644
+index 0000000..47d6f5d
+--- /dev/null
++++ b/contribution/service-mainnet-replay-20261005/tokens.json
+@@ -0,0 +1,51 @@
++{
++  "version": "existing-token-release",
++  "tokens": [
++    {
++      "ergo": {
++        "tokenId": "7777777777777777777777777777777777777777777777777777777777777777",
++        "type": "EIP-004",
++        "name": "existing",
++        "decimals": 9,
++        "residency": "native",
++        "extra": {}
++      }
++    },
++    {
++      "avalanche": {
++        "tokenId": "avax",
++        "name": "AVAX",
++        "decimals": 18,
++        "type": "native",
++        "residency": "native",
++        "extra": {}
++      },
++      "ergo": {
++        "tokenId": "0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b",
++        "name": "rsAVAX",
++        "decimals": 9,
++        "type": "EIP-004",
++        "residency": "wrapped",
++        "extra": {}
++      }
++    },
++    {
++      "avalanche": {
++        "tokenId": "0x6e84a6216ea6dacc71ee8e6b0a5b7322eebc0fdd",
++        "name": "JOE",
++        "decimals": 18,
++        "type": "ERC-20",
++        "residency": "native",
++        "extra": {}
++      },
++      "ergo": {
++        "tokenId": "0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c",
++        "name": "rsJOE",
++        "decimals": 9,
++        "type": "EIP-004",
++        "residency": "wrapped",
++        "extra": {}
++      }
++    }
++  ]
++}

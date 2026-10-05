@@ -1,0 +1,1166 @@
+{
+  "schema": "rosen-producer-health-release-preview.v1",
+  "author": "A. Shannon",
+  "source": {
+    "manifest": {
+      "bytes": 23258,
+      "sha256": "ef0361f3e20bfcbbe2dd2919cae8301a07029773c6661a9fa0fc060ed0729240"
+    },
+    "tree": "bd4f7837a5c5c480019a5c0c4b0295153f8738db",
+    "baseline": "8f3a4e35c0dab5763a0f89a9903357261e5e55a5",
+    "lock": {
+      "bytes": 310674,
+      "sha256": "761fc030aacd867b5535d2872966598543d4ce3f9a0f53a995c9b969cc75e702"
+    }
+  },
+  "validation": {
+    "status": "PASS local authentic full scanner Changesets status/version",
+    "node": "v22.18.0",
+    "cachedFullHistory": true,
+    "tools": [
+      {
+        "name": "@changesets/cli",
+        "version": "2.27.1",
+        "packageJson": {
+          "bytes": 3221,
+          "sha256": "757e7603e62cfc4092842643acdab7ddc70a2e63d22069a525d9b72c2b8e3e6e"
+        }
+      },
+      {
+        "name": "@changesets/get-release-plan",
+        "version": "4.0.0",
+        "packageJson": {
+          "bytes": 1080,
+          "sha256": "82c1e7e9ed689b07958c73d3b52de2a8e37216a7d2ecef4ae1427609b8fd220b"
+        }
+      },
+      {
+        "name": "@changesets/assemble-release-plan",
+        "version": "6.0.0",
+        "packageJson": {
+          "bytes": 1139,
+          "sha256": "d25632e5a12b750419e5b738def6bda5748b5a2d1aed2ca58704fe6bf61eebd0"
+        }
+      },
+      {
+        "name": "@changesets/apply-release-plan",
+        "version": "7.0.0",
+        "packageJson": {
+          "bytes": 1330,
+          "sha256": "7464aba319816cd2dc89766852583ada1d66249e1fddcf03b8d83601f7f94d0f"
+        }
+      },
+      {
+        "name": "@changesets/read",
+        "version": "0.6.0",
+        "packageJson": {
+          "bytes": 1037,
+          "sha256": "79a14b6a3b1cf9c5c7cc94827177c866cb2e140d2ef71e84177a034f0d5211e3"
+        }
+      },
+      {
+        "name": "@changesets/git",
+        "version": "3.0.0",
+        "packageJson": {
+          "bytes": 1059,
+          "sha256": "159890e8747ff55c938e0001d0270f8b51d5fa7c1bc450f2c6a75c496cc081ec"
+        }
+      },
+      {
+        "name": "@changesets/config",
+        "version": "3.0.0",
+        "packageJson": {
+          "bytes": 1137,
+          "sha256": "78415e06a67a4a49344f112eaf1b529561e54c7111f56fe81ebf56e7a2499222"
+        }
+      },
+      {
+        "name": "@manypkg/get-packages",
+        "version": "1.1.3",
+        "packageJson": {
+          "bytes": 386,
+          "sha256": "49c05de1cf02efdd4eb5c13aaa1388d3737df40727d3c441ee5e7c8e50c66eaf"
+        }
+      },
+      {
+        "name": "@rosen-bridge/changeset-formatter",
+        "version": "2.0.1",
+        "packageJson": {
+          "bytes": 995,
+          "sha256": "7717849feb1c93afa14e6491830a854d921a07ae1d6f55bc95af3d0c998d59c0"
+        }
+      }
+    ],
+    "cliMain": {
+      "bytes": 54807,
+      "sha256": "87cff8d79acfbfdb21d6c18dcd4f5858cd640b89d78a3ad46ddeea0fbc714938"
+    },
+    "preservedPendingNotes": [
+      "silent-avocados-know"
+    ],
+    "originalHeadsAndIndicesUnchanged": true
+  },
+  "aggregate": {
+    "plan": {
+      "bytes": 5581,
+      "sha256": "407d66000b6f0ce36f3ad3ecf81a22501fc450533fbaaac4e1a8154070a627f7"
+    },
+    "resultTree": "174dc47a33bafb76afa7c0291aafddbe83a84341",
+    "plannedPackages": 17,
+    "changedVersions": 14,
+    "releases": [
+      {
+        "name": "@rosen-bridge/evm-observation-extractor",
+        "type": "minor",
+        "oldVersion": "7.0.7",
+        "newVersion": "7.1.0",
+        "changesets": [
+          "avalanche-observation-extraction",
+          "evm-observation-derivation"
+        ]
+      },
+      {
+        "name": "@rosen-bridge/raw-data-provider",
+        "type": "minor",
+        "oldVersion": "0.2.2",
+        "newVersion": "0.3.0",
+        "changesets": [
+          "avalanche-raw-data-provider",
+          "raw-data-state-ownership"
+        ]
+      },
+      {
+        "name": "@rosen-bridge/evm-scanner",
+        "type": "minor",
+        "oldVersion": "2.0.1",
+        "newVersion": "2.1.0",
+        "changesets": [
+          "avalanche-settled-scanning",
+          "evm-rpc-request-timeout"
+        ]
+      },
+      {
+        "name": "@rosen-bridge/abstract-scanner",
+        "type": "patch",
+        "oldVersion": "4.0.0",
+        "newVersion": "4.0.1",
+        "changesets": [
+          "optional-scanner-cleanup-config"
+        ]
+      },
+      {
+        "name": "@rosen-bridge/abstract-observation-extractor",
+        "type": "none",
+        "oldVersion": "2.0.0",
+        "newVersion": "2.0.0",
+        "changesets": []
+      },
+      {
+        "name": "@rosen-bridge/evm-address-tx-extractor",
+        "type": "patch",
+        "oldVersion": "4.0.0",
+        "newVersion": "4.0.1",
+        "changesets": []
+      },
+      {
+        "name": "@rosen-bridge/bitcoin-runes-observation-extractor",
+        "type": "patch",
+        "oldVersion": "3.0.8",
+        "newVersion": "3.0.9",
+        "changesets": []
+      },
+      {
+        "name": "@rosen-bridge/ergo-observation-extractor",
+        "type": "none",
+        "oldVersion": "2.0.7",
+        "newVersion": "2.0.7",
+        "changesets": []
+      },
+      {
+        "name": "@rosen-bridge/bitcoin-scanner",
+        "type": "patch",
+        "oldVersion": "2.0.1",
+        "newVersion": "2.0.2",
+        "changesets": []
+      },
+      {
+        "name": "@rosen-bridge/cardano-scanner",
+        "type": "patch",
+        "oldVersion": "3.0.1",
+        "newVersion": "3.0.2",
+        "changesets": []
+      },
+      {
+        "name": "@rosen-bridge/ergo-scanner",
+        "type": "patch",
+        "oldVersion": "2.0.1",
+        "newVersion": "2.0.2",
+        "changesets": []
+      },
+      {
+        "name": "@rosen-bridge/firo-scanner",
+        "type": "patch",
+        "oldVersion": "1.0.1",
+        "newVersion": "1.0.2",
+        "changesets": []
+      },
+      {
+        "name": "@rosen-bridge/handshake-scanner",
+        "type": "patch",
+        "oldVersion": "1.0.2",
+        "newVersion": "1.0.3",
+        "changesets": []
+      },
+      {
+        "name": "@rosen-bridge/watcher-data-extractor",
+        "type": "none",
+        "oldVersion": "16.0.0",
+        "newVersion": "16.0.0",
+        "changesets": []
+      },
+      {
+        "name": "@rosen-bridge/bitcoin-observation-extractor",
+        "type": "patch",
+        "oldVersion": "8.0.7",
+        "newVersion": "8.0.8",
+        "changesets": []
+      },
+      {
+        "name": "@rosen-bridge/firo-observation-extractor",
+        "type": "patch",
+        "oldVersion": "1.1.5",
+        "newVersion": "1.1.6",
+        "changesets": []
+      },
+      {
+        "name": "@rosen-bridge/handshake-observation-extractor",
+        "type": "patch",
+        "oldVersion": "1.0.8",
+        "newVersion": "1.0.9",
+        "changesets": []
+      }
+    ],
+    "selectedPackageChanges": [
+      {
+        "name": "@rosen-bridge/abstract-scanner",
+        "path": "packages/abstract-scanner/package.json",
+        "beforeVersion": "4.0.0",
+        "afterVersion": "4.0.1",
+        "dependencies": [],
+        "before": {
+          "bytes": 1504,
+          "sha256": "0e6ab5e9a2beb7035cb4dd36d42aaaf9873451e8eada744f5c0079c4a9aa9e4f"
+        },
+        "after": {
+          "bytes": 1504,
+          "sha256": "4f29feeb9ccf560fda5f5917490f8f586e6ec0a37b1ae861697b5d410997ba84"
+        }
+      },
+      {
+        "name": "@rosen-bridge/evm-observation-extractor",
+        "path": "packages/observation-extractors/evm-observation-extractor/package.json",
+        "beforeVersion": "7.0.7",
+        "afterVersion": "7.1.0",
+        "dependencies": [
+          {
+            "field": "devDependencies",
+            "name": "@rosen-bridge/abstract-scanner",
+            "before": "^4.0.0",
+            "after": "^4.0.1"
+          }
+        ],
+        "before": {
+          "bytes": 1651,
+          "sha256": "8d16d7eb92bf5dd881d5f3a797d7b2dcd0d0ff221ab9a560b753363bf09fcdad"
+        },
+        "after": {
+          "bytes": 1651,
+          "sha256": "4bacec869f4ae8802d34254cd006248dce8a5df17cf8b0053ab03534cf022110"
+        }
+      },
+      {
+        "name": "@rosen-bridge/raw-data-provider",
+        "path": "packages/raw-data-provider/package.json",
+        "beforeVersion": "0.2.2",
+        "afterVersion": "0.3.0",
+        "dependencies": [
+          {
+            "field": "dependencies",
+            "name": "@rosen-bridge/abstract-scanner",
+            "before": "^4.0.0",
+            "after": "^4.0.1"
+          },
+          {
+            "field": "dependencies",
+            "name": "@rosen-bridge/bitcoin-observation-extractor",
+            "before": "^8.0.7",
+            "after": "^8.0.8"
+          },
+          {
+            "field": "dependencies",
+            "name": "@rosen-bridge/bitcoin-runes-observation-extractor",
+            "before": "^3.0.8",
+            "after": "^3.0.9"
+          },
+          {
+            "field": "dependencies",
+            "name": "@rosen-bridge/bitcoin-scanner",
+            "before": "^2.0.1",
+            "after": "^2.0.2"
+          }
+        ],
+        "before": {
+          "bytes": 2315,
+          "sha256": "db3e6170036267ec235fd4d12335a5d690183b82fb1fc52a7355e3eda99d46a0"
+        },
+        "after": {
+          "bytes": 2315,
+          "sha256": "097f350acb9241e8e86ebefb69c489211cff695b366af8afe4f23cebe43b258a"
+        }
+      },
+      {
+        "name": "@rosen-bridge/evm-scanner",
+        "path": "packages/scanners/evm-scanner/package.json",
+        "beforeVersion": "2.0.1",
+        "afterVersion": "2.1.0",
+        "dependencies": [
+          {
+            "field": "dependencies",
+            "name": "@rosen-bridge/abstract-scanner",
+            "before": "^4.0.0",
+            "after": "^4.0.1"
+          }
+        ],
+        "before": {
+          "bytes": 1316,
+          "sha256": "e14440110ca7735079ddd38ed56c5075aaf69936a3c619fd9db6d5ba9ab43538"
+        },
+        "after": {
+          "bytes": 1316,
+          "sha256": "a9e3d0f7feaeb60410f7bcc0f302e94124c7b995f8d9f64b02fda67b289aaa5c"
+        }
+      }
+    ]
+  },
+  "sequential": {
+    "sharedPrerequisites": {
+      "plan": {
+        "bytes": 4398,
+        "sha256": "47c87d7e2c21c4913dc852b848b71b121a2635e60c60b2b3e3965e1ed8012a73"
+      },
+      "resultTree": "a096dcb66c367bf6441a32d85d3ed50739b8a902",
+      "plannedPackages": 17,
+      "changedVersions": 14,
+      "releases": [
+        {
+          "name": "@rosen-bridge/evm-observation-extractor",
+          "type": "minor",
+          "oldVersion": "7.0.7",
+          "newVersion": "7.1.0",
+          "changesets": [
+            "evm-observation-derivation"
+          ]
+        },
+        {
+          "name": "@rosen-bridge/evm-scanner",
+          "type": "patch",
+          "oldVersion": "2.0.1",
+          "newVersion": "2.0.2",
+          "changesets": [
+            "evm-rpc-request-timeout"
+          ]
+        },
+        {
+          "name": "@rosen-bridge/abstract-scanner",
+          "type": "patch",
+          "oldVersion": "4.0.0",
+          "newVersion": "4.0.1",
+          "changesets": [
+            "optional-scanner-cleanup-config"
+          ]
+        },
+        {
+          "name": "@rosen-bridge/raw-data-provider",
+          "type": "patch",
+          "oldVersion": "0.2.2",
+          "newVersion": "0.2.3",
+          "changesets": [
+            "raw-data-state-ownership"
+          ]
+        },
+        {
+          "name": "@rosen-bridge/abstract-observation-extractor",
+          "type": "none",
+          "oldVersion": "2.0.0",
+          "newVersion": "2.0.0",
+          "changesets": []
+        },
+        {
+          "name": "@rosen-bridge/evm-address-tx-extractor",
+          "type": "patch",
+          "oldVersion": "4.0.0",
+          "newVersion": "4.0.1",
+          "changesets": []
+        },
+        {
+          "name": "@rosen-bridge/bitcoin-runes-observation-extractor",
+          "type": "patch",
+          "oldVersion": "3.0.8",
+          "newVersion": "3.0.9",
+          "changesets": []
+        },
+        {
+          "name": "@rosen-bridge/ergo-observation-extractor",
+          "type": "none",
+          "oldVersion": "2.0.7",
+          "newVersion": "2.0.7",
+          "changesets": []
+        },
+        {
+          "name": "@rosen-bridge/bitcoin-scanner",
+          "type": "patch",
+          "oldVersion": "2.0.1",
+          "newVersion": "2.0.2",
+          "changesets": []
+        },
+        {
+          "name": "@rosen-bridge/cardano-scanner",
+          "type": "patch",
+          "oldVersion": "3.0.1",
+          "newVersion": "3.0.2",
+          "changesets": []
+        },
+        {
+          "name": "@rosen-bridge/ergo-scanner",
+          "type": "patch",
+          "oldVersion": "2.0.1",
+          "newVersion": "2.0.2",
+          "changesets": []
+        },
+        {
+          "name": "@rosen-bridge/firo-scanner",
+          "type": "patch",
+          "oldVersion": "1.0.1",
+          "newVersion": "1.0.2",
+          "changesets": []
+        },
+        {
+          "name": "@rosen-bridge/handshake-scanner",
+          "type": "patch",
+          "oldVersion": "1.0.2",
+          "newVersion": "1.0.3",
+          "changesets": []
+        },
+        {
+          "name": "@rosen-bridge/watcher-data-extractor",
+          "type": "none",
+          "oldVersion": "16.0.0",
+          "newVersion": "16.0.0",
+          "changesets": []
+        },
+        {
+          "name": "@rosen-bridge/bitcoin-observation-extractor",
+          "type": "patch",
+          "oldVersion": "8.0.7",
+          "newVersion": "8.0.8",
+          "changesets": []
+        },
+        {
+          "name": "@rosen-bridge/firo-observation-extractor",
+          "type": "patch",
+          "oldVersion": "1.1.5",
+          "newVersion": "1.1.6",
+          "changesets": []
+        },
+        {
+          "name": "@rosen-bridge/handshake-observation-extractor",
+          "type": "patch",
+          "oldVersion": "1.0.8",
+          "newVersion": "1.0.9",
+          "changesets": []
+        }
+      ],
+      "selectedPackageChanges": [
+        {
+          "name": "@rosen-bridge/abstract-scanner",
+          "path": "packages/abstract-scanner/package.json",
+          "beforeVersion": "4.0.0",
+          "afterVersion": "4.0.1",
+          "dependencies": [],
+          "before": {
+            "bytes": 1504,
+            "sha256": "0e6ab5e9a2beb7035cb4dd36d42aaaf9873451e8eada744f5c0079c4a9aa9e4f"
+          },
+          "after": {
+            "bytes": 1504,
+            "sha256": "4f29feeb9ccf560fda5f5917490f8f586e6ec0a37b1ae861697b5d410997ba84"
+          }
+        },
+        {
+          "name": "@rosen-bridge/evm-observation-extractor",
+          "path": "packages/observation-extractors/evm-observation-extractor/package.json",
+          "beforeVersion": "7.0.7",
+          "afterVersion": "7.1.0",
+          "dependencies": [
+            {
+              "field": "devDependencies",
+              "name": "@rosen-bridge/abstract-scanner",
+              "before": "^4.0.0",
+              "after": "^4.0.1"
+            }
+          ],
+          "before": {
+            "bytes": 1561,
+            "sha256": "70f4c030f2a1739443d8aa8a4b95a657f85753027e4bc31c443524406a1ba9d4"
+          },
+          "after": {
+            "bytes": 1561,
+            "sha256": "2499eeebba21d5b4d8c496d42581975d3ab08a8ad50c2c84a5f158bc1b349776"
+          }
+        },
+        {
+          "name": "@rosen-bridge/raw-data-provider",
+          "path": "packages/raw-data-provider/package.json",
+          "beforeVersion": "0.2.2",
+          "afterVersion": "0.2.3",
+          "dependencies": [
+            {
+              "field": "dependencies",
+              "name": "@rosen-bridge/abstract-scanner",
+              "before": "^4.0.0",
+              "after": "^4.0.1"
+            },
+            {
+              "field": "dependencies",
+              "name": "@rosen-bridge/bitcoin-observation-extractor",
+              "before": "^8.0.7",
+              "after": "^8.0.8"
+            },
+            {
+              "field": "dependencies",
+              "name": "@rosen-bridge/bitcoin-runes-observation-extractor",
+              "before": "^3.0.8",
+              "after": "^3.0.9"
+            },
+            {
+              "field": "dependencies",
+              "name": "@rosen-bridge/bitcoin-scanner",
+              "before": "^2.0.1",
+              "after": "^2.0.2"
+            }
+          ],
+          "before": {
+            "bytes": 2315,
+            "sha256": "db3e6170036267ec235fd4d12335a5d690183b82fb1fc52a7355e3eda99d46a0"
+          },
+          "after": {
+            "bytes": 2315,
+            "sha256": "b05c64d7ea930af7edd0ba62f122a852f27a3204e574b26d616bef42445e25c8"
+          }
+        },
+        {
+          "name": "@rosen-bridge/evm-scanner",
+          "path": "packages/scanners/evm-scanner/package.json",
+          "beforeVersion": "2.0.1",
+          "afterVersion": "2.0.2",
+          "dependencies": [
+            {
+              "field": "dependencies",
+              "name": "@rosen-bridge/abstract-scanner",
+              "before": "^4.0.0",
+              "after": "^4.0.1"
+            }
+          ],
+          "before": {
+            "bytes": 1228,
+            "sha256": "872f58519e255aed620fdec49c7424f712a039a7bf31656e4440bf4527224819"
+          },
+          "after": {
+            "bytes": 1228,
+            "sha256": "45e12064b83081cd52dd8f3c852bfa1d6c520cf4d357131430b45fbac95513e1"
+          }
+        }
+      ]
+    },
+    "avalanche": {
+      "plan": {
+        "bytes": 1745,
+        "sha256": "4b338813485cde6d6c631bb6ad61167a9fd4fc4664a24f8f473467ad6b1e3b68"
+      },
+      "resultTree": "5dd753305d2df2de46bfa8e5411ab430ba33cfae",
+      "plannedPackages": 3,
+      "changedVersions": 3,
+      "releases": [
+        {
+          "name": "@rosen-bridge/evm-observation-extractor",
+          "type": "minor",
+          "oldVersion": "7.1.0",
+          "newVersion": "7.2.0",
+          "changesets": [
+            "avalanche-observation-extraction"
+          ]
+        },
+        {
+          "name": "@rosen-bridge/raw-data-provider",
+          "type": "minor",
+          "oldVersion": "0.2.3",
+          "newVersion": "0.3.0",
+          "changesets": [
+            "avalanche-raw-data-provider"
+          ]
+        },
+        {
+          "name": "@rosen-bridge/evm-scanner",
+          "type": "minor",
+          "oldVersion": "2.0.2",
+          "newVersion": "2.1.0",
+          "changesets": [
+            "avalanche-settled-scanning"
+          ]
+        }
+      ],
+      "selectedPackageChanges": [
+        {
+          "name": "@rosen-bridge/evm-observation-extractor",
+          "path": "packages/observation-extractors/evm-observation-extractor/package.json",
+          "beforeVersion": "7.1.0",
+          "afterVersion": "7.2.0",
+          "dependencies": [],
+          "before": {
+            "bytes": 1651,
+            "sha256": "4bacec869f4ae8802d34254cd006248dce8a5df17cf8b0053ab03534cf022110"
+          },
+          "after": {
+            "bytes": 1651,
+            "sha256": "d6b2c28c51f702ca19f3a84ec97877e625c96be0729b007450cea225106c5dc9"
+          }
+        },
+        {
+          "name": "@rosen-bridge/raw-data-provider",
+          "path": "packages/raw-data-provider/package.json",
+          "beforeVersion": "0.2.3",
+          "afterVersion": "0.3.0",
+          "dependencies": [
+            {
+              "field": "dependencies",
+              "name": "@rosen-bridge/evm-observation-extractor",
+              "before": "^7.1.0",
+              "after": "^7.2.0"
+            }
+          ],
+          "before": {
+            "bytes": 2315,
+            "sha256": "b05c64d7ea930af7edd0ba62f122a852f27a3204e574b26d616bef42445e25c8"
+          },
+          "after": {
+            "bytes": 2315,
+            "sha256": "49176c853be8ccb026ecc92254e85ee7de57b2e16d3f20751dff51eeede2e03a"
+          }
+        },
+        {
+          "name": "@rosen-bridge/evm-scanner",
+          "path": "packages/scanners/evm-scanner/package.json",
+          "beforeVersion": "2.0.2",
+          "afterVersion": "2.1.0",
+          "dependencies": [],
+          "before": {
+            "bytes": 1316,
+            "sha256": "86103d1d507c0cd8c3c5b214501aefb3d6b93df661390aaa4a87543e455a4e2f"
+          },
+          "after": {
+            "bytes": 1316,
+            "sha256": "39d65b3ddd975506488e761c8785b23b332c1e3896910625c0e84cde2425d93a"
+          }
+        }
+      ]
+    },
+    "rebasedMetadata": [
+      {
+        "path": "packages/observation-extractors/evm-observation-extractor/package.json",
+        "additions": [
+          {
+            "field": "devDependencies",
+            "name": "@rosen-bridge/address-codec",
+            "range": "2.2.0"
+          },
+          {
+            "field": "devDependencies",
+            "name": "@rosen-bridge/address-manager",
+            "range": "0.1.0"
+          }
+        ],
+        "retainedVersion": "7.1.0"
+      },
+      {
+        "path": "packages/scanners/evm-scanner/package.json",
+        "additions": [
+          {
+            "field": "dependencies",
+            "name": "@rosen-bridge/extended-typeorm",
+            "range": "1.1.1"
+          },
+          {
+            "field": "dependencies",
+            "name": "@rosen-bridge/semaphore",
+            "range": "^0.1.0"
+          }
+        ],
+        "retainedVersion": "2.0.2"
+      }
+    ]
+  },
+  "selectedFloors": {
+    "evm-observation-extractor": {
+      "version": "7.2.0",
+      "dependencies": {
+        "@rosen-bridge/abstract-logger": "^4.0.0",
+        "@rosen-bridge/abstract-observation-extractor": "^2.0.0",
+        "@rosen-bridge/extended-typeorm": "^1.1.1",
+        "@rosen-bridge/rosen-extractor": "^12.1.2",
+        "@rosen-bridge/scanner-interfaces": "^1.0.0",
+        "@rosen-bridge/tokens": "^6.0.2",
+        "blakejs": "^1.2.1",
+        "ethers": "6.16.0"
+      }
+    },
+    "evm-scanner": {
+      "version": "2.1.0",
+      "dependencies": {
+        "@rosen-bridge/abstract-scanner": "^4.0.1",
+        "@rosen-bridge/scanner-interfaces": "^1.0.0",
+        "ethers": "6.16.0",
+        "@rosen-bridge/extended-typeorm": "1.1.1",
+        "@rosen-bridge/semaphore": "^0.1.0"
+      }
+    },
+    "abstract-scanner": {
+      "version": "4.0.1",
+      "dependencies": {
+        "@rosen-bridge/abstract-extractor": "^4.0.0",
+        "@rosen-bridge/abstract-logger": "^4.0.0",
+        "@rosen-bridge/extended-typeorm": "^1.1.0",
+        "@rosen-bridge/json-bigint": "^1.1.0",
+        "@rosen-bridge/scanner-interfaces": "^1.0.0",
+        "@rosen-bridge/semaphore": "^0.1.0",
+        "lodash-es": "^4.17.21"
+      }
+    },
+    "raw-data-provider": {
+      "version": "0.3.0",
+      "dependencies": {
+        "@cardano-ogmios/client": "^6.6.1",
+        "@cardano-ogmios/schema": "^6.6.1",
+        "@emurgo/cardano-serialization-lib-nodejs": "^13.2.1",
+        "@rosen-bridge/abstract-logger": "^4.0.0",
+        "@rosen-bridge/abstract-observation-extractor": "^2.0.0",
+        "@rosen-bridge/abstract-scanner": "^4.0.1",
+        "@rosen-bridge/bitcoin-observation-extractor": "^8.0.8",
+        "@rosen-bridge/bitcoin-runes-observation-extractor": "^3.0.9",
+        "@rosen-bridge/bitcoin-scanner": "^2.0.2",
+        "@rosen-bridge/cardano-observation-extractor": "^3.0.8",
+        "@rosen-bridge/ergo-observation-extractor": "^2.0.7",
+        "@rosen-bridge/evm-observation-extractor": "^7.2.0",
+        "@rosen-bridge/extended-typeorm": "^1.1.1",
+        "@rosen-bridge/json-bigint": "^1.1.0",
+        "@rosen-bridge/scanner-interfaces": "^1.0.0",
+        "@rosen-clients/cardano-koios": "^3.1.3",
+        "@rosen-clients/ergo-explorer": "^2.1.3",
+        "@rosen-clients/ergo-node": "^3.1.3",
+        "@rosen-clients/rate-limited-axios": "^2.0.1",
+        "ethers": "6.16.0"
+      }
+    }
+  },
+  "lockClassification": {
+    "sourceChanges": [
+      {
+        "path": "packages/observation-extractors/evm-observation-extractor",
+        "dependencies": [
+          {
+            "field": "dependencies",
+            "name": "@rosen-bridge/extended-typeorm",
+            "before": "^1.1.0",
+            "after": "^1.1.1"
+          }
+        ]
+      },
+      {
+        "path": "packages/raw-data-provider",
+        "dependencies": [
+          {
+            "field": "dependencies",
+            "name": "@rosen-bridge/evm-observation-extractor",
+            "before": "^7.0.7",
+            "after": "^7.1.0"
+          },
+          {
+            "field": "dependencies",
+            "name": "@rosen-bridge/extended-typeorm",
+            "before": "^1.1.0",
+            "after": "^1.1.1"
+          }
+        ]
+      },
+      {
+        "path": "packages/scanners/evm-scanner",
+        "dependencies": [
+          {
+            "field": "dependencies",
+            "name": "@rosen-bridge/extended-typeorm",
+            "before": null,
+            "after": "1.1.1"
+          },
+          {
+            "field": "dependencies",
+            "name": "@rosen-bridge/semaphore",
+            "before": null,
+            "after": "^0.1.0"
+          }
+        ]
+      }
+    ],
+    "sourceChangesOnlyWorkspaceRecords": true,
+    "registryRecordsChanged": 0,
+    "changesetsVersionChangesLock": false,
+    "aggregateStaleWorkspaceRecords": 17,
+    "sequentialStaleWorkspaceRecords": 17,
+    "requiredNextStep": "Regenerate the ordinary npm lock after actual producer releases, then run normal clean install/build with actual registry exports and integrity.",
+    "sequentialStaleWorkspaceLock": [
+      {
+        "path": "packages/abstract-observation-extractor",
+        "changes": [
+          {
+            "field": "devDependencies",
+            "name": "@rosen-bridge/abstract-scanner",
+            "lock": "^4.0.0",
+            "generated": "^4.0.1"
+          }
+        ]
+      },
+      {
+        "path": "packages/abstract-scanner",
+        "changes": [
+          {
+            "field": "version",
+            "lock": "4.0.0",
+            "generated": "4.0.1"
+          }
+        ]
+      },
+      {
+        "path": "packages/evm-address-tx-extractor",
+        "changes": [
+          {
+            "field": "version",
+            "lock": "4.0.0",
+            "generated": "4.0.1"
+          },
+          {
+            "field": "dependencies",
+            "name": "@rosen-bridge/abstract-scanner",
+            "lock": "^4.0.0",
+            "generated": "^4.0.1"
+          }
+        ]
+      },
+      {
+        "path": "packages/observation-extractors/bitcoin-observation-extractor",
+        "changes": [
+          {
+            "field": "version",
+            "lock": "8.0.7",
+            "generated": "8.0.8"
+          },
+          {
+            "field": "dependencies",
+            "name": "@rosen-bridge/bitcoin-scanner",
+            "lock": "^2.0.1",
+            "generated": "^2.0.2"
+          }
+        ]
+      },
+      {
+        "path": "packages/observation-extractors/bitcoin-runes-observation-extractor",
+        "changes": [
+          {
+            "field": "version",
+            "lock": "3.0.8",
+            "generated": "3.0.9"
+          },
+          {
+            "field": "dependencies",
+            "name": "@rosen-bridge/bitcoin-scanner",
+            "lock": "^2.0.1",
+            "generated": "^2.0.2"
+          },
+          {
+            "field": "devDependencies",
+            "name": "@rosen-bridge/abstract-scanner",
+            "lock": "^4.0.0",
+            "generated": "^4.0.1"
+          }
+        ]
+      },
+      {
+        "path": "packages/observation-extractors/ergo-observation-extractor",
+        "changes": [
+          {
+            "field": "devDependencies",
+            "name": "@rosen-bridge/abstract-scanner",
+            "lock": "^4.0.0",
+            "generated": "^4.0.1"
+          }
+        ]
+      },
+      {
+        "path": "packages/observation-extractors/evm-observation-extractor",
+        "changes": [
+          {
+            "field": "version",
+            "lock": "7.0.7",
+            "generated": "7.2.0"
+          },
+          {
+            "field": "devDependencies",
+            "name": "@rosen-bridge/abstract-scanner",
+            "lock": "^4.0.0",
+            "generated": "^4.0.1"
+          },
+          {
+            "field": "devDependencies",
+            "name": "@rosen-bridge/address-codec",
+            "lock": null,
+            "generated": "2.2.0"
+          },
+          {
+            "field": "devDependencies",
+            "name": "@rosen-bridge/address-manager",
+            "lock": null,
+            "generated": "0.1.0"
+          }
+        ]
+      },
+      {
+        "path": "packages/observation-extractors/firo-observation-extractor",
+        "changes": [
+          {
+            "field": "version",
+            "lock": "1.1.5",
+            "generated": "1.1.6"
+          },
+          {
+            "field": "dependencies",
+            "name": "@rosen-bridge/firo-scanner",
+            "lock": "^1.0.1",
+            "generated": "^1.0.2"
+          }
+        ]
+      },
+      {
+        "path": "packages/observation-extractors/handshake-observation-extractor",
+        "changes": [
+          {
+            "field": "version",
+            "lock": "1.0.8",
+            "generated": "1.0.9"
+          },
+          {
+            "field": "dependencies",
+            "name": "@rosen-bridge/handshake-scanner",
+            "lock": "^1.0.2",
+            "generated": "^1.0.3"
+          }
+        ]
+      },
+      {
+        "path": "packages/raw-data-provider",
+        "changes": [
+          {
+            "field": "version",
+            "lock": "0.2.2",
+            "generated": "0.3.0"
+          },
+          {
+            "field": "dependencies",
+            "name": "@rosen-bridge/abstract-scanner",
+            "lock": "^4.0.0",
+            "generated": "^4.0.1"
+          },
+          {
+            "field": "dependencies",
+            "name": "@rosen-bridge/bitcoin-observation-extractor",
+            "lock": "^8.0.7",
+            "generated": "^8.0.8"
+          },
+          {
+            "field": "dependencies",
+            "name": "@rosen-bridge/bitcoin-runes-observation-extractor",
+            "lock": "^3.0.8",
+            "generated": "^3.0.9"
+          },
+          {
+            "field": "dependencies",
+            "name": "@rosen-bridge/bitcoin-scanner",
+            "lock": "^2.0.1",
+            "generated": "^2.0.2"
+          },
+          {
+            "field": "dependencies",
+            "name": "@rosen-bridge/evm-observation-extractor",
+            "lock": "^7.1.0",
+            "generated": "^7.2.0"
+          },
+          {
+            "field": "devDependencies",
+            "name": "@rosen-bridge/address-codec",
+            "lock": null,
+            "generated": "2.1.0"
+          },
+          {
+            "field": "devDependencies",
+            "name": "@rosen-bridge/address-manager",
+            "lock": null,
+            "generated": "0.1.0"
+          },
+          {
+            "field": "devDependencies",
+            "name": "@rosen-bridge/tokens",
+            "lock": null,
+            "generated": "6.0.2"
+          }
+        ]
+      },
+      {
+        "path": "packages/scanners/bitcoin-scanner",
+        "changes": [
+          {
+            "field": "version",
+            "lock": "2.0.1",
+            "generated": "2.0.2"
+          },
+          {
+            "field": "dependencies",
+            "name": "@rosen-bridge/abstract-scanner",
+            "lock": "^4.0.0",
+            "generated": "^4.0.1"
+          }
+        ]
+      },
+      {
+        "path": "packages/scanners/cardano-scanner",
+        "changes": [
+          {
+            "field": "version",
+            "lock": "3.0.1",
+            "generated": "3.0.2"
+          },
+          {
+            "field": "dependencies",
+            "name": "@rosen-bridge/abstract-scanner",
+            "lock": "^4.0.0",
+            "generated": "^4.0.1"
+          }
+        ]
+      },
+      {
+        "path": "packages/scanners/ergo-scanner",
+        "changes": [
+          {
+            "field": "version",
+            "lock": "2.0.1",
+            "generated": "2.0.2"
+          },
+          {
+            "field": "dependencies",
+            "name": "@rosen-bridge/abstract-scanner",
+            "lock": "^4.0.0",
+            "generated": "^4.0.1"
+          }
+        ]
+      },
+      {
+        "path": "packages/scanners/evm-scanner",
+        "changes": [
+          {
+            "field": "version",
+            "lock": "2.0.1",
+            "generated": "2.1.0"
+          },
+          {
+            "field": "dependencies",
+            "name": "@rosen-bridge/abstract-scanner",
+            "lock": "^4.0.0",
+            "generated": "^4.0.1"
+          }
+        ]
+      },
+      {
+        "path": "packages/scanners/firo-scanner",
+        "changes": [
+          {
+            "field": "version",
+            "lock": "1.0.1",
+            "generated": "1.0.2"
+          },
+          {
+            "field": "dependencies",
+            "name": "@rosen-bridge/abstract-scanner",
+            "lock": "^4.0.0",
+            "generated": "^4.0.1"
+          }
+        ]
+      },
+      {
+        "path": "packages/scanners/handshake-scanner",
+        "changes": [
+          {
+            "field": "version",
+            "lock": "1.0.2",
+            "generated": "1.0.3"
+          },
+          {
+            "field": "dependencies",
+            "name": "@rosen-bridge/abstract-scanner",
+            "lock": "^4.0.0",
+            "generated": "^4.0.1"
+          }
+        ]
+      },
+      {
+        "path": "packages/watcher-data-extractor",
+        "changes": [
+          {
+            "field": "devDependencies",
+            "name": "@rosen-bridge/abstract-scanner",
+            "lock": "^4.0.0",
+            "generated": "^4.0.1"
+          }
+        ]
+      }
+    ]
+  },
+  "commands": {
+    "aggregate": [
+      "local cached Git clone and exact SC01/SC02/SC03/C-SCANNER patch replay",
+      "node installed @changesets/cli/bin.js status --output aggregate-plan.json",
+      "node installed @changesets/cli/bin.js version"
+    ],
+    "sequential": [
+      "local cached Git clone; exact SC01/SC02/SC03 replay",
+      "node installed @changesets/cli/bin.js status --output shared-prerequisites-plan.json",
+      "node installed @changesets/cli/bin.js version",
+      "C-SCANNER replay retaining released versions and adding only its manifest dependencies",
+      "node installed @changesets/cli/bin.js status --output avalanche-plan.json",
+      "node installed @changesets/cli/bin.js version"
+    ]
+  },
+  "scope": {
+    "installs": 0,
+    "networkCommands": 0,
+    "publicActions": 0,
+    "ordinaryRegistryCleanInstallQualified": false,
+    "releaseQualified": false,
+    "fullRcsQualified": false,
+    "activationQualified": false
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "schema": "rosen-avalanche-source-validation.v1",
+  "status": "Locally validated portable replay; not release or whole-Service acceptance",
+  "sourceExport": {
+    "bytes": 3834,
+    "sha256": "44bd990720d9b60ac7e24213ffca7d9d8c260c972a9dc8c3bf7c589149a81166"
+  },
+  "processReceipt": {
+    "sha256": "1e6052091390fb8259090f0d9298d7c42d51029a2afa3a07cf6e70fcd77258cc",
+    "bytes": 5418215,
+    "phases": 5,
+    "ownedIdentities": 38
+  },
+  "phases": 5,
+  "cleanupControls": {
+    "historicalBaselineFailures": 2,
+    "sourceOwnedPassed": 3,
+    "independentMockedPassed": 8,
+    "realProcessMutationsByReviewer": 0
+  },
+  "sourcePins": 93,
+  "dependencyPins": 30493,
+  "generatedPins": 46,
+  "toolchainPins": 6,
+  "capturedIdentitiesAbsent": 38,
+  "postgresStopped": true,
+  "passwordFileAbsent": true,
+  "sourceDependencyWrites": 0,
+  "cleanApply": true,
+  "limits": [
+    "Captured descendants only; OS identity check and process stop remain separate operations",
+    "Five actual PostgreSQL/Service phases with installed-byte dependency preparation",
+    "Eight unrelated legacy jobs isolated; ordinary registry installation and production activation remain separate"
+  ]
+}

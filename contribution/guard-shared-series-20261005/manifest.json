@@ -1,0 +1,467 @@
+{
+  "schema": "rosen-producer-contribution-series.v1",
+  "author": "A. Shannon",
+  "rcs": "7b9784dae9d8d5b66b80de7a6043d1ba36a3a4bf",
+  "repositories": [
+    {
+      "repo": "guard-service",
+      "head": "b1f5ab6f81435053a979e8078eb098d8ec1f5a47"
+    }
+  ],
+  "groups": [
+    {
+      "id": "G02",
+      "repo": "guard-service",
+      "purpose": "Explicit final-adapter Ergo submission authorization",
+      "dependencies": [],
+      "externalReleasePrerequisites": [],
+      "beforeTree": "1fe15e93b4f4ef5d94032050d020bab0ea0c0076",
+      "tree": "0279b618a0a33e5340915bb7a124fe67c45b7e6a",
+      "patch": {
+        "path": "patches/G02.patch",
+        "bytes": 117560,
+        "sha256": "a3a1268ab08b2007bc2d454258006ce00403f835fe076b8ca1074eb7a3acdc3e"
+      },
+      "files": [
+        {
+          "path": ".changeset/ergo-authorized-submission.md",
+          "bytes": 284,
+          "sha256": "b5707b47d01e7ce18390a745ed2e6fe0dcf4d9c2fa7f9dceccff57ba4536ccea"
+        },
+        {
+          "path": "packages/chains/ergo/lib/ergoChain.ts",
+          "bytes": 42845,
+          "sha256": "b12f8860bf25907a1dcbeaae964780cc2489048f7130e24b616b71282fa6174a"
+        },
+        {
+          "path": "packages/chains/ergo/lib/index.ts",
+          "bytes": 345,
+          "sha256": "71df45a62f1c602589f2ac55fb6e426d519b9ccacad119e6e44af51924f13457"
+        },
+        {
+          "path": "packages/chains/ergo/lib/network/abstractErgoNetwork.ts",
+          "bytes": 1628,
+          "sha256": "a9f893378eabaf7a4358cc3cf592857fd7b058cb84a2699a8b1586387789ecb0"
+        },
+        {
+          "path": "packages/chains/ergo/lib/network/authorizedSubmission.ts",
+          "bytes": 7518,
+          "sha256": "5cec1933185aa927524a705f062e7ba26a43e7776e436cee6c994c6f8f903b8f"
+        },
+        {
+          "path": "packages/chains/ergo/package.json",
+          "bytes": 1600,
+          "sha256": "9b07db82c9dfe757c076a540c6604672eb2e97a45c6b8627b90418dd29dc5891"
+        },
+        {
+          "path": "packages/chains/ergo/tests/ergoChain.spec.ts",
+          "bytes": 114077,
+          "sha256": "151b989bed9c960b34b414e8798af224aafeb2f7ed9be73752a584078acb3186"
+        },
+        {
+          "path": "packages/chains/ergo/tests/network/authorizedSubmission.spec.ts",
+          "bytes": 30226,
+          "sha256": "10b1e286287dd97f7a9b3b45716697d2241047be6af8d445eea0bde3689b94b6"
+        },
+        {
+          "path": "packages/chains/ergo/tests/network/mocked/axios.mock.ts",
+          "bytes": 274,
+          "sha256": "fc474eac78c13f650eb1fc0dd133f3650f7e5c122525c4f642a09490beb8385f"
+        },
+        {
+          "path": "packages/chains/ergo/tests/testUtils/authorizedSubmission.ts",
+          "bytes": 1793,
+          "sha256": "fc1b326562aa80c195e1607676c0eeac27c0821f66ade474586692141cada00b"
+        },
+        {
+          "path": "packages/networks/ergo-explorer/lib/ergoExplorerNetwork.ts",
+          "bytes": 17148,
+          "sha256": "ed53773f4801b0f6672a036d8fcf57e3cf64111260c240463c555f66d4fe5c6e"
+        },
+        {
+          "path": "packages/networks/ergo-explorer/tests/ergoExplorerNetwork.spec.ts",
+          "bytes": 27981,
+          "sha256": "f1b9f81c5b4c309d04ace45d91fc2659a4e9a4681813c022ff1006ae30bfb354"
+        },
+        {
+          "path": "packages/networks/ergo-explorer/tests/testUtils/authorizedSubmission.ts",
+          "bytes": 1882,
+          "sha256": "ff8a5bb83116351b6bdc198e3c05666478ff90c0b3f57cad4313c9aefef77787"
+        },
+        {
+          "path": "packages/networks/ergo-node/lib/ergoNodeNetwork.ts",
+          "bytes": 16231,
+          "sha256": "8f09191f1dd4b6fcd3a55ad03931da281d4528bdc3b9c0dffcacd8499402b747"
+        },
+        {
+          "path": "packages/networks/ergo-node/tests/ergoNodeNetwork.spec.ts",
+          "bytes": 26283,
+          "sha256": "ae8fa23364b19a5b304a7f891d39c7b8d53c6b74509977f46f913a2e6008a82f"
+        },
+        {
+          "path": "packages/networks/ergo-node/tests/testUtils/authorizedSubmission.ts",
+          "bytes": 1846,
+          "sha256": "5ede83fd54c6912b3193c6bd87bcd7c1007656438a1cf8cc9c557c6c9b9f5008"
+        }
+      ]
+    },
+    {
+      "id": "G03",
+      "repo": "guard-service",
+      "purpose": "Signed Ergo accounting, payment consistency and fetched WASM lifetime",
+      "dependencies": [],
+      "externalReleasePrerequisites": [],
+      "beforeTree": "0279b618a0a33e5340915bb7a124fe67c45b7e6a",
+      "tree": "0a1cbb73da6b7d4756504f6f6f6f760ed7490316",
+      "patch": {
+        "path": "patches/G03.patch",
+        "bytes": 277345,
+        "sha256": "0357afccd5c28be7ebedabe22d6c576df55a38f00aff4eb299de522b7c5e1152"
+      },
+      "files": [
+        {
+          "path": ".changeset/ergo-signed-accounting.md",
+          "bytes": 193,
+          "sha256": "86dee0c9f782a1e05a5428befc964332fa0bc524b01821d819df528c4b0f2b64"
+        },
+        {
+          "path": "packages/chains/ergo/lib/ergoChain.ts",
+          "bytes": 46496,
+          "sha256": "1eb54a1c78169221588d23b32c0694d65c6d516abb825420da3358f07c584a72"
+        },
+        {
+          "path": "packages/chains/ergo/tests/ergoChain.spec.ts",
+          "bytes": 187574,
+          "sha256": "66de2f23059f1e959724be8a2fd8ff47f08d277013a6cde081c84fbf712c5dee"
+        },
+        {
+          "path": "packages/chains/ergo/tests/mocked/transactionLifetime.mock.ts",
+          "bytes": 776,
+          "sha256": "32006de90ec386f54a67d8f9b613fe8b9db4953feba91f536c6138f6aeee19bb"
+        },
+        {
+          "path": "packages/chains/ergo/tests/testUtils/signedAccounting.ts",
+          "bytes": 1888,
+          "sha256": "207386f4e4e08d9b67d5e17fb975e7b2224a82f370d8687eb10a1f9157be1154"
+        },
+        {
+          "path": "packages/chains/ergo/tests/testUtils/signedPaymentConsistency.ts",
+          "bytes": 1865,
+          "sha256": "54fd76cfeb1a584c638028fc6fd570a1915a40d09ad4112d0a37e4ee88e5e946"
+        }
+      ]
+    },
+    {
+      "id": "G06",
+      "repo": "guard-service",
+      "purpose": "Release TokenMap update semaphore after malformed input or callback failure",
+      "dependencies": [],
+      "externalReleasePrerequisites": [],
+      "beforeTree": "0a1cbb73da6b7d4756504f6f6f6f760ed7490316",
+      "tree": "724bc0f3a6da73c494f1896272b1e686b1414bf2",
+      "patch": {
+        "path": "patches/G06.patch",
+        "bytes": 7746,
+        "sha256": "8948e0957e2e6f562d6f9d808232139c5d44e259e63f338af113b867479659bf"
+      },
+      "files": [
+        {
+          "path": ".changeset/token-map-update-release.md",
+          "bytes": 111,
+          "sha256": "a7309fc7b015660f2ba1b3a9237a25b5439033a23fab10619a92bbeb96bcaa8e"
+        },
+        {
+          "path": "services/guard-service/src/handlers/tokenHandler.ts",
+          "bytes": 2676,
+          "sha256": "f4e64cb37f4acc6c34e0b63b6d52ed997a7851e8220d9311b35a8a9a90023fb3"
+        },
+        {
+          "path": "services/guard-service/tests/handlers/mocked/tokenHandler.mock.ts",
+          "bytes": 370,
+          "sha256": "ddca7df457c2b5f9d11ef66e45a34b35f3c7fa667bddee89beffc69f9c0217da"
+        },
+        {
+          "path": "services/guard-service/tests/handlers/tokenHandler.spec.ts",
+          "bytes": 3014,
+          "sha256": "6007302ece48c5084cd4d8d14ee704d0ee6252cda19d2c5fed537d9562ffc1ee"
+        },
+        {
+          "path": "services/guard-service/tests/handlers/tokenHandlerTestUtils.ts",
+          "bytes": 658,
+          "sha256": "5d66111106bf865d6dcaf7a258d67ad6d7dd3e5f01fa9778120e35ab3ee6a3f1"
+        }
+      ]
+    },
+    {
+      "id": "G05",
+      "repo": "guard-service",
+      "purpose": "Preserve cached asset balance precision through database migrations",
+      "dependencies": [],
+      "externalReleasePrerequisites": [
+        "U01"
+      ],
+      "beforeTree": "724bc0f3a6da73c494f1896272b1e686b1414bf2",
+      "tree": "8e2f2a09e36ffd87445b62a64a1d9e1e930a67b8",
+      "patch": {
+        "path": "patches/G05.patch",
+        "bytes": 28333,
+        "sha256": "01d887e88107c271f16d5eeb997a153e99f7753982745dc7cf7486044a4dde9e"
+      },
+      "files": [
+        {
+          "path": ".changeset/cached-balance-precision.md",
+          "bytes": 182,
+          "sha256": "8d4487acf4f84e6801685687b9ebb18c70d6d5aaaf0f3d1b53042be6f8f3947e"
+        },
+        {
+          "path": "services/guard-service/src/db/entities/chainAddressBalanceEntity.ts",
+          "bytes": 524,
+          "sha256": "bbd9fca468670c5255b1a28ae1c6ee9af318fb594ee47e12c0e401a46178a17d"
+        },
+        {
+          "path": "services/guard-service/src/db/migrations/index.ts",
+          "bytes": 4594,
+          "sha256": "797c3aad9eccf24117f0bc8bbd399fba4b09d5dfd8c55970536efdaf448549f3"
+        },
+        {
+          "path": "services/guard-service/src/db/migrations/postgres/1790812800000-migration.ts",
+          "bytes": 1081,
+          "sha256": "4e1093c09327d6397f7a6d1b3061cf4eb1d5c9bcbaab938305cab7dfbfbe6df8"
+        },
+        {
+          "path": "services/guard-service/src/db/migrations/sqlite/1790812800000-migration.ts",
+          "bytes": 2371,
+          "sha256": "448caeb69a4a12698221e6ed46b91aa5b5defc5e13772acc5c66611fe2162d11"
+        },
+        {
+          "path": "services/guard-service/tests/db/balancePrecisionMigrations.spec.ts",
+          "bytes": 9552,
+          "sha256": "7048aacd5c878888d39a84cebb5807b27c3f081e122ae26af410fcb3e839e80d"
+        },
+        {
+          "path": "services/guard-service/tests/db/entities/chainAddressBalanceEntity.spec.ts",
+          "bytes": 2786,
+          "sha256": "690acdadc2d95f1ae996edda6845cac9e2a611cca3ce1a34c1234d1894a7dfbb"
+        },
+        {
+          "path": "services/guard-service/tests/db/migrations/index.spec.ts",
+          "bytes": 1114,
+          "sha256": "b254533b4a7e6c8c49651bf74dfa453e4ed8b5e06e97021c1de4f461c811ecc1"
+        },
+        {
+          "path": "services/guard-service/tests/db/migrations/postgres/1790812800000-migration.spec.ts",
+          "bytes": 2219,
+          "sha256": "52b320c1793bc68906a41905d5bf5ca51e3fe556441a639942ded0cfe8609c9d"
+        },
+        {
+          "path": "services/guard-service/tests/db/migrations/postgres/mocked/queryRunner.mock.ts",
+          "bytes": 364,
+          "sha256": "903abf451fef8cc2577e62c96a0d50a7769816eb5b976e117a73d11f85286742"
+        },
+        {
+          "path": "services/guard-service/tests/db/migrations/sqlite/1790812800000-migration.spec.ts",
+          "bytes": 2223,
+          "sha256": "c30be25e0ed9096512c0f716afe9df84276e61e14d98c6f21049672ea05559df"
+        },
+        {
+          "path": "services/guard-service/tests/db/migrations/sqlite/mocked/queryRunner.mock.ts",
+          "bytes": 364,
+          "sha256": "903abf451fef8cc2577e62c96a0d50a7769816eb5b976e117a73d11f85286742"
+        }
+      ]
+    },
+    {
+      "id": "G04-TSS",
+      "repo": "guard-service",
+      "purpose": "Qualified TSS transport and local digest authorization registry",
+      "dependencies": [],
+      "externalReleasePrerequisites": [
+        "S01"
+      ],
+      "beforeTree": "8e2f2a09e36ffd87445b62a64a1d9e1e930a67b8",
+      "tree": "0180586f3bef141a4a2892309c58b61735c798b0",
+      "patch": {
+        "path": "patches/G04-TSS.patch",
+        "bytes": 94073,
+        "sha256": "c634d9f9c3b2af2440c1c70b0f598e0270ec4b490330484b167cbbdab347996c"
+      },
+      "files": [
+        {
+          "path": ".changeset/qualified-tss-authorization.md",
+          "bytes": 150,
+          "sha256": "d0370b95183a762107f7019b3656639116a6336982431500fae169f1f9c9189f"
+        },
+        {
+          "path": "services/guard-service/src/signing/qualifiedTssSigner.ts",
+          "bytes": 19322,
+          "sha256": "85b711abbd0c5500f8b723a2a0eab27b9806053dfb9f199eefb122178ae7d415"
+        },
+        {
+          "path": "services/guard-service/src/signing/tssAuthorizationRegistry.ts",
+          "bytes": 5312,
+          "sha256": "7796cab713d224d2366dd68caa84c0f844b9f2ef019284c2aaad767591ca1dcc"
+        },
+        {
+          "path": "services/guard-service/tests/signing/mocked/qualifiedTssSigner.mock.ts",
+          "bytes": 1091,
+          "sha256": "191d6ffd3af9ba0e7aa29ae15260c79f5229ddba3483b3802669ddb5adc234d5"
+        },
+        {
+          "path": "services/guard-service/tests/signing/qualifiedTssSigner.spec.ts",
+          "bytes": 38569,
+          "sha256": "99e339ec653324a911efe448916392a983cf77dfb9572e0bf90743a007de87ee"
+        },
+        {
+          "path": "services/guard-service/tests/signing/qualifiedTssSignerTestUtils.ts",
+          "bytes": 1744,
+          "sha256": "bf5cc88ac2c38b5949d40db7b7e2e4dd5803ee1fcaae4c2d361808178d9c62dd"
+        },
+        {
+          "path": "services/guard-service/tests/signing/signingTestData.ts",
+          "bytes": 1060,
+          "sha256": "89d42444400c36fa4905b6b4f49fba8311e4d7a771bf4bd554f0cf0826bc5c02"
+        },
+        {
+          "path": "services/guard-service/tests/signing/signingTestUtils.ts",
+          "bytes": 1328,
+          "sha256": "a3d12ee8affa8009457b22b18820a8bfb1f3be065a472e932573067d068437c4"
+        },
+        {
+          "path": "services/guard-service/tests/signing/tssAuthorizationRegistry.spec.ts",
+          "bytes": 20848,
+          "sha256": "695c1902eb0f2215094546fbc4c576e55cab17d1c427e77c93acad137c12c843"
+        }
+      ]
+    },
+    {
+      "id": "G04-SEMANTICS",
+      "repo": "guard-service",
+      "purpose": "Canonical reduced/signed Ergo semantic identity checks",
+      "dependencies": [
+        "G03"
+      ],
+      "externalReleasePrerequisites": [],
+      "beforeTree": "0180586f3bef141a4a2892309c58b61735c798b0",
+      "tree": "ed9a63e4fe770f2c229e96a27f2efcbabeacc1fe",
+      "patch": {
+        "path": "patches/G04-SEMANTICS.patch",
+        "bytes": 65305,
+        "sha256": "e10d4643c7fb86d9f6a95fc72daf311dc84364507eb7ba9321322051708208ac"
+      },
+      "files": [
+        {
+          "path": ".changeset/ergo-signed-semantics.md",
+          "bytes": 136,
+          "sha256": "12dff8d0129f5b2ce6f0e8bbd1539105a11c75f110d91375ee876f215eedb018"
+        },
+        {
+          "path": "services/guard-service/src/verification/ergoSignedSemantics.ts",
+          "bytes": 6576,
+          "sha256": "ff17a6ae4f99e62172b46988e3b976da690edfffec8855b81d2a59d4ecb8f82e"
+        },
+        {
+          "path": "services/guard-service/tests/signing/fixtures/recoveryMultiInput.ts",
+          "bytes": 17102,
+          "sha256": "932fdcf35d2881b36b7f40d85e32e5e6efef500b6201c128360744a5a3b5718b"
+        },
+        {
+          "path": "services/guard-service/tests/verification/ergoSignedSemantics.spec.ts",
+          "bytes": 36323,
+          "sha256": "f1604fede080284a347b5418c0ff360777ce47c60b0067b9fee5015694166f5f"
+        },
+        {
+          "path": "services/guard-service/tests/verification/ergoSignedSemanticsTestUtils.ts",
+          "bytes": 2706,
+          "sha256": "3c4f8ab35a57ebf2e176f0ba17f97673dc37074c6db2d835bfbe022a411dcf64"
+        }
+      ]
+    },
+    {
+      "id": "G04-CAS",
+      "repo": "guard-service",
+      "purpose": "Existing preimage ports and atomic generic DAO transitions",
+      "dependencies": [],
+      "externalReleasePrerequisites": [
+        "U01"
+      ],
+      "beforeTree": "ed9a63e4fe770f2c229e96a27f2efcbabeacc1fe",
+      "tree": "913033a588523df6c377e072972c93b3fc3bf9b3",
+      "patch": {
+        "path": "patches/G04-CAS.patch",
+        "bytes": 297402,
+        "sha256": "da9649de0e07a90fe251c88184cd4d0cba136c9b66329b3d2b1c48e3f8db23bd"
+      },
+      "files": [
+        {
+          "path": ".changeset/generic-transaction-cas.md",
+          "bytes": 166,
+          "sha256": "99a2051791c317ba245b60f285cd606fdb4ef96f89bcede0fb8512202b30237a"
+        },
+        {
+          "path": "services/guard-service/src/db/databaseAction.ts",
+          "bytes": 65386,
+          "sha256": "f3b6e32b74a57a7d60d1d71c2ecef045e697e761fca445298973673419ece559"
+        },
+        {
+          "path": "services/guard-service/src/signing/transactionSigningContext.ts",
+          "bytes": 818,
+          "sha256": "4a54dda0bea7afdedf5128fe4c84eadbc3b763125787bbe970cd6b8d5e7b701a"
+        },
+        {
+          "path": "services/guard-service/tests/db/databaseAction.spec.ts",
+          "bytes": 209638,
+          "sha256": "0425088a5dd8f4584a78116b55d3d59cd0763b1118636eb151d6c702b4fb92d2"
+        }
+      ]
+    },
+    {
+      "id": "G04-SYNC",
+      "repo": "guard-service",
+      "purpose": "Generic full-model quorum, signed EVM identity and DAO CAS join",
+      "dependencies": [
+        "G03",
+        "G04-CAS"
+      ],
+      "externalReleasePrerequisites": [],
+      "beforeTree": "913033a588523df6c377e072972c93b3fc3bf9b3",
+      "tree": "24ecaa6ff5206ad5d2117033d4614b95f4f6ea5f",
+      "patch": {
+        "path": "patches/G04-SYNC.patch",
+        "bytes": 176753,
+        "sha256": "2e7b77c777fcbdd7b6034f982b24f6c2467e5841457ac5f118f645139df6306c"
+      },
+      "files": [
+        {
+          "path": ".changeset/generic-synchronization-binding.md",
+          "bytes": 165,
+          "sha256": "55317f4f155c3fece87e2ba7793fec72396b2d6f33ae17d877df44b0b421fe3f"
+        },
+        {
+          "path": "services/guard-service/src/synchronization/eventSynchronization.ts",
+          "bytes": 22490,
+          "sha256": "c43c0305b906a41717820f096a9b727b71c14cf8529881727825a2765abbdbd5"
+        },
+        {
+          "path": "services/guard-service/tests/synchronization/eventSynchronization.spec.ts",
+          "bytes": 94297,
+          "sha256": "bed393a3738fdf2eefae638ee445e7abea57672f876b3389da2a2865c0053dcc"
+        },
+        {
+          "path": "services/guard-service/tests/synchronization/eventSynchronizationTestData.ts",
+          "bytes": 106,
+          "sha256": "78b3ed6a957e4e297ea8d322a8a2bf259b6ff64f9a6a691a6be5e45e790b82a4"
+        },
+        {
+          "path": "services/guard-service/tests/synchronization/eventSynchronizationTestUtils.ts",
+          "bytes": 4303,
+          "sha256": "35ac7b597bcf85dae346ba823bdaa41634d37bd1fcdbf1cd7cead05b0d49476c"
+        },
+        {
+          "path": "services/guard-service/tests/synchronization/testEventSynchronization.ts",
+          "bytes": 1106,
+          "sha256": "37659e459980c5796ab2932e6218bad945f38729d35f4ed34dd0cda998835808"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,182 @@
+{
+  "status": "PASS reviewed contract source export and exact serialized offline replay",
+  "manifestSha256": "55436e3be6414d2b6e971c54b4a682933e624f4cc36e243eeb12c9809bf25424",
+  "baseline": "4302d8d34020b0012c3fcb25d7484aa602813cab",
+  "tree": "b7a81f0408026c99e4a3a520e01c4150ccb56421",
+  "selectedPaths": 5,
+  "sourcePins": {
+    "bytes": 5631,
+    "sha256": "202dbb3165f9cbbd2603768366a11e83a89bce92ad6b12c5b0dcfdf1917297da"
+  },
+  "independentReview": {
+    "bytes": 8198,
+    "sha256": "5174c9935eaa4e83a2a342e1c7aa964b1fd7a674ec94c2c0cd6674ba3de1d85a"
+  },
+  "unchangedBaselineInputs": 20,
+  "baselineLineEndings": [
+    {
+      "path": "build.sbt",
+      "baselineBlobSha256": "e06e0cbda5620605f7e90e40654b6ed75c4908dad630ff64806e17af64f05748",
+      "frozenCheckoutSha256": "f7e80e34005a18f21cec3f22253e155b62c7b9abce118694d1fbd41b7834cd43",
+      "relation": "Exact UTF-8 text after CRLF-to-LF normalization only"
+    },
+    {
+      "path": "project/build.properties",
+      "baselineBlobSha256": "dc7d4c8dc1cf151398c6cbf500828e4ab9c5f954dd4b8fbbb37b4c2b2a8e9a04",
+      "frozenCheckoutSha256": "72e9e3c2752fdac42e064522cc6961dcb08789d8059bd6a6db9d60a506eb4f20",
+      "relation": "Exact UTF-8 text after CRLF-to-LF normalization only"
+    },
+    {
+      "path": "project/plugins.sbt",
+      "baselineBlobSha256": "411d3a64181427ccf47ce47ac566f22010a35c92d26cc65a1bb07cb35ece8ccd",
+      "frozenCheckoutSha256": "f8d2f5e8d7de2da8630e91c6a54325f51007b73ccade72665cca3ff2058d55c8",
+      "relation": "Exact UTF-8 text after CRLF-to-LF normalization only"
+    },
+    {
+      "path": "src/main/scala/helpers/Configs.scala",
+      "baselineBlobSha256": "a7bd0b9752f9250166e7ca9cd5501fb8cdbcb66c63c2871ba31117fb0f28528c",
+      "frozenCheckoutSha256": "7b0b3b9d45f27b6764411c525aa6d2ce53f89f81593633a5fed3586110bf5ae4",
+      "relation": "Exact UTF-8 text after CRLF-to-LF normalization only"
+    },
+    {
+      "path": "src/main/scala/helpers/Models.scala",
+      "baselineBlobSha256": "1fc7eed22b8d17b5925b25d4a4358a9b1a53a7de5d19bb40973eee8dd5bb2f13",
+      "frozenCheckoutSha256": "14f75b1d3a6c07d9e1d27c81c885b6f2fe42b0397ec104671b821a4237f0e1fd",
+      "relation": "Exact UTF-8 text after CRLF-to-LF normalization only"
+    },
+    {
+      "path": "src/main/scala/helpers/Templates.scala",
+      "baselineBlobSha256": "48962e9a98e719c5554e8bb6619817a4bb815db70caa99eac3b33d50a2e68c17",
+      "frozenCheckoutSha256": "22f13e060f67cc44f215ec2f13af07a5eae612c23dae712a1157d188666483b2",
+      "relation": "Exact UTF-8 text after CRLF-to-LF normalization only"
+    },
+    {
+      "path": "src/main/scala/helpers/Utils.scala",
+      "baselineBlobSha256": "605cf02c51ba4b2b46c9478bfb9d21d3dee0f365cd0933f7af408c7b220fdd58",
+      "frozenCheckoutSha256": "c7a4464139ee226317e3db0771adcecb06aecb0a8c241878a57e0b628aca7bbb",
+      "relation": "Exact UTF-8 text after CRLF-to-LF normalization only"
+    },
+    {
+      "path": "src/main/scala/rosen/bridge/Contracts.scala",
+      "baselineBlobSha256": "cb0de55451c4799118ba62507bedd27a76155ae3d4dd203205475ebf85ecb4d4",
+      "frozenCheckoutSha256": "961dc8aa0f8674aa671293580f97ff49497d37723975915aef8e36a69b42dbe2",
+      "relation": "Exact UTF-8 text after CRLF-to-LF normalization only"
+    },
+    {
+      "path": "src/main/scala/rosen/bridge/Main.scala",
+      "baselineBlobSha256": "58a89e6db0737b9f5ddb8590e1ef2fbd6c55454863c40acebeef6fa643e991de",
+      "frozenCheckoutSha256": "951f02912e54e4cf8df3cdbdf98d6612074d2bbe7452d112fc735f847b427d49",
+      "relation": "Exact UTF-8 text after CRLF-to-LF normalization only"
+    },
+    {
+      "path": "src/main/scala/rosen/bridge/TokensMap.scala",
+      "baselineBlobSha256": "bf677e1b2b599f5f9b3217a8a628355723852651fbcaa8e6e5124b54bd4e6385",
+      "frozenCheckoutSha256": "1a39c615f2a9780cc242a9d29e83f6d88bae09f77ce6a0f166c177ea62d740e6",
+      "relation": "Exact UTF-8 text after CRLF-to-LF normalization only"
+    },
+    {
+      "path": "src/main/scala/rosen/bridge/scripts/Collateral.es",
+      "baselineBlobSha256": "f70b50304ab47344be80ae1f5f7b93f9f5df253b5b84c6e27a1e123853e645a4",
+      "frozenCheckoutSha256": "c4a0bfe2015bdb14262c0d556b5eb62b6d321e13ebc64c280642758654d3b27a",
+      "relation": "Exact UTF-8 text after CRLF-to-LF normalization only"
+    },
+    {
+      "path": "src/main/scala/rosen/bridge/scripts/Commitment.es",
+      "baselineBlobSha256": "5eb5b551292c67c8f1b40127c74352e1bffbd7e8f110298645dfa8c5d074158e",
+      "frozenCheckoutSha256": "982920eb56e019e1b9e4966b800b4a0130d34491b5dbb1178dee09fab508c525",
+      "relation": "Exact UTF-8 text after CRLF-to-LF normalization only"
+    },
+    {
+      "path": "src/main/scala/rosen/bridge/scripts/Emission.es",
+      "baselineBlobSha256": "18ca8571f3ff97e6a9410f433c22037ee343e0467560da93c368bd91158ac8e5",
+      "frozenCheckoutSha256": "e170717863a6fb59b197ca9d2a6a266be228848680a55dd220a89da2f222576e",
+      "relation": "Exact UTF-8 text after CRLF-to-LF normalization only"
+    },
+    {
+      "path": "src/main/scala/rosen/bridge/scripts/EventTrigger.es",
+      "baselineBlobSha256": "e212cc519eb7c74fdd3fd3d343c53e5caf4ec356bf1cbc4d16540ff24c2c962e",
+      "frozenCheckoutSha256": "cddcbae6aeb63d0721d90557da1d71d4112e4afda6282aa38b4e43a3e8389f30",
+      "relation": "Exact UTF-8 text after CRLF-to-LF normalization only"
+    },
+    {
+      "path": "src/main/scala/rosen/bridge/scripts/Fraud.es",
+      "baselineBlobSha256": "2ede83fa94792ebdf40a86c086c6d8185d62479b9546a4aed73ecc8739faa505",
+      "frozenCheckoutSha256": "b118de32da5aa2d3e4f1e393bc0436276e1d7fbd971f686d4ec9b03ea991d5a3",
+      "relation": "Exact UTF-8 text after CRLF-to-LF normalization only"
+    },
+    {
+      "path": "src/main/scala/rosen/bridge/scripts/GuardSign.es",
+      "baselineBlobSha256": "2772485ceb1cdac8353ea603882c662b5debb915c630300da6ac0293a315a8cc",
+      "frozenCheckoutSha256": "cbf83ca408e251ea676b092297a1d866d8297b10ba10e806db3bf24c88dd6a66",
+      "relation": "Exact UTF-8 text after CRLF-to-LF normalization only"
+    },
+    {
+      "path": "src/main/scala/rosen/bridge/scripts/Lock.es",
+      "baselineBlobSha256": "482d36375ee1b6cebb69aa1e1535ab4400f9854d937d3352acc87cd0031a7d9b",
+      "frozenCheckoutSha256": "71682ca528909c7a2e144ca5f871077f28415373299245b1d4776ab412991779",
+      "relation": "Exact UTF-8 text after CRLF-to-LF normalization only"
+    },
+    {
+      "path": "src/main/scala/rosen/bridge/scripts/Permit.es",
+      "baselineBlobSha256": "192e7d6f065354ccf203d7d5170e7b9f838d606249d631e6a6e24bcea6814c59",
+      "frozenCheckoutSha256": "5d6141ae64fd18e49a0fdee70911e9b65501486e43c8ff0f58347e5856714a1e",
+      "relation": "Exact UTF-8 text after CRLF-to-LF normalization only"
+    },
+    {
+      "path": "src/main/scala/rosen/bridge/scripts/RepoConfig.es",
+      "baselineBlobSha256": "23d2b03cb1e166b6f48e2c803648319fb04a7c6351d984f90e75ba3f6f1d33c7",
+      "frozenCheckoutSha256": "ba39f827794b47ec79c8814abc5f1f82625adc0bcb5e8415ba56203508229c20",
+      "relation": "Exact UTF-8 text after CRLF-to-LF normalization only"
+    },
+    {
+      "path": "src/main/scala/rosen/bridge/scripts/RwtRepo.es",
+      "baselineBlobSha256": "031dbb2d92d2ae1e00976ac5e62ca3a2df387aa062056a5eb2ec46147d359368",
+      "frozenCheckoutSha256": "c0187d0764cea7b93a39e3db2c3534c8ccf6085ede17aba052bbf0833539b22b",
+      "relation": "Exact UTF-8 text after CRLF-to-LF normalization only"
+    }
+  ],
+  "priorIndependentMergeCases": 40,
+  "priorPreparationCases": 22,
+  "sourceDrift": 0,
+  "scriptTextChanges": 0,
+  "originalHeadIndexUnchanged": true,
+  "publicActions": 0,
+  "pending": [],
+  "exportedReplay": {
+    "selectedSourcePinsVerified": 5,
+    "baselineTextRelationsVerified": 20,
+    "initialConcurrentRun": {
+      "tests": 62,
+      "passed": 61,
+      "failed": 1,
+      "error": "java.lang.RuntimeException: _sourceContext can be set only once",
+      "logSha256": "9cbb817218cdbd0fee556f0d4fdca36b24f399722f6870550e1185cc352c2baa",
+      "preserved": true
+    },
+    "serializedOfflineRun": {
+      "exitCode": 0,
+      "tests": 62,
+      "passed": 62,
+      "failed": 0,
+      "suitesCompleted": 2,
+      "suitesAborted": 0,
+      "parallelExecution": false,
+      "offline": true,
+      "logSha256": "5d5023c3e8db09a1daad14cb8252d530e1d2683e596e02d3612d2c73cdb42d3b"
+    },
+    "qualification": "Only SBT session settings changed; source, build files and ten Ergo script texts remain unchanged. Uses a previously cached local graph; no clean dependency resolution or production activation claim."
+  },
+  "unchangedScripts": 10,
+  "runtime": {
+    "java": "Temurin 8.0.504+1",
+    "scala": "2.12.7",
+    "sbt": "1.5.8",
+    "appkit": "5.0.0"
+  },
+  "acceptance": "Prepared configuration and local synthetic identities only; actual minting, deployment, custody ceremony and Rosen acceptance remain external.",
+  "reproduction": [
+    "node verify.mjs <repository-parent> <fresh-scratch-directory>",
+    "sbt -Dsbt.offline=true 'set offline := true' 'set Test / parallelExecution := false' 'testOnly contracts.AvalanchePreparationSpec contracts.AvalancheOverlayMergeSpec'",
+    "sbt -Dsbt.offline=true 'set offline := true' 'runMain rosen.bridge.AvalanchePreparation --input src/test/resources/avalanche/assigned-values.example.json --output ./rehearsal-overlay'"
+  ]
+}

@@ -1,0 +1,55 @@
+{
+  "finalTree": "68496f6b1bad18617d16bc4a3d3032c78dd3fa33",
+  "manifestSha256": "9645a68eef2393e7f3ecc8df3aeefd8bf624979789eb3208d3dfe64f38aede17",
+  "fullPlanSha256": "f6f5b12e852e2e6d3950ac132e9db0764e02c245c32cc8f97677def8f9f583ee",
+  "normalCli": [
+    {
+      "id": "status",
+      "exitCode": 0,
+      "logSha256": "ee34ae756916e26194d801f8e50f6de795aab2638654398ac012ba01db17f116"
+    },
+    {
+      "id": "version",
+      "exitCode": 0,
+      "logSha256": "5fc51f08816e5c0a76832233857fb95088adf0c39ca22d7b8bc8b6bfaf69dbec"
+    }
+  ],
+  "inputs": [
+    {
+      "path": ".changeset/avalanche-chain-initialization.md",
+      "sha256": "1d4a257c0602c60ae5de517067be7db6e3d3e3b0e0881c1383f3dca43bf962e8",
+      "bytes": 65
+    },
+    {
+      "path": ".changeset/avalanche-guard-integration.md",
+      "sha256": "cbfba2adee7f514fc3cc987a97217e22944855ad3e4cb1da2f585506b3e7da75",
+      "bytes": 227
+    },
+    {
+      "path": ".changeset/avalanche-rpc-initialization.md",
+      "sha256": "813d8bbd5ea42830877a898a76ec0d06f9535ea2a120b6bab1dd7cedfb242cf5",
+      "bytes": 69
+    },
+    {
+      "path": ".changeset/guard-qualified-signing-consumers.md",
+      "sha256": "1d43f65cf655fa02c624e9abb5260dbb95341633f7d2071c934d32219f4e2057",
+      "bytes": 153
+    },
+    {
+      "path": "packages/chains/avalanche/package.json",
+      "sha256": "ce5bf133e9165a378809ee6657357801506d529fcb38bd0f561b71cd22855bc8",
+      "bytes": 1452
+    },
+    {
+      "path": "packages/networks/avalanche-rpc/package.json",
+      "sha256": "77ba526c6ae23b8f1672c5f28cc25979560988155fdfc1342fe6b8917b714346",
+      "bytes": 1462
+    },
+    {
+      "path": "services/guard-service/package.json",
+      "sha256": "fb98c2214334b9d5f55642a28e672ed0bd613ada4338d79cb25b802fffbe4ff1",
+      "bytes": 4622
+    }
+  ],
+  "qualification": "Finite synthetic history with exact baseline and candidate source trees; no registry installation, lockfile qualification or publication. Combined unreleased closure, not an accepted sequential release plan."
+}

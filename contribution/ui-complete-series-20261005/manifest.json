@@ -1,0 +1,1086 @@
+{
+  "schema": "rosen-producer-contribution-series.v1",
+  "author": "A. Shannon",
+  "rcs": "7b9784dae9d8d5b66b80de7a6043d1ba36a3a4bf",
+  "repositories": [
+    {
+      "repo": "ui",
+      "head": "d62818e0c5e3e3452454f07def81059b14c784f9"
+    }
+  ],
+  "groups": [
+    {
+      "id": "P01-shared-interfaces",
+      "repo": "ui",
+      "purpose": "P01-shared-interfaces",
+      "dependencies": [],
+      "beforeTree": "ef570f15bda0b5470a5b30d151fc4f9cb16c5e93",
+      "tree": "5b67ee25f67d787cf607d649d35c2d28f8e15bc6",
+      "patch": {
+        "path": "patches/P01-shared-interfaces.patch",
+        "bytes": 24568,
+        "sha256": "cdfb2153b463792418cc8d1292a85aab844fbf3f828ea4a9b5212ef493e3e453"
+      },
+      "files": [
+        {
+          "path": ".changeset/avalanche-database-producer-families.md",
+          "bytes": 482,
+          "sha256": "1f2699b758fc849341cd62039e58601f1a7bffce05b8464148434a32556b7009"
+        },
+        {
+          "path": ".changeset/service2-current-scanner-interfaces.md",
+          "bytes": 252,
+          "sha256": "b4f8208ca50226c4af7d87b6abd98918b6a7a37dbe166bf3a91b3a4c42c1d6d9"
+        },
+        {
+          "path": "apps/rosen-service/package.json",
+          "bytes": 2704,
+          "sha256": "3b39986eecf32f1900a756ecd8350a1aa6af34b621d423d774faba0a9dd7884b"
+        },
+        {
+          "path": "apps/rosen-service/src/commitment/commitment-service.ts",
+          "bytes": 1915,
+          "sha256": "deb63c4061f720cc09ef5e8af2bad26a5f3b4e9256d8ef30d0f0f53cdea3d611"
+        },
+        {
+          "path": "apps/rosen-service/src/scanner/scanner-utils.ts",
+          "bytes": 1287,
+          "sha256": "0ca5b16f3fe75f42a415b5a5d18ab6ba174647f87f33e99034039b076fa18b34"
+        },
+        {
+          "path": "apps/rosen-service2/package.json",
+          "bytes": 3330,
+          "sha256": "d9a17bbadedd715b2bcc805f2784dfd054caaeecc0fcadec90d73fa776e1f8ba"
+        },
+        {
+          "path": "apps/rosen-service2/src/scanners/cardano.ts",
+          "bytes": 8202,
+          "sha256": "71ac79a0e76e76a756bfd0552e2f73241a8d67b9934d73047888e5cabcc496ef"
+        },
+        {
+          "path": "apps/rosen-service2/src/utils.ts",
+          "bytes": 3428,
+          "sha256": "bfaa987073ba4bbadf0a57b1487a8e2437978078a89a9113452318937b78a42b"
+        },
+        {
+          "path": "apps/rosen-service2/tests/scanners/cardano.spec.ts",
+          "bytes": 4765,
+          "sha256": "ee3fd294f13cfc999ac1a4254e886b031bb9ad691607d6fa67e0fdd7fb5757fe"
+        },
+        {
+          "path": "apps/rosen-service2/tests/utils.spec.ts",
+          "bytes": 5044,
+          "sha256": "2210d01d386d48a946b05722a427cc5a7f29097645bea2cb703e6d847c945a61"
+        },
+        {
+          "path": "apps/rosen/package.json",
+          "bytes": 3142,
+          "sha256": "a63c4c1022104359405a139207651ab7ff3db3c8859f94e181ad232f781458d9"
+        },
+        {
+          "path": "packages/data-source/package.json",
+          "bytes": 1010,
+          "sha256": "d43e5dfa94b24dde1a2cf490858faf7fd214ca215f5ff621f0b59a2e3c3ee776"
+        },
+        {
+          "path": "packages/rosen-statistics-entity/package.json",
+          "bytes": 1302,
+          "sha256": "8379a579a04e46bd2d6474bd5c4c576ccbaf85f202106b78cb4f843891861718"
+        },
+        {
+          "path": "packages/rosen-statistics/package.json",
+          "bytes": 1468,
+          "sha256": "ac9f819a442a97a5d958bb7379a845f51d5b5d3d4433384c631e514765818176"
+        }
+      ]
+    },
+    {
+      "id": "P02-statistics",
+      "repo": "ui",
+      "purpose": "P02-statistics",
+      "dependencies": [
+        "P01-shared-interfaces"
+      ],
+      "beforeTree": "5b67ee25f67d787cf607d649d35c2d28f8e15bc6",
+      "tree": "7cf787ef6d7b9bbbe06f9f6e4fb9e968f0db6619",
+      "patch": {
+        "path": "patches/P02-statistics.patch",
+        "bytes": 26203,
+        "sha256": "8f2057ac6b34a5939ebbb79d9b26d0f94e8bff037345b71b12470623eeb95844"
+      },
+      "files": [
+        {
+          "path": ".changeset/service2-statistics-token-identity.md",
+          "bytes": 361,
+          "sha256": "0d76654240b480f26a9edf07bde1636a107f059626c118335702dc900988b501"
+        },
+        {
+          "path": "packages/rosen-statistics-entity/lib/actions/bridgeMetricsAction.ts",
+          "bytes": 7954,
+          "sha256": "12d5d83fa68b428453f8ac671621216a470096791a6591269911831ad1a5df55"
+        },
+        {
+          "path": "packages/rosen-statistics-entity/lib/actions/lockedAssetsMetricAction.ts",
+          "bytes": 1404,
+          "sha256": "1a5907c9dd41c2013e00db248850001538738e6d799c4011b9db2d4ee2e7b98e"
+        },
+        {
+          "path": "packages/rosen-statistics-entity/package.json",
+          "bytes": 1346,
+          "sha256": "9186c081566dc80b2f78fab494e668563e032ed375ec62b5c968a0a364349b46"
+        },
+        {
+          "path": "packages/rosen-statistics-entity/tests/actions/bridgeMetricsAction.spec.ts",
+          "bytes": 24915,
+          "sha256": "0a57f42a96c1059fe31916e6147e217c8e5cc51c1a09b0a188e5571d6477bc1a"
+        },
+        {
+          "path": "packages/rosen-statistics-entity/tests/actions/lockedAssetsMetricAction.spec.ts",
+          "bytes": 9338,
+          "sha256": "3a087c9bb885caffc69fe1ec20fd5167b0d8971eafd5aa7f8940c35fa85c2bf8"
+        }
+      ]
+    },
+    {
+      "id": "P03-evm-bounds",
+      "repo": "ui",
+      "purpose": "P03-evm-bounds",
+      "dependencies": [
+        "P02-statistics"
+      ],
+      "beforeTree": "7cf787ef6d7b9bbbe06f9f6e4fb9e968f0db6619",
+      "tree": "31d6114c322040cbe8b1368a16c44a6f1a1fcbfc",
+      "patch": {
+        "path": "patches/P03-evm-bounds.patch",
+        "bytes": 6533,
+        "sha256": "3fb991ae2792f213f3ab1429efd22be94b404bee9f6b12ed71ccb58f390edaf3"
+      },
+      "files": [
+        {
+          "path": ".changeset/evm-lock-metadata-bounds.md",
+          "bytes": 148,
+          "sha256": "ebd01382334379c28cd6c3e76d87f9571cdcd1f1429111c83ee16450eae988ea"
+        },
+        {
+          "path": "networks/evm/src/utils.ts",
+          "bytes": 2584,
+          "sha256": "a763a2af4e0f5c559cd8b8f6cf23520c06bc7dbe7f5b352cc98acf289bc1f7b4"
+        },
+        {
+          "path": "networks/evm/tests/utils.spec.ts",
+          "bytes": 3545,
+          "sha256": "00028e8dbd5bf3229a2cd6e585df045b490baffbccd5ea3b666c386692dc1525"
+        },
+        {
+          "path": "networks/evm/vitest.config.ts",
+          "bytes": 364,
+          "sha256": "6dcf06ca14541a7c62c00877842394ffdcc9dd9c01516b0a5c4a7683f02004e4"
+        }
+      ]
+    },
+    {
+      "id": "G01-guard-balance-components",
+      "repo": "ui",
+      "purpose": "Existing Guard components accept exact integer balances and prepared custody links",
+      "dependencies": [
+        "P03-evm-bounds"
+      ],
+      "beforeTree": "31d6114c322040cbe8b1368a16c44a6f1a1fcbfc",
+      "tree": "bdd916a31e48f1d2e8778a79f67a377bf2da0e9c",
+      "patch": {
+        "path": "patches/G01-guard-balance-components.patch",
+        "bytes": 6322,
+        "sha256": "350173fd4144e4eda0b5643d5e70ca05cf28c70b718e72cb9b57e42b87f5e118"
+      },
+      "files": [
+        {
+          "path": ".changeset/guard-prepared-balance-links.md",
+          "bytes": 201,
+          "sha256": "c48b2447406a438f61747ad0cf56b89759a2108af1253e9da37ae0aa0685055d"
+        },
+        {
+          "path": "apps/guard/src/app/(dashboard)/@networks/ItemAddress.tsx",
+          "bytes": 1534,
+          "sha256": "223d19c0a9da6b696fdc170d7dc7bcfe826d5bfc3eaccbca31b4abd99d4ca164"
+        },
+        {
+          "path": "apps/guard/src/app/assets/TableRow.tsx",
+          "bytes": 5400,
+          "sha256": "474b8f59ecc4bcb6b373a80ecefd6e12e411f43ab066c54f3f854fcb3d977fbc"
+        }
+      ]
+    },
+    {
+      "id": "G02-utils-explorer-producer",
+      "repo": "ui",
+      "purpose": "Independent public Avalanche explorer producer and direct tests",
+      "dependencies": [
+        "G01-guard-balance-components"
+      ],
+      "beforeTree": "bdd916a31e48f1d2e8778a79f67a377bf2da0e9c",
+      "tree": "ca852d7cb2fa53b3b3b8ee6a57b9b9290c1cf86e",
+      "patch": {
+        "path": "patches/G02-utils-explorer-producer.patch",
+        "bytes": 2827,
+        "sha256": "a3a40a8209009c023e302b11de1597e9dd9dbde6392c111bc4e5626391c16af1"
+      },
+      "files": [
+        {
+          "path": ".changeset/avalanche-explorer-selection.md",
+          "bytes": 120,
+          "sha256": "b25bcf6cb359f79b4579ccdb8a599623048f99e894b6155c2232d3c1e8467265"
+        },
+        {
+          "path": ".changeset/utils-avalanche-explorer-export.md",
+          "bytes": 141,
+          "sha256": "c27eb0c605c013424de9469ab825726dc995273ba4f0ca7df03e060847e39896"
+        },
+        {
+          "path": "packages/utils/src/avalancheExplorerUrl.ts",
+          "bytes": 318,
+          "sha256": "e8dde89de9b791d8e79cad5924a065da30a8b52b307fe72d2c597cb460d4c5a3"
+        },
+        {
+          "path": "packages/utils/src/index.ts",
+          "bytes": 234,
+          "sha256": "b80b2c7ea65808e237657095497acaaed6e3232355db6f05e9cbbe3dbfbf499b"
+        },
+        {
+          "path": "packages/utils/tests/avalancheExplorerUrl.spec.ts",
+          "bytes": 660,
+          "sha256": "b4eb70d7c5988e63d50b32b0065507bfb7d36425721600a7f95275e6d779f735"
+        },
+        {
+          "path": "packages/utils/vitest.config.ts",
+          "bytes": 123,
+          "sha256": "2911d5d63b0ae3a7a1948d9f5dca49af1fda4f3298c60928b3486fa2b5f67dac"
+        }
+      ]
+    },
+    {
+      "id": "C01-avalanche-final",
+      "repo": "ui",
+      "purpose": "Avalanche network, Service, wallet and existing Guard consumer wiring",
+      "dependencies": [
+        "G02-utils-explorer-producer"
+      ],
+      "beforeTree": "ca852d7cb2fa53b3b3b8ee6a57b9b9290c1cf86e",
+      "tree": "4579ad9756d12ee08596352910fe124c9a5d9636",
+      "patch": {
+        "path": "patches/C01-avalanche-final.patch",
+        "bytes": 441828,
+        "sha256": "3dbac07a2ccf55cd2b9d0b35e907674f857db1ec6a8771f611bbbdc4c11b5d3a"
+      },
+      "files": [
+        {
+          "path": ".changeset/avalanche-guard-deployment-links.md",
+          "bytes": 276,
+          "sha256": "38212f5b24a777fd0eeb76c3ca046f16f76c88af5da4e12ff3c328c2fa122f0f"
+        },
+        {
+          "path": ".changeset/avalanche-lock-metadata.md",
+          "bytes": 117,
+          "sha256": "fbe2a76c1b1eae197726ea04f9256bd54a180f42de1863cceb1c5b52a8548ed6"
+        },
+        {
+          "path": ".changeset/avalanche-max-transfer-asset.md",
+          "bytes": 164,
+          "sha256": "baafae58196956af3acda8ba892db00a5cf683cefc341522bd8e6a3e4a6e4be8"
+        },
+        {
+          "path": ".changeset/avalanche-native-asset-calculator.md",
+          "bytes": 208,
+          "sha256": "aa5ce60348e09a7ee1ffcbe6d2bef1a3c15328fcb56234afe836c558ab8a6fe9"
+        },
+        {
+          "path": ".changeset/avalanche-network-icon.md",
+          "bytes": 70,
+          "sha256": "99b25fc924d3bf74672f5e4e0a064ffc53eb3dba8369fe08e8f4ae29b5e52f05"
+        },
+        {
+          "path": ".changeset/avalanche-network-initialization.md",
+          "bytes": 67,
+          "sha256": "052c8428b3daea23fabbc44f29c8a9adf2d26df4f20aa0ddd34639db9da14388"
+        },
+        {
+          "path": ".changeset/avalanche-network-metadata.md",
+          "bytes": 129,
+          "sha256": "fe4afbc262f576571237143f8cb97fbd682a98a8033bc5f29a485a6b03059904"
+        },
+        {
+          "path": ".changeset/guard-unavailable-balance-pagination.md",
+          "bytes": 231,
+          "sha256": "70e303742fa3efb28d0eaf60e8a188ade86e7fee3cce7a80a6f71ef1293520d3"
+        },
+        {
+          "path": ".changeset/metamask-avalanche.md",
+          "bytes": 161,
+          "sha256": "dd62c4b0de4a5746968caf0256cb9d69b1c53c7eb32c5561b2f62a688217124d"
+        },
+        {
+          "path": ".changeset/rosen-app-avalanche.md",
+          "bytes": 159,
+          "sha256": "c85645a6a8dc2c1f790d2c5f27a3d2632a8705e6f565bb93aa50de71be0a592a"
+        },
+        {
+          "path": ".changeset/rosen-service-avalanche.md",
+          "bytes": 191,
+          "sha256": "0970455528fa55e0a60c886c6bfc82264cd3670dd96bf581c6189804e21cad27"
+        },
+        {
+          "path": "apps/guard/package.json",
+          "bytes": 1244,
+          "sha256": "7b4d5cd9a4c3e9d43dfcfbb7e9d47fe1dc27f8934f15abc18d2661579a49457f"
+        },
+        {
+          "path": "apps/guard/src/app/(dashboard)/@networks/Item.tsx",
+          "bytes": 2312,
+          "sha256": "465203a48c69ff3d4a7b8983cff64b6988112d8e03d84a167f9b7111a6109b83"
+        },
+        {
+          "path": "apps/guard/src/app/assets/page.tsx",
+          "bytes": 6421,
+          "sha256": "c2fba330b444995575ac3148259ff3c0b8825017dc26184bacab5e5a181af516"
+        },
+        {
+          "path": "apps/guard/src/networks/index.ts",
+          "bytes": 767,
+          "sha256": "008c13bc49239c316bce8884c2c89905f3067fd25f3e7c4e36fc153b0b18dead"
+        },
+        {
+          "path": "apps/rosen-service/README.md",
+          "bytes": 368,
+          "sha256": "ddea4fe6740a50df54e9d537abd8c826c60611a8d7ef97a34a80a9485f2386dc"
+        },
+        {
+          "path": "apps/rosen-service/config/default.yaml",
+          "bytes": 3647,
+          "sha256": "7718cb0e95bb3c26dc91cad71fb274d426d59297c3da9f20e850ebdf01f92cda"
+        },
+        {
+          "path": "apps/rosen-service/package.json",
+          "bytes": 2822,
+          "sha256": "f2042676cb1a4c512d435cbc7399de16c90a30efc33ac40209fc2f689927be8c"
+        },
+        {
+          "path": "apps/rosen-service/src/avalanche/calculator.ts",
+          "bytes": 3410,
+          "sha256": "4141e5800dd3daad22846ffa87a098a77aef8a5191b2ed8e1477038d58482c53"
+        },
+        {
+          "path": "apps/rosen-service/src/avalanche/config.ts",
+          "bytes": 6979,
+          "sha256": "707d6b4cec8f7b1f9c4a6792939f0dc40abeafc68168bea34c93d1c02103b2f9"
+        },
+        {
+          "path": "apps/rosen-service/src/avalanche/data-source.ts",
+          "bytes": 842,
+          "sha256": "432d1d63caae61040b13c2873b563be383d1747ec6d77d21065f9697b7206a09"
+        },
+        {
+          "path": "apps/rosen-service/src/avalanche/event-trigger.ts",
+          "bytes": 901,
+          "sha256": "85be7e5b5e44c12fae418db1ce682ef0472677a34969aea40716d9f3e31d2781"
+        },
+        {
+          "path": "apps/rosen-service/src/avalanche/health.ts",
+          "bytes": 4331,
+          "sha256": "20b302183046b9b5a12b6e430175aad92897fa93e041fa7580ab348a6eeed6e2"
+        },
+        {
+          "path": "apps/rosen-service/src/avalanche/scanner.ts",
+          "bytes": 1354,
+          "sha256": "1c72fe8b04b37953cf02aa720f93314d241baca4008f4681209fc10d39a6d38e"
+        },
+        {
+          "path": "apps/rosen-service/src/calculator/calculator-service.ts",
+          "bytes": 3125,
+          "sha256": "6d6190658982f1973d1c431879f143d32062debbc8365726d6d8b68774f9b939"
+        },
+        {
+          "path": "apps/rosen-service/src/commitment/commitment-service.ts",
+          "bytes": 2068,
+          "sha256": "6e6456c4d67bbecdb92b3172f2a21c1e7f2e90224be0854c408af052ff26da59"
+        },
+        {
+          "path": "apps/rosen-service/src/configs.ts",
+          "bytes": 12251,
+          "sha256": "271999942c1eef15da11723922390c574d76fa71ce1cb550b797d8a4f0ded6bc"
+        },
+        {
+          "path": "apps/rosen-service/src/data-source.ts",
+          "bytes": 827,
+          "sha256": "a306b69002d6419323119d4f7c4e1832a9fe6f60a0d95c3c82f399e9896cd771"
+        },
+        {
+          "path": "apps/rosen-service/src/event-trigger/event-trigger-service.ts",
+          "bytes": 6962,
+          "sha256": "e9d5066718daf7383ce654253a7f29083ebc1eadfa63b827f59103813445d132"
+        },
+        {
+          "path": "apps/rosen-service/src/health-check/health-check-service.ts",
+          "bytes": 7435,
+          "sha256": "a78acbf7d99a84c345fbae9740d4fb934e35b8ce50cf38cedbd37189523a4be1"
+        },
+        {
+          "path": "apps/rosen-service/src/scanner/chains/avalanche.ts",
+          "bytes": 790,
+          "sha256": "8764179d16c1b941762830b37bb1f39e7be3f65b82a4e7cfda8eb67bbd8a3255"
+        },
+        {
+          "path": "apps/rosen-service/src/scanner/scanner-service.ts",
+          "bytes": 3084,
+          "sha256": "c00b26285d2ff35e2c127e2591f17c1f85afa994c78a0fd3da06ebb6008de806"
+        },
+        {
+          "path": "apps/rosen-service/tests/avalanche/asset-calculator.spec.ts",
+          "bytes": 12512,
+          "sha256": "c29a79f2039953459e7fb67b01fc3fd2b1658401a6ce9bedf45f2ce1ad09179c"
+        },
+        {
+          "path": "apps/rosen-service/tests/avalanche/assetCalculatorTestUtils.ts",
+          "bytes": 2699,
+          "sha256": "a9af4f3d8f0558e0a69ff010b755e4cd51507f0c5f534377eb2a58beee9736d3"
+        },
+        {
+          "path": "apps/rosen-service/tests/avalanche/calculator.spec.ts",
+          "bytes": 9708,
+          "sha256": "f0003226d31b1522bfa785964a293f880f8ca4914d9b6d155186ced88f4c679e"
+        },
+        {
+          "path": "apps/rosen-service/tests/avalanche/config.spec.ts",
+          "bytes": 7753,
+          "sha256": "9be30ed93a15964394d434b5f35af320217f66fe40809dae77dffe608e9a503a"
+        },
+        {
+          "path": "apps/rosen-service/tests/avalanche/data-source.spec.ts",
+          "bytes": 1799,
+          "sha256": "23d98fe8dbc3e3ea201d2e78a4bf14be56508281070c28b5ef43e0d2d91b07c5"
+        },
+        {
+          "path": "apps/rosen-service/tests/avalanche/event-trigger.spec.ts",
+          "bytes": 1243,
+          "sha256": "cd3896b9968b236c2203b76e0da97d1a29aed8690b4bf06dd43592d90e104607"
+        },
+        {
+          "path": "apps/rosen-service/tests/avalanche/health.spec.ts",
+          "bytes": 6566,
+          "sha256": "a66bb872413512fe4e80ebe630190c97337af812d1035e50963abefb81c59e89"
+        },
+        {
+          "path": "apps/rosen-service/tests/avalanche/mocked/commitment.mock.ts",
+          "bytes": 1410,
+          "sha256": "81dc9c675ba06eff149cec8c3c49f1da7d00c021bf8222e7ca12501580132f72"
+        },
+        {
+          "path": "apps/rosen-service/tests/avalanche/mocked/runtime.mock.ts",
+          "bytes": 2789,
+          "sha256": "e893e1cc56c8d8cff4bf50fdd80ddd7276b90e35b0b11c3d91aabad69cfc7f67"
+        },
+        {
+          "path": "apps/rosen-service/tests/avalanche/mocked/startup.mock.ts",
+          "bytes": 251,
+          "sha256": "448e57a3f0bb5f44c300c0006cf31c7f6c2554ae0a0d0943ab52650fd622ecdd"
+        },
+        {
+          "path": "apps/rosen-service/tests/avalanche/postgresCalculatorSnapshot.ts",
+          "bytes": 1533,
+          "sha256": "3d0e2278bab8d9381dd93927c62900b1eac42c1a46f9bfe39837049714632e29"
+        },
+        {
+          "path": "apps/rosen-service/tests/avalanche/postgresCalculatorTestUtils.ts",
+          "bytes": 6426,
+          "sha256": "7001b9f53a1485039381b07dd0f447db2a59a31b509b9abbdd6b967f7d16d2d9"
+        },
+        {
+          "path": "apps/rosen-service/tests/avalanche/scanner.spec.ts",
+          "bytes": 2454,
+          "sha256": "ba2bf34d64c44fd1eb558473b985abaf561c5aff8d5ddc6f88b8442c473d5baa"
+        },
+        {
+          "path": "apps/rosen-service/tests/avalanche/testData.ts",
+          "bytes": 282,
+          "sha256": "78cc1a1dddcb32a914d8d7d06d5601a3d63440844185cd7a4b6fe22d844c5eb4"
+        },
+        {
+          "path": "apps/rosen-service/tests/avalanche/testUtils.ts",
+          "bytes": 6199,
+          "sha256": "eb52efc5d658bbc9bcd39a81794a431be1a34ec63be9d1b2a8cabf147bf79428"
+        },
+        {
+          "path": "apps/rosen-service/tests/commitment/commitment-service.spec.ts",
+          "bytes": 2818,
+          "sha256": "9aeca4d2814ade3524f272a6910cedc23fe5d8b2f7f9cd403266fe9653f28d30"
+        },
+        {
+          "path": "apps/rosen-service/tests/configs.spec.ts",
+          "bytes": 5285,
+          "sha256": "5dd45173205c9174099db8b23fade481d1f7eb62e4852e20b6c4d1db55f03d7d"
+        },
+        {
+          "path": "apps/rosen-service/tests/mocked/config.mock.ts",
+          "bytes": 703,
+          "sha256": "4cc5dc9914d57b731f367380126aae1b971912f2a4ee25bbfe39decad8bfc250"
+        },
+        {
+          "path": "apps/rosen-service/tests/mocked/logger.mock.ts",
+          "bytes": 203,
+          "sha256": "31815f1498cea28d7e7cfc6c9f8d39fdf13b22821ffd6980b86c6b49f93acf67"
+        },
+        {
+          "path": "apps/rosen-service/tests/scanner/chains/avalanche.spec.ts",
+          "bytes": 3864,
+          "sha256": "1c59590f7793e5ab0939c1492a5239d94d2eadf141d6b4b19d90cc062e9b8606"
+        },
+        {
+          "path": "apps/rosen-service/tests/setup-tests.ts",
+          "bytes": 31,
+          "sha256": "6bdb85872032fe8f858fdf82243345036abbfb2ef90217a803d54cb72fff0d64"
+        },
+        {
+          "path": "apps/rosen-service/tsconfig.test.json",
+          "bytes": 127,
+          "sha256": "d89d4b2a09cccc3725e745f4b34e2a8fb1504ca0b7b2a79ad2324683752d911f"
+        },
+        {
+          "path": "apps/rosen-service/vitest.avalanchePostgresCalculator.config.ts",
+          "bytes": 860,
+          "sha256": "8717cbd37c7d7c9a64b4d2fa1778abd101ed86d48271575c36f67a2f869bc730"
+        },
+        {
+          "path": "apps/rosen-service/vitest.config.ts",
+          "bytes": 274,
+          "sha256": "c40a821f1307301ca1c460759bb7b9e4cdf14a5fa4bd4683f378da24586fcc4a"
+        },
+        {
+          "path": "apps/rosen/.env.example",
+          "bytes": 2011,
+          "sha256": "5417b889664eab63f2eb996cc0063b31ffc8a1891b11f36ef589fa917e897a53"
+        },
+        {
+          "path": "apps/rosen/package.json",
+          "bytes": 3307,
+          "sha256": "052704d23a5ac1b04392faa9fbcf3b28fd5fd17d9631033e9e961c642c9d41a2"
+        },
+        {
+          "path": "apps/rosen/src/app/(main)/assets/getFullAssetData.ts",
+          "bytes": 1545,
+          "sha256": "7c969ac8f978914c6f93f7e4e619f570dac39732e622b16f31ec6a3173e663a9"
+        },
+        {
+          "path": "apps/rosen/src/app/(main)/events/(list)/Sidebar.tsx",
+          "bytes": 5034,
+          "sha256": "682d8ee24ba74651d73289ef95d0baca2b5e949fbc69842ff9ca7ad72bc55815"
+        },
+        {
+          "path": "apps/rosen/src/app/(main)/events/[details]/Overview.tsx",
+          "bytes": 5912,
+          "sha256": "8e424f4937a935e2d01815f511ddf05cd126e39b40d5bdad01d398ff5c5fdc52"
+        },
+        {
+          "path": "apps/rosen/src/app/(main)/events/[details]/TransactionsAndFees.tsx",
+          "bytes": 5721,
+          "sha256": "f5c4104da331e50ed27c0762d68cceee2084637c8a7880c3beaf2f5884263801"
+        },
+        {
+          "path": "apps/rosen/src/env.ts",
+          "bytes": 6341,
+          "sha256": "9f26e8789130f53ebbb3facd45257bec50929619343bb1752d8493655bf9755c"
+        },
+        {
+          "path": "apps/rosen/src/hooks/useBridgeForm.ts",
+          "bytes": 6284,
+          "sha256": "69f90f2e4e7e42a9be3ddabebffc39e5bf61a045e98fbf83269c2a93d7c60211"
+        },
+        {
+          "path": "apps/rosen/src/hooks/useMaxTransfer.tsx",
+          "bytes": 2820,
+          "sha256": "1413daf225051541fc3e989b85173fb2c48f3da737720b32e8e8fc6335cd6e1c"
+        },
+        {
+          "path": "apps/rosen/src/hooks/useNetwork.tsx",
+          "bytes": 4974,
+          "sha256": "0cffedd5e63396a42186a7e9bf96f6cb620e23d621b24cb01c6c85d14655abb1"
+        },
+        {
+          "path": "apps/rosen/src/hooks/useTransaction.ts",
+          "bytes": 3845,
+          "sha256": "58d7ec093c500db82acea8e0b824f0afab8f1719f64101775b185e2187f321ea"
+        },
+        {
+          "path": "apps/rosen/src/networks/avalanche/actions.ts",
+          "bytes": 544,
+          "sha256": "4a19680feeec922b2e8f1f48fa572dc1353530139dbf22578ef97e6ed058b3fb"
+        },
+        {
+          "path": "apps/rosen/src/networks/avalanche/client.ts",
+          "bytes": 810,
+          "sha256": "2b67ad311ec2ff581a07cfbeefc377ce85d332d78fd4618a1918e63c43078312"
+        },
+        {
+          "path": "apps/rosen/src/networks/avalanche/config.ts",
+          "bytes": 2526,
+          "sha256": "2ab44924327826b539026be8df135b417b2d7d36f484d8ea1801e695061703d3"
+        },
+        {
+          "path": "apps/rosen/src/networks/avalanche/index.ts",
+          "bytes": 38,
+          "sha256": "ffb7249050ab430ba3ec3cea840b41ba2f4b3c39e5be71f7dc7a56f6657195c1"
+        },
+        {
+          "path": "apps/rosen/src/networks/avalanche/provider.ts",
+          "bytes": 276,
+          "sha256": "8ea82c1ef1a5372e3d46e13c595818b80349ef35e161226b913a4760cc8506a1"
+        },
+        {
+          "path": "apps/rosen/src/networks/avalanche/selection.ts",
+          "bytes": 337,
+          "sha256": "9b886c6293e706a73e34923044279aa0b144242a435c0fe875199b843c2c865d"
+        },
+        {
+          "path": "apps/rosen/src/networks/avalanche/server.ts",
+          "bytes": 2430,
+          "sha256": "41bb9ee62efd45898ad10f8175e20dab61275dcd6996b70579e35cabf8a6718a"
+        },
+        {
+          "path": "apps/rosen/src/networks/index.ts",
+          "bytes": 272,
+          "sha256": "5edd3749a28de4115e593511ae215f88e8c7a0462463f0429cdc25435d8735b2"
+        },
+        {
+          "path": "apps/rosen/src/utils/explorer.ts",
+          "bytes": 607,
+          "sha256": "ac72a5efcf0231af68a475ec10a8c02c2cda3d490567676649fe1dc912536ed9"
+        },
+        {
+          "path": "apps/rosen/src/wallets/metaMask.ts",
+          "bytes": 329,
+          "sha256": "af1648fd475d362e3b17238d0a4282197d502f61d74479ca91a4dacb2cdfe8cf"
+        },
+        {
+          "path": "apps/rosen/tests/mocked/avalanche-icons.mock.ts",
+          "bytes": 126,
+          "sha256": "60d5c366d7b85f367e76c9b4a6f85dc86bf64e779fde38ec2d5d2d1f4033a587"
+        },
+        {
+          "path": "apps/rosen/tests/networks/avalanche/actions.spec.ts",
+          "bytes": 4179,
+          "sha256": "69ca1e0615b8ef8d5adbe6f8060c4498526574536b548c26cb1dd2c805a281b1"
+        },
+        {
+          "path": "apps/rosen/tests/networks/avalanche/config.spec.ts",
+          "bytes": 3036,
+          "sha256": "cc68bed6efa0f68fc6485b72db3ed9a74e4955c4d569ecbfec8606b53b5bf59d"
+        },
+        {
+          "path": "apps/rosen/tests/networks/avalanche/erc20Actions.spec.ts",
+          "bytes": 4379,
+          "sha256": "f3b3793edf87d117d52dc69c0416cd440d17fd1cc847d7344d2bdd5fbf56bf9f"
+        },
+        {
+          "path": "apps/rosen/tests/networks/avalanche/erc20TestData.ts",
+          "bytes": 1260,
+          "sha256": "33f27306f6c65a552f97edb99c2f56d2ee9a0f80bbabb3ec23f6441b9b0fe82d"
+        },
+        {
+          "path": "apps/rosen/tests/networks/avalanche/erc20TestUtils.ts",
+          "bytes": 2971,
+          "sha256": "deaca5de41e43494538234b629fa93da9329a966b459a10c800dc74d6be2e58b"
+        },
+        {
+          "path": "apps/rosen/tests/networks/avalanche/testData.ts",
+          "bytes": 1110,
+          "sha256": "b3592db7e8b3258eea95f0f28f6da4a3378c9a14969ba60020d7f98b49696b37"
+        },
+        {
+          "path": "apps/rosen/tests/networks/avalanche/testUtils.ts",
+          "bytes": 1351,
+          "sha256": "a276b870a236598695b660a7e5c0c0c486d8208b413f5b08b796aa6e9e2c9892"
+        },
+        {
+          "path": "apps/rosen/tests/utils/explorer.spec.ts",
+          "bytes": 1950,
+          "sha256": "1a8dbe5324ff9cf4f9557dc5ee2e65d2a46eacf052ab45fce693a5bbe1b5d35d"
+        },
+        {
+          "path": "apps/rosen/tests/utils/testUtils.ts",
+          "bytes": 340,
+          "sha256": "58d5f02ba361df22dfe81a8acff0f84f6d54f82e92a1e8811860244e2997b783"
+        },
+        {
+          "path": "apps/rosen/vitest.avalanche.config.ts",
+          "bytes": 948,
+          "sha256": "310b177daf10c2e073c52805788efd64f3c20587ae089e81f65a3a9ebb6a1671"
+        },
+        {
+          "path": "networks/avalanche/package.json",
+          "bytes": 1140,
+          "sha256": "48906151d4e449edbb5861a26419a4a4550fba29101fd7b3078d1e4acc97e990"
+        },
+        {
+          "path": "networks/avalanche/src/actions.ts",
+          "bytes": 3988,
+          "sha256": "e828b8ba1bdc7a6110a45889b5b082253b7e68033719131a6f0565f315326533"
+        },
+        {
+          "path": "networks/avalanche/src/client.ts",
+          "bytes": 7210,
+          "sha256": "6c0f89008e60843d72ac44a8c67be727b88012d5cbf8973ca73a7f25d710ff99"
+        },
+        {
+          "path": "networks/avalanche/src/constants.ts",
+          "bytes": 579,
+          "sha256": "01a66f802496eb6430a7dc05450f7005d0dad42ad6d1e47fd4861ca261bf16b6"
+        },
+        {
+          "path": "networks/avalanche/src/getMaxTransfer.ts",
+          "bytes": 3203,
+          "sha256": "d3cb9e9cad087db32c527005b1a10224d739b22ea99a49accfc6f5c819ac8289"
+        },
+        {
+          "path": "networks/avalanche/src/guardAssetsBalance.ts",
+          "bytes": 3826,
+          "sha256": "eb599ad4c38a615a68a1c208af6d26f48a8371850f51e69b38fbe25af8132406"
+        },
+        {
+          "path": "networks/avalanche/src/guardBalance.ts",
+          "bytes": 1175,
+          "sha256": "de7ef59bdc55a339f7d29ab09267e1eb0dc30b12dd2c00dfb02357a1b97b1da8"
+        },
+        {
+          "path": "networks/avalanche/src/index.ts",
+          "bytes": 234,
+          "sha256": "adc86e56e39cb806d88d143e85e8e13dbe858dba5f0b0184525e94457df88f14"
+        },
+        {
+          "path": "networks/avalanche/src/provider.ts",
+          "bytes": 3803,
+          "sha256": "e5bdb9ccc7dead65f46c9b69cbc184c59d59bc05ffe3646e44dac598339393ed"
+        },
+        {
+          "path": "networks/avalanche/src/server.ts",
+          "bytes": 209,
+          "sha256": "0aea1612e00e0cb7adc4f05fc5665c8e77d4c93d738a636346e03a76c57551f3"
+        },
+        {
+          "path": "networks/avalanche/src/tokenPolicy.ts",
+          "bytes": 5256,
+          "sha256": "d1de13b8feee66946d2b501460503bfa1565011b53c0a5e1e76fcb09a4804d08"
+        },
+        {
+          "path": "networks/avalanche/src/transfer.ts",
+          "bytes": 3198,
+          "sha256": "34bad6474802d9ae39c3e4f2dec17aec293d7ff5479d73ad7f6c4338a23083ca"
+        },
+        {
+          "path": "networks/avalanche/src/utils.ts",
+          "bytes": 2501,
+          "sha256": "6e6843041a9ed5a1ecb48795e50117e02d9646b05559768b3886c96972a8e9b3"
+        },
+        {
+          "path": "networks/avalanche/tests/actions.spec.ts",
+          "bytes": 3667,
+          "sha256": "029139839ddc6d8c798415a74252c968fd9a9481898373ea9521784de0ac84ef"
+        },
+        {
+          "path": "networks/avalanche/tests/actionsTestUtils.ts",
+          "bytes": 707,
+          "sha256": "9a3c66b5ff12e74fa185a82e2c9981c3c7d9bb5d656b2b5fda27c000d05bcd5d"
+        },
+        {
+          "path": "networks/avalanche/tests/client.spec.ts",
+          "bytes": 15226,
+          "sha256": "9fa590fb27e1f8e0e1ff830cf45e171a7cb21001c6c6ed373854ec4c391eb3b1"
+        },
+        {
+          "path": "networks/avalanche/tests/constants.spec.ts",
+          "bytes": 1018,
+          "sha256": "d7ce27f51887d794c4faa393bc5411a4628355e0eb7ed1fb163b42d241327f1a"
+        },
+        {
+          "path": "networks/avalanche/tests/erc20.spec.ts",
+          "bytes": 7764,
+          "sha256": "5170892c6df6841c5afb8f4c69f84ca7fd193ef14cb9f5baef072ec33c4d6b75"
+        },
+        {
+          "path": "networks/avalanche/tests/erc20TestData.ts",
+          "bytes": 2019,
+          "sha256": "2e5ff0d1de925e1b54dd98e707e8783379c459bfa3159706dc34a3949c77c587"
+        },
+        {
+          "path": "networks/avalanche/tests/erc20TestUtils.ts",
+          "bytes": 3240,
+          "sha256": "cca8aa0ff016a1938e0935ed3b10f3788a5082fa9d828a11128745437c900938"
+        },
+        {
+          "path": "networks/avalanche/tests/getMaxTransfer.spec.ts",
+          "bytes": 9395,
+          "sha256": "88902109324730fe149bb3a9a4c7441aff06d1eb8489cb2615e85dd2e27b885f"
+        },
+        {
+          "path": "networks/avalanche/tests/guardAssetsBalance.spec.ts",
+          "bytes": 18016,
+          "sha256": "357813288724d21f3836e11107ea4ecd3ed392910f6b50f5c0fed3e61eb21b95"
+        },
+        {
+          "path": "networks/avalanche/tests/guardAssetsBalanceTestData.ts",
+          "bytes": 272,
+          "sha256": "83da8cbf306d48b425921badf9f1399950b9419461977dd14c92269414be4b86"
+        },
+        {
+          "path": "networks/avalanche/tests/guardAssetsBalanceTestUtils.ts",
+          "bytes": 1453,
+          "sha256": "50933ce8f29ecfaa9d187157d54c3256b3110e3dda1a2fc2a308d4aa1bbf8db3"
+        },
+        {
+          "path": "networks/avalanche/tests/guardBalance.spec.ts",
+          "bytes": 3789,
+          "sha256": "bb852a01f03df6ade2dd4dc0f0da5c8671506f82bf05baeb1ca9163ec1b87dfe"
+        },
+        {
+          "path": "networks/avalanche/tests/guardColdBalanceTestData.ts",
+          "bytes": 1435,
+          "sha256": "37818198db93cbdea94e9c41c90bbefe1b893aca787b999c9cc37c062025802a"
+        },
+        {
+          "path": "networks/avalanche/tests/mocked/icons.mock.ts",
+          "bytes": 144,
+          "sha256": "a489b38a2a06cb27c68555c632cb2dfb995aab58114e18f9c7c21a896eb29385"
+        },
+        {
+          "path": "networks/avalanche/tests/mocked/provider.mock.ts",
+          "bytes": 451,
+          "sha256": "45d17326e8413c2b949990c6cbeaaedf9db195198039bd678ff5435ccd370e42"
+        },
+        {
+          "path": "networks/avalanche/tests/mocked/rpc.mock.ts",
+          "bytes": 649,
+          "sha256": "08486e4d667f148d223f7669feed03f4eceaba62e50885958e0dc23fdecc34c3"
+        },
+        {
+          "path": "networks/avalanche/tests/provider.spec.ts",
+          "bytes": 5842,
+          "sha256": "d92ba6423376d050fa3b6fd0fd9c41f8b39f214cb981ee3c5091d94eb5b21043"
+        },
+        {
+          "path": "networks/avalanche/tests/testData.ts",
+          "bytes": 929,
+          "sha256": "0d50d6d48d4d00e5d4c17c8e05c0c61807f5f1c1832a557ba100fb0e567d1631"
+        },
+        {
+          "path": "networks/avalanche/tests/testUtils.ts",
+          "bytes": 497,
+          "sha256": "d4ad32204517dc4e4dbe2b50fa73c8f979a5744e1314561214a8c685c1b4ca59"
+        },
+        {
+          "path": "networks/avalanche/tests/tokenPolicy.spec.ts",
+          "bytes": 4079,
+          "sha256": "5295cff2b0c587ee39941696cf8d1e34ecba6652b00e38dae9cfa4e219cb4a24"
+        },
+        {
+          "path": "networks/avalanche/tests/transfer.spec.ts",
+          "bytes": 4298,
+          "sha256": "478b5774499125111c765e77019aa5839c664bae4e0b549247f5487cf5ac70e6"
+        },
+        {
+          "path": "networks/avalanche/tests/utils.spec.ts",
+          "bytes": 7442,
+          "sha256": "eb6943e39b3e9c171660479222c8e3249812b07a2943eb313484013cbe759959"
+        },
+        {
+          "path": "networks/avalanche/tsconfig.json",
+          "bytes": 134,
+          "sha256": "fbfe785e9ce70afd362a3a0d015eed8c5114f34913dd8c66d0d97041cd49b569"
+        },
+        {
+          "path": "networks/avalanche/vitest.config.ts",
+          "bytes": 416,
+          "sha256": "cfed5ef659fbe3907a776a85292adb92596cb175af7c13d646ec9f0217ed9695"
+        },
+        {
+          "path": "networks/base/src/index.ts",
+          "bytes": 1508,
+          "sha256": "9e759edd8de54050dcf8f79db6c24b745eba38639a05c27c26dcbaeb3a461c14"
+        },
+        {
+          "path": "networks/evm/package.json",
+          "bytes": 768,
+          "sha256": "2a5b1ade0863829a9b685e9777973c5ac823361c043c2099177e454559e5c7ed"
+        },
+        {
+          "path": "networks/evm/src/utils.ts",
+          "bytes": 3256,
+          "sha256": "31d498ec6f39a2a6b94e58d5d6d0ef4afcb8aa7cddd44e3641091bc6864fcd99"
+        },
+        {
+          "path": "networks/evm/tests/utils.spec.ts",
+          "bytes": 6702,
+          "sha256": "842593b8132a67ac69825866f275f0afc887841d2398789bd2b5de4e1919821b"
+        },
+        {
+          "path": "package-lock.json",
+          "bytes": 735276,
+          "sha256": "a109aed321ed4aca27840fd179631a20d87a921a18db54f0c50800c12f0ef4a4"
+        },
+        {
+          "path": "packages/asset-calculator/lib/asset-calculator.ts",
+          "bytes": 16286,
+          "sha256": "b96e49d07543d1b315cf200ea0fe0b360feda5c770c12169c946642d619239d0"
+        },
+        {
+          "path": "packages/asset-calculator/lib/calculator/chains/avalanche-calculator.ts",
+          "bytes": 9577,
+          "sha256": "a7140f1772cf6283d7eca639c4aff40df228da48288c8eed845d236e61d31cb6"
+        },
+        {
+          "path": "packages/asset-calculator/lib/interfaces.ts",
+          "bytes": 1790,
+          "sha256": "1e62ab24ae76860301768ef3d6d7cd481f1124dea46dcbd3b0b2c1f260e3d1c9"
+        },
+        {
+          "path": "packages/asset-calculator/tests/calculator/chains/avalanche-calculator.spec.ts",
+          "bytes": 13772,
+          "sha256": "8413ce4d931707179b8103bf2d9eed87c53e661fb86e0290d78888efe5e6b6cb"
+        },
+        {
+          "path": "packages/asset-calculator/tests/calculator/chains/avalancheTestUtils.ts",
+          "bytes": 2768,
+          "sha256": "f21a0e096d2c64a5e23d31515bf9c5756defe2ef7243503c845ad1429ccb8e30"
+        },
+        {
+          "path": "packages/constants/src/index.ts",
+          "bytes": 1793,
+          "sha256": "abf8b29905655a682f93dcb59588a8d01ae946bf7b50acb2d0f652b56e1f8ac8"
+        },
+        {
+          "path": "packages/icons/src/index.ts",
+          "bytes": 5081,
+          "sha256": "ded5ab2468aef85eb7cb06e95f475ada0e08e753cc4a5b569dd3ea0280b65a20"
+        },
+        {
+          "path": "packages/icons/src/networks/avalanche.svg",
+          "bytes": 298,
+          "sha256": "f40501cec9e030547c7b4ac832b4e2ca080243a6f5774045525e207e66eb8507"
+        },
+        {
+          "path": "packages/utils/package.json",
+          "bytes": 822,
+          "sha256": "26dc842c628a75615d771f985618d8ce573f7712b2159bcfe143f16b67791875"
+        },
+        {
+          "path": "packages/utils/src/getAddressUrl.ts",
+          "bytes": 1365,
+          "sha256": "13618154ddfe15689643a50caebb6ffc30fa0bce17e986a0cc5e71b57b46ebe7"
+        },
+        {
+          "path": "packages/utils/src/getTokenUrl.ts",
+          "bytes": 873,
+          "sha256": "056a41ea341fbb187934245ceacda61866b68787745c0e6146744deec8524005"
+        },
+        {
+          "path": "packages/utils/src/getTxUrl.ts",
+          "bytes": 1487,
+          "sha256": "aba6d3bb4b9bc69c75b5658476c9c8361854ceb54f5579b99d6a8920b01d0dcd"
+        },
+        {
+          "path": "packages/utils/tests/getAddressUrl.spec.ts",
+          "bytes": 1161,
+          "sha256": "a19a05906724f75f65eb4042b863a3229b819e067c4eb9eeaed3002f38fd38ea"
+        },
+        {
+          "path": "packages/utils/tests/getTxUrl.spec.ts",
+          "bytes": 1095,
+          "sha256": "5ad30a43f742e850b03d2b29b78c9a251734a667f2a64cd90de7826ea0344aa2"
+        },
+        {
+          "path": "wallets/metamask/package.json",
+          "bytes": 1121,
+          "sha256": "967b9f103c6cfac4a269695a6b857a43dcf87d2d8bab660842dd5c720934b468"
+        },
+        {
+          "path": "wallets/metamask/src/wallet.ts",
+          "bytes": 19186,
+          "sha256": "030917caede50a1067447eaec2a346913334de66a439749e04121d80dc7ae3cb"
+        },
+        {
+          "path": "wallets/metamask/tests/erc20.spec.ts",
+          "bytes": 17408,
+          "sha256": "5d9fe39ba1f1585534ec28c8fbb3433909fd5737d2b835b111cbd9218e65452b"
+        },
+        {
+          "path": "wallets/metamask/tests/erc20TestData.ts",
+          "bytes": 1637,
+          "sha256": "198f55d8b638367998bdd6a3b7a365805b2e659b6687810ada541a9b8c6b9d40"
+        },
+        {
+          "path": "wallets/metamask/tests/erc20TestUtils.ts",
+          "bytes": 2152,
+          "sha256": "97491c6d8c798a8d2663b5003dd8e5773eaec120a47d91606c78c1b0002b7d59"
+        },
+        {
+          "path": "wallets/metamask/tests/mocked/icons.mock.ts",
+          "bytes": 254,
+          "sha256": "a785ff80c917e9bebf71a64dbff804abca5da96160b43ce84217354e5eeba2c8"
+        },
+        {
+          "path": "wallets/metamask/tests/mocked/provider.mock.ts",
+          "bytes": 1484,
+          "sha256": "b36ae90ce3b0a22dfa4a0974da7a98443240d4bd5982daa35973afe764582fac"
+        },
+        {
+          "path": "wallets/metamask/tests/setup-tests.ts",
+          "bytes": 281,
+          "sha256": "2bca8dd113ccc3499b5626fae3e385f441e168a82780357d5dcabcad1f71f16d"
+        },
+        {
+          "path": "wallets/metamask/tests/testData.ts",
+          "bytes": 797,
+          "sha256": "426dacf65691ec2a89f70a61ed96fdf4bd6081dd3807268adaff8721e748123d"
+        },
+        {
+          "path": "wallets/metamask/tests/testUtils.ts",
+          "bytes": 1669,
+          "sha256": "9a31d34adab72f083fe638fb19f54bea56f2a221cc7f88193b53c9789583173d"
+        },
+        {
+          "path": "wallets/metamask/tests/wallet.spec.ts",
+          "bytes": 24923,
+          "sha256": "9194c480a73966a2a583e86a4648d34ba18e704da1dcaf306d03ebc45630c2e7"
+        },
+        {
+          "path": "wallets/metamask/vitest.config.ts",
+          "bytes": 879,
+          "sha256": "52b644796f743ae87548ee879e6a247144e9362b0756a37e88964e855cf683f3"
+        }
+      ]
+    }
+  ],
+  "finalTree": "4579ad9756d12ee08596352910fe124c9a5d9636",
+  "reassignedUtilsProducer": [
+    "packages/utils/src/avalancheExplorerUrl.ts",
+    ".changeset/avalanche-explorer-selection.md",
+    "packages/utils/src/index.ts",
+    "packages/utils/tests/avalancheExplorerUrl.spec.ts",
+    "packages/utils/vitest.config.ts"
+  ],
+  "release": {
+    "planned": {
+      "utils": "1.2.0",
+      "avalanche": "0.1.0",
+      "guard": "4.5.3"
+    },
+    "requires": {
+      "avalancheUtils": "^1.2.0",
+      "guardAvalanche": "^0.1.0",
+      "serviceObservationExtractor": "7.2.0"
+    },
+    "sourceVersionsPreserved": true,
+    "registryInstall": "pending producer releases and final registry lock acceptance"
+  },
+  "limits": [
+    "Locally validated source and contributor preparation; no public submission, release or activation.",
+    "Registry lock and npm ci acceptance require the exact producer releases and full Changesets version operation.",
+    "Existing Amount displays decimals through99; higher-decimal rows remain unavailable.",
+    "Cached unit/address policy changes require refresh/rebuild before operational display acceptance."
+  ]
+}

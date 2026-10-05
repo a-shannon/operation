@@ -1,0 +1,5128 @@
+diff --git a/.changeset/avalanche-observation-extraction.md b/.changeset/avalanche-observation-extraction.md
+new file mode 100644
+index 0000000..b48f9db
+--- /dev/null
++++ b/.changeset/avalanche-observation-extraction.md
+@@ -0,0 +1,5 @@
++---
++'@rosen-bridge/evm-observation-extractor': minor
++---
++
++Add AVAX and mapped standard ERC20 observation extraction for Avalanche C-Chain.
+diff --git a/.changeset/avalanche-raw-data-provider.md b/.changeset/avalanche-raw-data-provider.md
+new file mode 100644
+index 0000000..e9d2183
+--- /dev/null
++++ b/.changeset/avalanche-raw-data-provider.md
+@@ -0,0 +1,5 @@
++---
++'@rosen-bridge/raw-data-provider': minor
++---
++
++Support Avalanche C-Chain raw-data replay using the Avalanche observation extractor, including native AVAX and mapped standard ERC20 events.
+diff --git a/.changeset/avalanche-settled-scanning.md b/.changeset/avalanche-settled-scanning.md
+new file mode 100644
+index 0000000..67ff66b
+--- /dev/null
++++ b/.changeset/avalanche-settled-scanning.md
+@@ -0,0 +1,9 @@
++---
++'@rosen-bridge/evm-scanner': minor
++---
++
++Add finalized Avalanche C-Chain scanning with persisted safety state and bounded
++RPC transport.
++
++Serialize bounded Avalanche health reads while retaining exclusive scanner
++action admission until timed-out work completes.
+diff --git a/package-lock.json b/package-lock.json
+index ec28144..f709e60 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -11287,7 +11287,7 @@
+       "dependencies": {
+         "@rosen-bridge/abstract-logger": "^4.0.0",
+         "@rosen-bridge/abstract-observation-extractor": "^2.0.0",
+-        "@rosen-bridge/extended-typeorm": "^1.1.0",
++        "@rosen-bridge/extended-typeorm": "^1.1.1",
+         "@rosen-bridge/rosen-extractor": "^12.1.2",
+         "@rosen-bridge/scanner-interfaces": "^1.0.0",
+         "@rosen-bridge/tokens": "^6.0.2",
+@@ -11353,8 +11353,8 @@
+         "@rosen-bridge/bitcoin-scanner": "^2.0.1",
+         "@rosen-bridge/cardano-observation-extractor": "^3.0.8",
+         "@rosen-bridge/ergo-observation-extractor": "^2.0.7",
+-        "@rosen-bridge/evm-observation-extractor": "^7.0.7",
+-        "@rosen-bridge/extended-typeorm": "^1.1.0",
++        "@rosen-bridge/evm-observation-extractor": "^7.1.0",
++        "@rosen-bridge/extended-typeorm": "^1.1.1",
+         "@rosen-bridge/json-bigint": "^1.1.0",
+         "@rosen-bridge/scanner-interfaces": "^1.0.0",
+         "@rosen-clients/cardano-koios": "^3.1.3",
+@@ -11452,8 +11452,10 @@
+       "license": "MIT",
+       "dependencies": {
+         "@rosen-bridge/abstract-scanner": "^4.0.0",
++        "@rosen-bridge/extended-typeorm": "1.1.1",
+         "@rosen-bridge/scanner-interfaces": "^1.0.0",
+-        "ethers": "6.16.0"
++        "ethers": "6.16.0",
++        "@rosen-bridge/semaphore": "^0.1.0"
+       },
+       "engines": {
+         "node": ">=22.18.0",
+diff --git a/packages/observation-extractors/evm-observation-extractor/lib/avalancheRpcObservationExtractor.ts b/packages/observation-extractors/evm-observation-extractor/lib/avalancheRpcObservationExtractor.ts
+new file mode 100644
+index 0000000..ca19ab2
+--- /dev/null
++++ b/packages/observation-extractors/evm-observation-extractor/lib/avalancheRpcObservationExtractor.ts
+@@ -0,0 +1,115 @@
++import { blake2b } from 'blakejs';
++import { isCallException, Transaction, TransactionResponse } from 'ethers';
++
++import { AbstractLogger } from '@rosen-bridge/abstract-logger';
++import { ExtractedObservation } from '@rosen-bridge/abstract-observation-extractor';
++import { DataSource } from '@rosen-bridge/extended-typeorm';
++import { EvmEthersRosenExtractor } from '@rosen-bridge/rosen-extractor';
++import { BlockInfo } from '@rosen-bridge/scanner-interfaces';
++import { TokenMap } from '@rosen-bridge/tokens';
++
++import { hasAvalancheTransferProof } from './avalancheTransferProof';
++import { EvmRpcObservationExtractor } from './evmRpcObservationExtractor';
++
++export class AvalancheRpcObservationExtractor extends EvmRpcObservationExtractor {
++  readonly FROM_CHAIN = 'avalanche';
++  private readonly avalancheLockAddress: string;
++
++  /** Configures EVM observation extraction with Avalanche's native asset identity. */
++  constructor(
++    lockAddress: string,
++    dataSource: DataSource,
++    tokens: TokenMap,
++    logger?: AbstractLogger,
++    storeRawData = true,
++  ) {
++    super(
++      dataSource,
++      tokens,
++      new EvmEthersRosenExtractor(
++        lockAddress,
++        tokens,
++        'avalanche',
++        'avax',
++        logger?.child('EvmEthersRosenExtractor'),
++        storeRawData,
++      ),
++      logger,
++    );
++    this.avalancheLockAddress = lockAddress;
++  }
++
++  /** Derive mapped locks, requiring receipt Transfer evidence for ERC20 assets. */
++  extractObservations = async (
++    txs: Array<TransactionResponse>,
++    block: BlockInfo,
++  ): Promise<ExtractedObservation[]> => {
++    const observations: ExtractedObservation[] = [];
++    for (const providerTransaction of txs) {
++      const isNative =
++        providerTransaction.to?.toLowerCase() ===
++        this.avalancheLockAddress.toLowerCase();
++      // Retain the native path. Detach signed ERC20 fields before awaiting RPC.
++      let transaction = providerTransaction;
++      if (!isNative) {
++        try {
++          const signed = Transaction.from(providerTransaction);
++          if (
++            signed.hash?.toLowerCase() !==
++            providerTransaction.hash.toLowerCase()
++          )
++            continue;
++          transaction = new TransactionResponse(
++            {
++              ...providerTransaction,
++              signature: signed.signature!,
++              accessList: signed.accessList,
++            },
++            providerTransaction.provider,
++          );
++          transaction.wait = providerTransaction.wait.bind(providerTransaction);
++        } catch {
++          continue;
++        }
++      }
++      const data = this.extractor.get(transaction);
++      if (!data) continue;
++      try {
++        const receipt = await transaction.wait(0);
++        if (!receipt)
++          throw Error(
++            `ImpossibleBehavior: Evm Tx [${transaction.hash}] is included in block [${block.hash}] but waiting resulted is null or undefined`,
++          );
++        if (
++          !isNative &&
++          !hasAvalancheTransferProof(
++            transaction,
++            receipt,
++            block,
++            this.avalancheLockAddress,
++          )
++        )
++          continue;
++        observations.push({
++          ...data,
++          fromChain: this.FROM_CHAIN,
++          sourceBlockId: block.hash,
++          requestId: Buffer.from(
++            blake2b(this.getTxId(transaction), undefined, 32),
++          ).toString('hex'),
++        });
++      } catch (error) {
++        if (!isCallException(error)) throw error;
++        this.logger.debug(
++          `found valid lock transaction [${transaction.hash}] but tx is failed`,
++        );
++      }
++    }
++    return observations;
++  };
++
++  /**
++   * gets Id for current extractor
++   */
++  getId = () => 'avalanche-rpc-extractor';
++}
+diff --git a/packages/observation-extractors/evm-observation-extractor/lib/avalancheTransferProof.ts b/packages/observation-extractors/evm-observation-extractor/lib/avalancheTransferProof.ts
+new file mode 100644
+index 0000000..211c3e6
+--- /dev/null
++++ b/packages/observation-extractors/evm-observation-extractor/lib/avalancheTransferProof.ts
+@@ -0,0 +1,82 @@
++import { Transaction, TransactionReceipt, TransactionResponse } from 'ethers';
++
++import { BlockInfo } from '@rosen-bridge/scanner-interfaces';
++
++const transferTopic =
++  '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
++
++/** Compare complete hexadecimal identities without depending on letter case. */
++const sameHex = (left: unknown, right: unknown, bytes: number) =>
++  typeof left === 'string' &&
++  typeof right === 'string' &&
++  new RegExp(`^0x[0-9a-fA-F]{${bytes * 2}}$`).test(left) &&
++  new RegExp(`^0x[0-9a-fA-F]{${bytes * 2}}$`).test(right) &&
++  left.toLowerCase() === right.toLowerCase();
++
++/**
++ * Require one canonical standard ERC20 Transfer for an Avalanche lock request.
++ * Amounts are compared in raw contract units before TokenMap decimal wrapping.
++ */
++export const hasAvalancheTransferProof = (
++  transaction: TransactionResponse,
++  receipt: TransactionReceipt,
++  block: BlockInfo,
++  lockAddress: string,
++): boolean => {
++  try {
++    const signed = Transaction.from(transaction);
++    const calldata = signed.data;
++    if (
++      signed.hash === null ||
++      signed.from === null ||
++      signed.to === null ||
++      !sameHex(signed.hash, transaction.hash, 32) ||
++      (signed.chainId !== 43113n && signed.chainId !== 43114n) ||
++      !/^0xa9059cbb[0-9a-fA-F]{128}/.test(calldata) ||
++      calldata.slice(10, 34) !== '0'.repeat(24) ||
++      !sameHex('0x' + calldata.slice(34, 74), lockAddress, 20) ||
++      receipt.status !== 1 ||
++      !sameHex(receipt.hash, signed.hash, 32) ||
++      !sameHex(receipt.blockHash, block.hash, 32) ||
++      !sameHex(transaction.blockHash, block.hash, 32) ||
++      receipt.blockNumber !== block.height ||
++      transaction.blockNumber !== block.height ||
++      !Number.isSafeInteger(receipt.index) ||
++      receipt.index < 0 ||
++      receipt.index !== transaction.index ||
++      !sameHex(receipt.from, signed.from, 20) ||
++      !sameHex(receipt.to, signed.to, 20) ||
++      !Array.isArray(receipt.logs)
++    )
++      return false;
++
++    const transfers = receipt.logs.filter(
++      (log) =>
++        sameHex(log.address, signed.to, 20) &&
++        log.topics[0]?.toLowerCase() === transferTopic,
++    );
++    if (transfers.length !== 1) return false;
++    const log = transfers[0];
++    const sender = '0x' + signed.from.slice(2).toLowerCase().padStart(64, '0');
++    const recipient =
++      '0x' + lockAddress.slice(2).toLowerCase().padStart(64, '0');
++    return (
++      log.removed === false &&
++      sameHex(log.transactionHash, signed.hash, 32) &&
++      sameHex(log.blockHash, block.hash, 32) &&
++      log.blockNumber === block.height &&
++      log.transactionIndex === receipt.index &&
++      Number.isSafeInteger(log.index) &&
++      log.index >= 0 &&
++      receipt.logs.filter((candidate) => candidate.index === log.index)
++        .length === 1 &&
++      log.topics.length === 3 &&
++      sameHex(log.topics[1], sender, 32) &&
++      sameHex(log.topics[2], recipient, 32) &&
++      /^0x[0-9a-fA-F]{64}$/.test(log.data) &&
++      BigInt(log.data) === BigInt('0x' + calldata.slice(74, 138))
++    );
++  } catch {
++    return false;
++  }
++};
+diff --git a/packages/observation-extractors/evm-observation-extractor/lib/index.ts b/packages/observation-extractors/evm-observation-extractor/lib/index.ts
+index fbce6f6..5f7822b 100644
+--- a/packages/observation-extractors/evm-observation-extractor/lib/index.ts
++++ b/packages/observation-extractors/evm-observation-extractor/lib/index.ts
+@@ -1,3 +1,4 @@
++export * from './avalancheRpcObservationExtractor';
+ export * from './binanceRpcObservationExtractor';
+ export * from './ethereumRpcObservationExtractor';
+ export * from './evmRpcObservationExtractor';
+diff --git a/packages/observation-extractors/evm-observation-extractor/package.json b/packages/observation-extractors/evm-observation-extractor/package.json
+index b89504c..a2671bf 100644
+--- a/packages/observation-extractors/evm-observation-extractor/package.json
++++ b/packages/observation-extractors/evm-observation-extractor/package.json
+@@ -38,7 +38,9 @@
+     "ethers": "6.16.0"
+   },
+   "devDependencies": {
+-    "@rosen-bridge/abstract-scanner": "^4.0.0"
++    "@rosen-bridge/abstract-scanner": "^4.0.0",
++    "@rosen-bridge/address-codec": "2.2.0",
++    "@rosen-bridge/address-manager": "0.1.0"
+   },
+   "engines": {
+     "node": ">=22.18.0",
+diff --git a/packages/observation-extractors/evm-observation-extractor/tests/avalancheRpcObservationExtractor.spec.ts b/packages/observation-extractors/evm-observation-extractor/tests/avalancheRpcObservationExtractor.spec.ts
+new file mode 100644
+index 0000000..6217729
+--- /dev/null
++++ b/packages/observation-extractors/evm-observation-extractor/tests/avalancheRpcObservationExtractor.spec.ts
+@@ -0,0 +1,570 @@
++import { blake2b } from 'blakejs';
++import { TransactionReceipt, TransactionReceiptParams } from 'ethers';
++
++import { ObservationEntity } from '@rosen-bridge/abstract-observation-extractor';
++import { DataSource } from '@rosen-bridge/extended-typeorm';
++
++import { AvalancheRpcNetwork } from '../../../scanners/evm-scanner/lib/avalancheRpcNetwork';
++import { AvalancheRpcObservationExtractor } from '../lib';
++import {
++  block,
++  derivedBlockHash,
++  derivedTokenConfig,
++  erc20Address,
++  erc20Target,
++  lockAddress,
++  nativeTarget,
++  otherAddress,
++  rawData,
++  toAddress,
++  settledBlock,
++  joeTokenConfig,
++  joeMainnetRequest,
++} from './avalancheTestData';
++import {
++  createTokenMap,
++  createMinedTransaction,
++  createTransaction,
++  erc20Data,
++  initializeAddressManager,
++  attachMinedIdentity,
++  createTransferReceipt,
++  createJoeMainnetTransaction,
++  createSettledBlock,
++} from './avalancheTestUtils';
++import { createDatabase } from './utils.mock';
++
++describe('AvalancheRpcObservationExtractor', () => {
++  let dataSource: DataSource;
++
++  let extractor: AvalancheRpcObservationExtractor;
++
++  beforeEach(async () => {
++    initializeAddressManager();
++    dataSource = await createDatabase();
++    extractor = new AvalancheRpcObservationExtractor(
++      lockAddress,
++      dataSource,
++      await createTokenMap(),
++    );
++  });
++
++  afterEach(async () => {
++    vi.restoreAllMocks();
++    await dataSource.destroy();
++  });
++
++  describe('processTransactions', () => {
++    /**
++     * @target AvalancheRpcObservationExtractor.processTransactions extracts
++     * and stores %s through the real Rosen extractor
++     * @dependencies
++     * - SQLite ObservationEntity repository and mapped synthetic token
++     * fixtures.
++     * - Real Rosen extractor and spies on TransactionResponse.wait.
++     * @scenario
++     * - Create the selected mapped lock transaction and mock its successful
++     * receipt.
++     * @expected
++     * - The stored observation has the expected chain, token, amount and
++     * request fields.
++     */
++    it.each([
++      ['native AVAX', {}, 'avax', nativeTarget, '92850989'],
++      [
++        'ERC20',
++        { to: erc20Address, data: erc20Data(), value: 0n },
++        erc20Address,
++        erc20Target,
++        '3305307248',
++      ],
++    ])(
++      'extracts and stores %s through the real Rosen extractor',
++      async (_name, overrides, sourceToken, targetToken, amount) => {
++        const tx = createTransaction(overrides);
++        const selectedBlock =
++          sourceToken === 'avax'
++            ? block
++            : { hash: derivedBlockHash, height: 10 };
++        if (sourceToken !== 'avax') attachMinedIdentity(tx);
++        const wait = vi
++          .spyOn(tx, 'wait')
++          .mockResolvedValue(
++            sourceToken === 'avax'
++              ? ({} as TransactionReceipt)
++              : new TransactionReceipt(createTransferReceipt(tx), tx.provider),
++          );
++        expect(
++          await extractor.processTransactions([tx], selectedBlock),
++        ).toEqual(true);
++        expect(wait).toHaveBeenCalledWith(0);
++        expect(
++          await dataSource.getRepository(ObservationEntity).find(),
++        ).toEqual([
++          expect.objectContaining({
++            fromChain: 'avalanche',
++            toChain: 'ergo',
++            extractor: 'avalanche-rpc-extractor',
++            sourceChainTokenId: sourceToken,
++            targetChainTokenId: targetToken,
++            amount,
++            sourceTxId: tx.hash,
++            requestId: Buffer.from(blake2b(tx.hash, undefined, 32)).toString(
++              'hex',
++            ),
++            sourceBlockId: selectedBlock.hash,
++            height: selectedBlock.height,
++            toAddress,
++            rawData,
++          }),
++        ]);
++      },
++    );
++
++    /**
++     * @target AvalancheRpcObservationExtractor.processTransactions stores
++     * nothing for %s
++     * @dependencies
++     * - SQLite ObservationEntity repository and mapped synthetic token
++     * fixtures.
++     * - Real Rosen extractor and spies on TransactionResponse.wait.
++     * @scenario
++     * - Change the lock, payload or supported token using each table row.
++     * @expected
++     * - No receipt is awaited and no observation is stored.
++     */
++    it.each([
++      ['wrong native lock', { to: otherAddress }],
++      ['wrong ERC20 lock', { to: erc20Address, data: erc20Data(otherAddress) }],
++      ['malformed data', { data: '0x00' }],
++      ['unsupported token', { to: otherAddress, data: erc20Data(), value: 0n }],
++    ])('stores nothing for %s', async (_name, overrides) => {
++      const tx = createTransaction(overrides);
++      const wait = vi.spyOn(tx, 'wait');
++      expect(await extractor.processTransactions([tx], block)).toEqual(true);
++      expect(wait).not.toHaveBeenCalled();
++      expect(await dataSource.getRepository(ObservationEntity).count()).toEqual(
++        0,
++      );
++    });
++
++    /**
++     * @target AvalancheRpcObservationExtractor.processTransactions rejects a
++     * token with no destination mapping
++     * @dependencies
++     * - SQLite ObservationEntity repository and mapped synthetic token
++     * fixtures.
++     * - Real Rosen extractor and spies on TransactionResponse.wait.
++     * @scenario
++     * - Use a valid destination address with no destination token mapping.
++     * @expected
++     * - The token lookup occurs, with no receipt wait or stored observation.
++     */
++    it('rejects a token with no destination mapping', async () => {
++      const tokens = await createTokenMap();
++      const getID = vi.spyOn(tokens, 'getID');
++      extractor = new AvalancheRpcObservationExtractor(
++        lockAddress,
++        dataSource,
++        tokens,
++      );
++      // Existing Ethereum destination code and valid address, absent token mapping.
++      const tx = createTransaction({
++        data: '0x03' + rawData.slice(2, 34) + '14' + otherAddress.slice(2),
++      });
++      const wait = vi.spyOn(tx, 'wait');
++      expect(await extractor.processTransactions([tx], block)).toEqual(true);
++      expect(getID).toHaveBeenCalledWith(expect.any(Object), 'ethereum');
++      expect(wait).not.toHaveBeenCalled();
++      expect(await dataSource.getRepository(ObservationEntity).count()).toEqual(
++        0,
++      );
++    });
++
++    /**
++     * @target AvalancheRpcObservationExtractor.processTransactions inherits
++     * failed-receipt rejection through ethers CALL_EXCEPTION
++     * @dependencies
++     * - SQLite ObservationEntity repository and mapped synthetic token
++     * fixtures.
++     * - Real Rosen extractor and spies on TransactionResponse.wait.
++     * @scenario
++     * - Reject the receipt wait with ethers CALL_EXCEPTION.
++     * @expected
++     * - Processing completes without storing an observation.
++     */
++    it('inherits failed-receipt rejection through ethers CALL_EXCEPTION', async () => {
++      const tx = createTransaction();
++      vi.spyOn(tx, 'wait').mockRejectedValue({ code: 'CALL_EXCEPTION' });
++      expect(await extractor.processTransactions([tx], block)).toEqual(true);
++      expect(await dataSource.getRepository(ObservationEntity).count()).toEqual(
++        0,
++      );
++    });
++
++    /**
++     * @target AvalancheRpcObservationExtractor.processTransactions inherits
++     * fail-closed handling for a missing receipt
++     * @dependencies
++     * - SQLite ObservationEntity repository and mapped synthetic token
++     * fixtures.
++     * - Real Rosen extractor and spies on TransactionResponse.wait.
++     * @scenario
++     * - Resolve the receipt wait with null.
++     * @expected
++     * - Processing rejects and no observation is stored.
++     */
++    it('inherits fail-closed handling for a missing receipt', async () => {
++      const tx = createTransaction();
++      vi.spyOn(tx, 'wait').mockResolvedValue(null);
++      await expect(async () => {
++        await extractor.processTransactions([tx], block);
++      }).rejects.toThrow('waiting resulted is null or undefined');
++      expect(await dataSource.getRepository(ObservationEntity).count()).toEqual(
++        0,
++      );
++    });
++
++    /**
++     * @target AvalancheRpcObservationExtractor.processTransactions inherits
++     * fail-closed handling for a missing RPC transaction hash
++     * @dependencies
++     * - SQLite ObservationEntity repository and mapped synthetic token
++     * fixtures.
++     * - Real Rosen extractor and spies on TransactionResponse.wait.
++     * @scenario
++     * - Remove the signed transaction hash and return a successful receipt.
++     * @expected
++     * - Unsigned-transaction validation rejects without storing an
++     * observation.
++     */
++    it('inherits fail-closed handling for a missing RPC transaction hash', async () => {
++      const tx = createTransaction();
++      Object.defineProperty(tx, 'hash', { value: null });
++      vi.spyOn(tx, 'wait').mockResolvedValue({} as TransactionReceipt);
++      await expect(async () => {
++        await extractor.processTransactions([tx], block);
++      }).rejects.toThrow('Transactions coming from RPC have to be signed');
++      expect(await dataSource.getRepository(ObservationEntity).count()).toEqual(
++        0,
++      );
++    });
++
++    /**
++     * @target AvalancheRpcObservationExtractor.processTransactions propagates
++     * receipt RPC failure without storing observations
++     * @dependencies
++     * - SQLite ObservationEntity repository and mapped synthetic token
++     * fixtures.
++     * - Real Rosen extractor and spies on TransactionResponse.wait.
++     * @scenario
++     * - Reject the receipt wait with a transport error.
++     * @expected
++     * - The error propagates and no observation is stored.
++     */
++    it('propagates receipt RPC failure without storing observations', async () => {
++      const tx = createTransaction();
++      vi.spyOn(tx, 'wait').mockRejectedValue(
++        new Error('receipt RPC unavailable'),
++      );
++      await expect(async () => {
++        await extractor.processTransactions([tx], block);
++      }).rejects.toThrow('receipt RPC unavailable');
++      expect(await dataSource.getRepository(ObservationEntity).count()).toEqual(
++        0,
++      );
++    });
++
++    /**
++     * @target AvalancheRpcObservationExtractor.processTransactions preserves
++     * the raw-data storage option
++     * @dependencies
++     * - SQLite ObservationEntity repository and mapped synthetic token
++     * fixtures.
++     * - Real Rosen extractor and spies on TransactionResponse.wait.
++     * @scenario
++     * - Disable raw-data storage and process a valid mapped lock transaction.
++     * @expected
++     * - The stored raw-data field contains the disabled-storage marker.
++     */
++    it('preserves the raw-data storage option', async () => {
++      extractor = new AvalancheRpcObservationExtractor(
++        lockAddress,
++        dataSource,
++        await createTokenMap(),
++        undefined,
++        false,
++      );
++      const tx = createTransaction();
++      vi.spyOn(tx, 'wait').mockResolvedValue({} as TransactionReceipt);
++      await extractor.processTransactions([tx], block);
++      expect(
++        (await dataSource.getRepository(ObservationEntity).find())[0].rawData,
++      ).toEqual('raw-data extraction is off');
++    });
++  });
++  describe('extractObservations', () => {
++    let tx: ReturnType<typeof createJoeMainnetTransaction>;
++    let receipt: TransactionReceiptParams;
++
++    beforeEach(async () => {
++      tx = createJoeMainnetTransaction();
++      receipt = createTransferReceipt(tx);
++      extractor = new AvalancheRpcObservationExtractor(
++        lockAddress,
++        dataSource,
++        await createTokenMap(joeTokenConfig),
++      );
++    });
++
++    /**
++     * @target AvalancheRpcObservationExtractor.extractObservations preserves the mainnet producer request
++     * through settled RPC admission
++     * @dependencies
++     * - Frozen generic UI producer calldata, synthetic signature and Ergo mapping.
++     * - Real AvalancheRpcNetwork and real token/extractor implementations.
++     * - Mocked RPC responses; no endpoint calls, keys or broadcasts.
++     * @scenario
++     * - Admit a mainnet transaction with matching finalized/canonical block,
++     * receipt and one standard token Transfer; extract its observation.
++     * @expected
++     * - All nine request fields and source block survive, with wrapped amount 10.
++     */
++    it('preserves the mainnet producer request through settled RPC admission', async () => {
++      const network = new AvalancheRpcNetwork('https://rpc.invalid', 43114n);
++      const canonical = createSettledBlock(tx);
++      const rpc = {
++        send: vi.fn().mockResolvedValue('0xa86a'),
++        getBlock: vi.fn().mockResolvedValue(canonical),
++        getTransactionReceipt: vi.fn().mockResolvedValue(receipt),
++      };
++      Object.defineProperty(network, 'provider', { value: rpc });
++      const admitted = await network.getBlockTxs(
++        settledBlock.hash,
++        settledBlock.height,
++      );
++      const observations = await extractor.extractObservations(
++        admitted,
++        settledBlock,
++      );
++      expect(observations).toHaveLength(1);
++      expect(observations[0]).toMatchObject({
++        ...joeMainnetRequest,
++        sourceBlockId: settledBlock.hash,
++        fromChain: 'avalanche',
++      });
++      expect(rpc.send).toHaveBeenCalledWith('eth_chainId', []);
++      expect(rpc.getBlock).toHaveBeenCalledWith('finalized');
++    });
++
++    /**
++     * @target AvalancheRpcObservationExtractor.extractObservations rejects %s
++     * @dependencies
++     * - Mainnet producer fixture, real TokenMap/extractor and isolated receipt edits.
++     * - Mocked TransactionResponse.wait; no network or signing operations.
++     * @scenario
++     * - Alter only the named receipt/Transfer field of an otherwise valid request.
++     * @expected
++     * - No observation is admitted, including raw differences hidden by wrapping.
++     */
++    it.each<[string, (params: TransactionReceiptParams) => void]>([
++      ['missing Transfer', (p) => (p.logs = [])],
++      [
++        'duplicate Transfer',
++        (p) => (p.logs = [...p.logs, { ...p.logs[0], index: 1 }]),
++      ],
++      [
++        'duplicated log position',
++        (p) => (p.logs = [...p.logs, { ...p.logs[0], address: lockAddress }]),
++      ],
++      ['removed Transfer', (p) => (p.logs[0].removed = true)],
++      ['wrong token emitter', (p) => (p.logs[0].address = lockAddress)],
++      [
++        'wrong event signature',
++        (p) =>
++          (p.logs[0].topics = [
++            '0x' + '11'.repeat(32),
++            ...p.logs[0].topics.slice(1),
++          ]),
++      ],
++      [
++        'wrong sender',
++        (p) =>
++          (p.logs[0].topics = [
++            p.logs[0].topics[0],
++            '0x' + '22'.repeat(32),
++            p.logs[0].topics[2],
++          ]),
++      ],
++      [
++        'wrong custody',
++        (p) =>
++          (p.logs[0].topics = [
++            ...p.logs[0].topics.slice(0, 2),
++            '0x' + '33'.repeat(32),
++          ]),
++      ],
++      [
++        'nonzero indexed padding',
++        (p) =>
++          (p.logs[0].topics = [
++            ...p.logs[0].topics.slice(0, 2),
++            '0x01' + p.logs[0].topics[2].slice(4),
++          ]),
++      ],
++      [
++        'extra indexed topic',
++        (p) =>
++          (p.logs[0].topics = [...p.logs[0].topics, '0x' + '00'.repeat(32)]),
++      ],
++      ['short amount', (p) => (p.logs[0].data = '0x01')],
++      ['nonhex amount', (p) => (p.logs[0].data = '0x' + 'zz'.repeat(32))],
++      [
++        'raw amount differing below wrap precision',
++        (p) =>
++          (p.logs[0].data =
++            '0x' + 100000000001n.toString(16).padStart(64, '0')),
++      ],
++      [
++        'wrong log transaction',
++        (p) => (p.logs[0].transactionHash = '0x' + '11'.repeat(32)),
++      ],
++      [
++        'wrong log block hash',
++        (p) => (p.logs[0].blockHash = '0x' + '11'.repeat(32)),
++      ],
++      ['wrong log block height', (p) => (p.logs[0].blockNumber = 11)],
++      ['wrong log transaction index', (p) => (p.logs[0].transactionIndex = 1)],
++      ['negative log index', (p) => (p.logs[0].index = -1)],
++      ['fractional log index', (p) => (p.logs[0].index = 0.5)],
++      ['failed receipt', (p) => (p.status = 0)],
++      ['unknown receipt status', (p) => (p.status = 2)],
++      ['wrong receipt transaction', (p) => (p.hash = '0x' + '11'.repeat(32))],
++      [
++        'wrong receipt block hash',
++        (p) => (p.blockHash = '0x' + '11'.repeat(32)),
++      ],
++      ['wrong receipt height', (p) => (p.blockNumber = 11)],
++      ['wrong receipt index', (p) => (p.index = 1)],
++      ['wrong receipt sender', (p) => (p.from = lockAddress)],
++      ['wrong receipt contract', (p) => (p.to = lockAddress)],
++    ])('rejects %s', async (_name, mutate) => {
++      mutate(receipt);
++      vi.spyOn(tx, 'wait').mockResolvedValue(
++        new TransactionReceipt(receipt, tx.provider),
++      );
++      expect(await extractor.extractObservations([tx], settledBlock)).toEqual(
++        [],
++      );
++    });
++
++    /**
++     * @target AvalancheRpcObservationExtractor.extractObservations refuses %s mapping
++     * @dependencies
++     * - Real TokenMap and generic Rosen extractor; synthetic mainnet lock fixture.
++     * @scenario
++     * - Remove the source, duplicate its mapping or remove its destination mapping.
++     * @expected
++     * - No observation or receipt request is produced.
++     */
++    it.each(['unsupported', 'ambiguous', 'missing counterpart'])(
++      'refuses %s mapping',
++      async (kind) => {
++        const config = structuredClone(joeTokenConfig);
++        if (kind === 'unsupported') config[0].avalanche.tokenId = lockAddress;
++        if (kind === 'ambiguous') {
++          const duplicate = structuredClone(config[0]);
++          duplicate.ergo.tokenId = '77'.repeat(32);
++          config.push(duplicate);
++        }
++        if (kind === 'missing counterpart') delete config[0].ergo;
++        extractor = new AvalancheRpcObservationExtractor(
++          lockAddress,
++          dataSource,
++          await createTokenMap(config),
++        );
++        const wait = vi.spyOn(tx, 'wait');
++        expect(await extractor.extractObservations([tx], settledBlock)).toEqual(
++          [],
++        );
++        expect(wait).not.toHaveBeenCalled();
++      },
++    );
++
++    /**
++     * @target AvalancheRpcObservationExtractor.extractObservations propagates missing receipt
++     * @dependencies
++     * - Real mapped extractor and mocked receipt wait.
++     * @scenario
++     * - Return null for an included mainnet request's receipt.
++     * @expected
++     * - Extraction fails closed with no positive observation result.
++     */
++    it('propagates missing receipt', async () => {
++      vi.spyOn(tx, 'wait').mockResolvedValue(null);
++      await expect(async () => {
++        await extractor.extractObservations([tx], settledBlock);
++      }).rejects.toThrow('waiting resulted is null');
++    });
++
++    /**
++     * @target AvalancheRpcObservationExtractor.extractObservations detaches signed fields before await
++     * @dependencies
++     * - Real extractor and a receipt wait that mutates its provider transaction.
++     * @scenario
++     * - Mutate calldata while returning the original canonical receipt.
++     * @expected
++     * - The original request amount and transaction identity remain bound.
++     */
++    it('detaches signed fields before await', async () => {
++      vi.spyOn(tx, 'wait').mockImplementation(async () => {
++        Object.defineProperty(tx, 'data', { value: '0x00' });
++        return new TransactionReceipt(receipt, tx.provider);
++      });
++      const observations = await extractor.extractObservations(
++        [tx],
++        settledBlock,
++      );
++      expect(observations).toHaveLength(1);
++      expect(observations[0].amount).toEqual('10');
++      expect(observations[0].sourceTxId).toEqual(receipt.hash);
++    });
++
++    /**
++     * @target AvalancheRpcObservationExtractor.extractObservations derives
++     * observations without persisting them
++     * @dependencies
++     * - SQLite ObservationEntity repository and the original single native
++     * AVAX token mapping with its Ergo counterpart.
++     * - Real Rosen extractor and spies on TransactionResponse.wait.
++     * @scenario
++     * - Attach the original hex-aa block hash and height10 mined metadata to
++     * the successful synthetic transaction.
++     * - Derive its mapped observation without persisting it.
++     * @expected
++     * - One observation is returned without any database row being written.
++     */
++    it('derives observations without persisting them', async () => {
++      const extractor = new AvalancheRpcObservationExtractor(
++        lockAddress,
++        dataSource,
++        await createTokenMap(derivedTokenConfig),
++      );
++      const tx = createMinedTransaction();
++      vi.spyOn(tx, 'wait').mockResolvedValue({} as TransactionReceipt);
++      const derived = await extractor.extractObservations([tx], {
++        height: 10,
++        hash: derivedBlockHash,
++      });
++      expect(derived).toHaveLength(1);
++      expect(derived[0]).toMatchObject({
++        fromChain: 'avalanche',
++        rawData,
++        sourceTxId: tx.hash,
++      });
++      expect(await dataSource.getRepository(ObservationEntity).count()).toEqual(
++        0,
++      );
++    });
++  });
++});
+diff --git a/packages/observation-extractors/evm-observation-extractor/tests/avalancheTestData.ts b/packages/observation-extractors/evm-observation-extractor/tests/avalancheTestData.ts
+new file mode 100644
+index 0000000..ed6af22
+--- /dev/null
++++ b/packages/observation-extractors/evm-observation-extractor/tests/avalancheTestData.ts
+@@ -0,0 +1,139 @@
++import { RosenTokens } from '@rosen-bridge/tokens';
++
++/** Synthetic block identity attached to the extracted observation fixtures. */
++export const block = { hash: 'avalanche-block', height: 10 };
++
++/** Original mined block identity for the no-persistence derivation fixture. */
++export const derivedBlockHash = '0x' + 'aa'.repeat(32);
++
++/** Canonical synthetic settled block used by the mainnet producer replay. */
++export const settledBlock = {
++  hash: derivedBlockHash,
++  height: 10,
++  parentHash: '0x' + 'bb'.repeat(32),
++  timestamp: 100,
++};
++
++/** Public mainnet JOE contract identity; no deployment or custody is implied. */
++export const joeAddress = '0x6e84a6216ea6dacc71ee8e6b0a5b7322eebc0fdd';
++/** Synthetic Ergo counterpart used only for the local JOE fixture. */
++export const joeCounterpart = '66'.repeat(32);
++/** Frozen generic UI mainnet producer bytes with synthetic lock custody. */
++export const joeCallData =
++  '0xa9059cbb0000000000000000000000001111111111111111111111111111111111111111' +
++  '000000000000000000000000000000000000000000000000000000174876e800' +
++  '00000000000000000200000000000000032103f999da8e6e42660e4464d17d29e63bc006734a6710a24eb489b466323d3a9339';
++
++/** Synthetic bridge lock address shared by the native and ERC20 cases. */
++export const lockAddress = '0x' + '11'.repeat(20);
++/** Synthetic ERC20 contract address used to exercise inherited EVM extraction. */
++export const erc20Address = '0x' + '22'.repeat(20);
++/** Synthetic address outside the configured lock and token mapping. */
++export const otherAddress = '0x' + '33'.repeat(20);
++/** Synthetic Ergo counterpart token ID for the native AVAX fixture. */
++export const nativeTarget = '44'.repeat(32);
++/** Synthetic Ergo counterpart token ID for the ERC20 fixture. */
++export const erc20Target = '55'.repeat(32);
++/** Encoded Rosen metadata with fees and a valid Ergo destination. */
++export const rawData =
++  '00000000007554fc820000000000962f582103f999da8e6e42660e4464d17d29e63bc006734a6710a24eb489b466323d3a9339';
++/** Ergo destination encoded in the synthetic Rosen metadata. */
++export const toAddress = '9iMjQx8PzwBKXRvsFUJFJAPoy31znfEeBUGz8DRkcnJX4rJYjVd';
++
++/** JOE's public source identity paired with a synthetic eight-decimal counterpart. */
++export const joeTokenConfig: RosenTokens = [
++  {
++    avalanche: {
++      tokenId: joeAddress,
++      name: 'JOE',
++      decimals: 18,
++      type: 'ERC-20',
++      residency: 'native',
++      extra: {},
++    },
++    ergo: {
++      tokenId: joeCounterpart,
++      name: 'synthetic counterpart',
++      decimals: 8,
++      type: 'test',
++      residency: 'test',
++      extra: {},
++    },
++  },
++];
++
++/** All nine request fields independently derived from the frozen mainnet producer. */
++export const joeMainnetRequest = {
++  toChain: 'ergo',
++  toAddress,
++  bridgeFee: '2',
++  networkFee: '3',
++  fromAddress: '0x8c5c59c57b660b323ec5e9b48fdb95a99fde84ce',
++  sourceChainTokenId: joeAddress,
++  amount: '10',
++  targetChainTokenId: joeCounterpart,
++  sourceTxId:
++    '0x43bde42f26f289ce7eb35f116adcb32c4efd967f1e46ef64d1b660e26d5f7513',
++};
++
++/** Synthetic AVAX and ERC20 mappings with their Ergo counterparts. */
++export const tokenConfig: RosenTokens = [
++  {
++    avalanche: {
++      tokenId: 'avax',
++      name: 'synthetic test asset',
++      decimals: 18,
++      type: 'test',
++      residency: 'test',
++      extra: {},
++    },
++    ergo: {
++      tokenId: nativeTarget,
++      name: 'synthetic test asset',
++      decimals: 9,
++      type: 'test',
++      residency: 'test',
++      extra: {},
++    },
++  },
++  {
++    avalanche: {
++      tokenId: erc20Address,
++      name: 'synthetic test asset',
++      decimals: 6,
++      type: 'test',
++      residency: 'test',
++      extra: {},
++    },
++    ergo: {
++      tokenId: erc20Target,
++      name: 'synthetic test asset',
++      decimals: 6,
++      type: 'test',
++      residency: 'test',
++      extra: {},
++    },
++  },
++];
++
++/** Original native-only AVAX mapping used by the moved derivation case. */
++export const derivedTokenConfig: RosenTokens = [
++  {
++    avalanche: {
++      tokenId: 'avax',
++      name: 'synthetic asset',
++      decimals: 18,
++      type: 'test',
++      residency: 'test',
++      extra: {},
++    },
++    ergo: {
++      tokenId: nativeTarget,
++      name: 'synthetic asset',
++      decimals: 9,
++      type: 'test',
++      residency: 'test',
++      extra: {},
++    },
++  },
++];
+diff --git a/packages/observation-extractors/evm-observation-extractor/tests/avalancheTestUtils.ts b/packages/observation-extractors/evm-observation-extractor/tests/avalancheTestUtils.ts
+new file mode 100644
+index 0000000..b341651
+--- /dev/null
++++ b/packages/observation-extractors/evm-observation-extractor/tests/avalancheTestUtils.ts
+@@ -0,0 +1,147 @@
++import {
++  JsonRpcProvider,
++  Transaction,
++  TransactionLike,
++  TransactionResponse,
++  TransactionResponseParams,
++  TransactionReceiptParams,
++} from 'ethers';
++
++import { chainValidators, chainDecoders } from '@rosen-bridge/address-codec';
++import { AddressManager } from '@rosen-bridge/address-manager';
++import { TokenMap } from '@rosen-bridge/tokens';
++
++import {
++  derivedBlockHash,
++  lockAddress,
++  rawData,
++  tokenConfig,
++  joeAddress,
++  joeCallData,
++  settledBlock,
++} from './avalancheTestData';
++
++/** Register the chain validators and decoders used by these synthetic fixtures. */
++export const initializeAddressManager = () =>
++  AddressManager.init(chainValidators, chainDecoders);
++
++/** Load the supplied synthetic token mappings into the real TokenMap. */
++export const createTokenMap = async (config = tokenConfig) => {
++  const tokens = new TokenMap();
++  await tokens.updateConfigByJson(config);
++  return tokens;
++};
++
++/** Encode an ERC20 transfer to the selected recipient followed by Rosen metadata. */
++export const erc20Data = (recipient = lockAddress) =>
++  '0xa9059cbb' +
++  recipient.slice(2).padStart(64, '0') +
++  3305307248n.toString(16).padStart(64, '0') +
++  rawData;
++
++// Synthetic signed transaction shapes; no key, RPC call or broadcast is used.
++/** Build a synthetic signed transaction response without a signing key or RPC call. */
++export const createTransaction = (overrides: TransactionLike = {}) => {
++  const transaction = Transaction.from({
++    type: 2,
++    to: lockAddress,
++    data: '0x' + rawData,
++    nonce: 10,
++    gasLimit: 21000n,
++    maxPriorityFeePerGas: 500000000n,
++    maxFeePerGas: 48978500000n,
++    value: 92850988521632054n,
++    chainId: 43113n,
++    accessList: [],
++    signature: {
++      r: '0x' + '01'.repeat(32),
++      s: '0x' + '02'.repeat(32),
++      yParity: 0,
++    },
++    ...overrides,
++  });
++  return new TransactionResponse(
++    transaction as unknown as TransactionResponseParams,
++    new JsonRpcProvider(),
++  );
++};
++
++/** Attach the original mined block metadata to the synthetic signed response. */
++export const createMinedTransaction = () => {
++  const tx = createTransaction();
++  Object.defineProperties(tx, {
++    blockHash: { value: derivedBlockHash },
++    blockNumber: { value: 10 },
++  });
++  return tx;
++};
++
++/** Attach complete canonical mined identities to a synthetic transaction. */
++export const attachMinedIdentity = (tx: TransactionResponse) => {
++  Object.defineProperties(tx, {
++    blockHash: { value: derivedBlockHash, configurable: true },
++    blockNumber: { value: 10, configurable: true },
++    index: { value: 0, configurable: true },
++  });
++  return tx;
++};
++
++/** Build canonical receipt evidence for a synthetic standard ERC20 transfer. */
++export const createTransferReceipt = (
++  tx: TransactionResponse,
++): TransactionReceiptParams => ({
++  hash: tx.hash,
++  blockHash: derivedBlockHash,
++  blockNumber: 10,
++  index: 0,
++  status: 1,
++  to: tx.to,
++  from: tx.from,
++  contractAddress: null,
++  logsBloom: '0x' + '00'.repeat(256),
++  gasUsed: 100000n,
++  cumulativeGasUsed: 100000n,
++  gasPrice: 1n,
++  type: 2,
++  root: null,
++  logs: [
++    {
++      address: tx.to!,
++      topics: [
++        '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef',
++        '0x' + tx.from.slice(2).toLowerCase().padStart(64, '0'),
++        '0x' + lockAddress.slice(2).padStart(64, '0'),
++      ],
++      data: '0x' + tx.data.slice(74, 138),
++      transactionHash: tx.hash,
++      blockHash: derivedBlockHash,
++      blockNumber: 10,
++      transactionIndex: 0,
++      index: 0,
++      removed: false,
++    },
++  ],
++});
++
++/** Replay the frozen generic UI mainnet producer output with a synthetic signature. */
++export const createJoeMainnetTransaction = () =>
++  attachMinedIdentity(
++    createTransaction({
++      chainId: 43114n,
++      gasLimit: 100000n,
++      to: joeAddress,
++      value: 0n,
++      data: joeCallData,
++    }),
++  );
++
++/** Attach a supplied transaction to the synthetic canonical settled block. */
++export const createSettledBlock = (tx: TransactionResponse) => ({
++  number: settledBlock.height,
++  hash: settledBlock.hash,
++  parentHash: settledBlock.parentHash,
++  timestamp: settledBlock.timestamp,
++  length: 1,
++  transactions: [tx.hash],
++  prefetchedTransactions: [tx],
++});
+diff --git a/packages/raw-data-provider/lib/providers/evm/evmRawDataProvider.ts b/packages/raw-data-provider/lib/providers/evm/evmRawDataProvider.ts
+index 327b17a..80222e4 100644
+--- a/packages/raw-data-provider/lib/providers/evm/evmRawDataProvider.ts
++++ b/packages/raw-data-provider/lib/providers/evm/evmRawDataProvider.ts
+@@ -3,6 +3,7 @@ import { JsonRpcProvider, TransactionResponse } from 'ethers';
+ import { AbstractLogger } from '@rosen-bridge/abstract-logger';
+ import { ObservationEntity } from '@rosen-bridge/abstract-observation-extractor';
+ import {
++  AvalancheRpcObservationExtractor,
+   BinanceRpcObservationExtractor,
+   EthereumRpcObservationExtractor,
+ } from '@rosen-bridge/evm-observation-extractor';
+@@ -15,12 +16,12 @@ import { ConnectionByAuthInfoInterface } from '../../types';
+ 
+ export class EvmRawDataProvider extends AbstractRawDataProvider<TransactionResponse> {
+   protected client: JsonRpcProvider;
+-  protected chain: 'ethereum' | 'binance';
++  protected chain: 'ethereum' | 'binance' | 'avalanche';
+ 
+   /**
+    * Selects the supported extractor's chain and creates its RPC provider.
+    * @param dataSource - Database containing stored observations and provider state.
+-   * @param extractor - Ethereum or Binance observation extractor.
++   * @param extractor - Ethereum, Binance or Avalanche observation extractor.
+    * @param evmConnectionInfo - RPC endpoint and optional authentication settings.
+    * @param logger - Provider logger.
+    */
+@@ -28,15 +29,18 @@ export class EvmRawDataProvider extends AbstractRawDataProvider<TransactionRespo
+     protected dataSource: DataSource,
+     protected extractor:
+       | EthereumRpcObservationExtractor
+-      | BinanceRpcObservationExtractor,
++      | BinanceRpcObservationExtractor
++      | AvalancheRpcObservationExtractor,
+     evmConnectionInfo: ConnectionByAuthInfoInterface,
+     protected logger: AbstractLogger,
+   ) {
+-    let chain: 'ethereum' | 'binance';
++    let chain: 'ethereum' | 'binance' | 'avalanche';
+     if (extractor instanceof EthereumRpcObservationExtractor)
+       chain = 'ethereum';
+     else if (extractor instanceof BinanceRpcObservationExtractor)
+       chain = 'binance';
++    else if (extractor instanceof AvalancheRpcObservationExtractor)
++      chain = 'avalanche';
+     else throw new Error('Unsupported EVM observation extractor');
+     super(chain, dataSource, extractor, logger);
+     this.chain = chain;
+diff --git a/packages/raw-data-provider/tests/providers/evm/evmRawDataProvider.spec.ts b/packages/raw-data-provider/tests/providers/evm/evmRawDataProvider.spec.ts
+index 6671a51..b3678c5 100644
+--- a/packages/raw-data-provider/tests/providers/evm/evmRawDataProvider.spec.ts
++++ b/packages/raw-data-provider/tests/providers/evm/evmRawDataProvider.spec.ts
+@@ -5,6 +5,7 @@ import { ObservationEntity } from '@rosen-bridge/abstract-observation-extractor'
+ import { chainValidators, chainDecoders } from '@rosen-bridge/address-codec';
+ import { AddressManager } from '@rosen-bridge/address-manager';
+ import {
++  AvalancheRpcObservationExtractor,
+   BinanceRpcObservationExtractor,
+   EthereumRpcObservationExtractor,
+ } from '@rosen-bridge/evm-observation-extractor';
+@@ -55,6 +56,11 @@ describe('EvmRawDataProvider', () => {
+     it.each([
+       [EthereumRpcObservationExtractor, 'ethereum', 'ethereum-rpc-extractor'],
+       [BinanceRpcObservationExtractor, 'binance', 'binance-rpc-extractor'],
++      [
++        AvalancheRpcObservationExtractor,
++        'avalanche',
++        'avalanche-rpc-extractor',
++      ],
+     ])('selects the chain and filter for %s', async (Extractor, chain, id) => {
+       const extractor = new Extractor(
+         lockAddress,
+@@ -108,25 +114,25 @@ describe('EvmRawDataProvider', () => {
+ 
+   describe('fillRawData', () => {
+     /**
+-     * @target EvmRawDataProvider.fillRawData replays only Ethereum
++     * @target EvmRawDataProvider.fillRawData replays only Avalanche
+      * observations with the matching extractor identity
+      * @dependencies
+      * - SQLite observation and raw-data state repositories.
+      * - Real EVM observation extractor, synthetic token map and RPC method
+      * spies.
+      * @scenario
+-     * - Store Ethereum and foreign observations, then replay the matching
++     * - Store Avalanche and foreign observations, then replay the matching
+      * block.
+      * @expected
+-     * - Only the selected Ethereum extractor row and its cursor are repaired.
++     * - Only the selected Avalanche extractor row and its cursor are repaired.
+      */
+-    it('replays only Ethereum observations with the matching extractor identity', async () => {
+-      const extractor = new EthereumRpcObservationExtractor(
++    it('replays only Avalanche observations with the matching extractor identity', async () => {
++      const extractor = new AvalancheRpcObservationExtractor(
+         lockAddress,
+         dataSource,
+-        await createTokenMap(),
++        await createTokenMap('avalanche', 'avax'),
+       );
+-      const tx = createTransaction();
++      const tx = createTransaction(10, 43114n);
+       mockSuccessfulReceipt(tx);
+       await extractor.processTransactions([tx], {
+         height: 10,
+@@ -146,7 +152,7 @@ describe('EvmRawDataProvider', () => {
+         {
+           ...original,
+           id: undefined,
+-          extractor: 'other-ethereum-extractor',
++          extractor: 'other-avalanche-extractor',
+           rawData: '',
+         },
+       ]);
+@@ -168,11 +174,11 @@ describe('EvmRawDataProvider', () => {
+       expect(
+         await repository.findOneByOrFail({ id: original.id }),
+       ).toMatchObject({
+-        fromChain: 'ethereum',
+-        extractor: 'ethereum-rpc-extractor',
++        fromChain: 'avalanche',
++        extractor: 'avalanche-rpc-extractor',
+         rawData,
+         sourceTxId: tx.hash,
+-        sourceChainTokenId: 'eth',
++        sourceChainTokenId: 'avax',
+       });
+       const rows = await repository.find();
+       expect(
+@@ -181,7 +187,7 @@ describe('EvmRawDataProvider', () => {
+       expect(
+         await dataSource.getRepository(RawDataProviderStateEntity).find(),
+       ).toEqual([
+-        expect.objectContaining({ chain: 'ethereum', syncedHeight: 10 }),
++        expect.objectContaining({ chain: 'avalanche', syncedHeight: 10 }),
+       ]);
+       provider['client'].destroy();
+     });
+@@ -203,6 +209,7 @@ describe('EvmRawDataProvider', () => {
+     it.each([
+       [EthereumRpcObservationExtractor, 'ethereum', 'eth', 1n],
+       [BinanceRpcObservationExtractor, 'binance', 'bnb', 56n],
++      [AvalancheRpcObservationExtractor, 'avalanche', 'avax', 43114n],
+     ])(
+       'repairs an exact stored observation for %s',
+       async (Extractor, chain, native, chainId) => {
+diff --git a/packages/scanners/evm-scanner/lib/avalancheRpcNetwork.ts b/packages/scanners/evm-scanner/lib/avalancheRpcNetwork.ts
+new file mode 100644
+index 0000000..2572873
+--- /dev/null
++++ b/packages/scanners/evm-scanner/lib/avalancheRpcNetwork.ts
+@@ -0,0 +1,371 @@
++import {
++  Block as EthersBlock,
++  makeError,
++  Transaction,
++  TransactionReceipt,
++  TransactionResponse,
++} from 'ethers';
++
++import { Block } from '@rosen-bridge/scanner-interfaces';
++
++import { EvmRpcNetwork } from './evmRpcNetwork';
++import { BlockNotFound } from './types';
++
++type IdentifiedBlock = EthersBlock & { hash: string };
++type BlockIdentity = Readonly<
++  Pick<
++    IdentifiedBlock,
++    'number' | 'hash' | 'parentHash' | 'timestamp' | 'length'
++  > & {
++    transactions: readonly string[];
++  }
++>;
++
++export class AvalancheRpcValidationError extends Error {}
++
++/** Carries the receipt admitted by this connector into observation extraction. */
++class SettledTransactionResponse extends TransactionResponse {
++  readonly #receipt: TransactionReceipt;
++
++  /** Copies the admitted receipt so later provider mutation cannot replace it. */
++  constructor(transaction: TransactionResponse, receipt: TransactionReceipt) {
++    super(transaction, transaction.provider);
++    this.#receipt = new TransactionReceipt(receipt, transaction.provider);
++    Object.freeze(this.#receipt);
++  }
++
++  /** Returns the admitted receipt for wait(0), with SDK-compatible revert errors. */
++  wait = async (confirms?: number): Promise<TransactionReceipt> => {
++    if (confirms !== 0)
++      throw new Error('Settled Avalanche transactions support only wait(0)');
++    if (this.#receipt.status === 0)
++      throw makeError('transaction execution reverted', 'CALL_EXCEPTION', {
++        action: 'sendTransaction',
++        data: null,
++        reason: null,
++        invocation: null,
++        revert: null,
++        transaction: {
++          to: this.#receipt.to,
++          from: this.#receipt.from,
++          data: '',
++        },
++        receipt: this.#receipt,
++      });
++    return this.#receipt;
++  };
++}
++
++/**
++ * C-Chain settlement reads for AvalancheGo v1.15.0 (Helicon).
++ * The finalized tag tracks settled execution; latest tracks execution only.
++ * Receipts can exist before their block has finished executing.
++ */
++export class AvalancheRpcNetwork extends EvmRpcNetwork {
++  /** Requires an explicit C-Chain identity and validates any supplied timeout. */
++  constructor(
++    url: string,
++    readonly expectedChainId: bigint,
++    timeout?: number,
++    authToken?: string,
++  ) {
++    if (
++      timeout !== undefined &&
++      (!Number.isSafeInteger(timeout) || timeout < 1 || timeout > 2147483647)
++    ) {
++      throw new AvalancheRpcValidationError('Invalid Avalanche RPC timeout');
++    }
++    super(url, timeout, authToken);
++    if (expectedChainId !== 43113n && expectedChainId !== 43114n) {
++      throw new AvalancheRpcValidationError(
++        'Avalanche C-Chain ID must be 43113 or 43114',
++      );
++    }
++    // ethers formats receipt logs without their raw removed flag. Preserve it
++    // through its receipt extension point so extraction can reject removed or
++    // unspecified movement using the same admitted RPC response.
++    const wrapReceipt = this.provider._wrapTransactionReceipt;
++    this.provider._wrapTransactionReceipt = (value, network) => {
++      const removed = value.logs.map((log) => log.removed);
++      const receipt = wrapReceipt.call(this.provider, value, network);
++      return new TransactionReceipt(
++        {
++          ...receipt,
++          logs: receipt.logs.map((log, index) => ({
++            ...log,
++            removed: removed[index],
++          })),
++        },
++        this.provider,
++      );
++    };
++  }
++
++  /** Checks the endpoint's current chain identity through a fresh RPC request. */
++  private assertChainId = async (): Promise<void> => {
++    const chainId: unknown = await this.provider.send('eth_chainId', []);
++    if (
++      typeof chainId !== 'string' ||
++      !/^0x(?:0|[1-9a-f][0-9a-f]*)$/.test(chainId) ||
++      BigInt(chainId) !== this.expectedChainId
++    ) {
++      throw new AvalancheRpcValidationError(
++        'Invalid or unexpected Avalanche C-Chain ID',
++      );
++    }
++  };
++
++  /** Requires an exactly representable nonnegative numeric field. */
++  private assertNumber(value: number, field: string): void {
++    if (!Number.isSafeInteger(value) || value < 0) {
++      throw new AvalancheRpcValidationError(`Invalid Avalanche ${field}`);
++    }
++  }
++
++  /** Requires a complete 32-byte hexadecimal hash for the named field. */
++  private assertHash(
++    value: string | null,
++    field: string,
++  ): asserts value is string {
++    if (typeof value !== 'string' || !/^0x[0-9a-fA-F]{64}$/.test(value)) {
++      throw new AvalancheRpcValidationError(`Invalid Avalanche ${field}`);
++    }
++  }
++
++  /** Compares hash identities independently of hexadecimal letter case. */
++  private sameHash(left: string, right: string): boolean {
++    return left.toLowerCase() === right.toLowerCase();
++  }
++
++  /** Validates block identity and its complete, unique transaction-hash list. */
++  private assertBlock(
++    block: EthersBlock | null,
++  ): asserts block is IdentifiedBlock {
++    if (block == null) {
++      throw new BlockNotFound('Avalanche block is unavailable');
++    }
++    this.assertNumber(block.number, 'block number');
++    this.assertNumber(block.timestamp, 'block timestamp');
++    this.assertNumber(block.length, 'transaction count');
++    this.assertHash(block.hash, 'block hash');
++    this.assertHash(block.parentHash, 'parent hash');
++    if (/^0x0{64}$/i.test(block.hash)) {
++      throw new AvalancheRpcValidationError(
++        'Invalid Avalanche zero block hash',
++      );
++    }
++    if (
++      !Array.isArray(block.transactions) ||
++      block.transactions.length !== block.length
++    ) {
++      throw new AvalancheRpcValidationError(
++        'Invalid Avalanche transaction count',
++      );
++    }
++    const hashes = new Set<string>();
++    for (const hash of block.transactions) {
++      this.assertHash(hash, 'transaction hash');
++      if (hashes.has(hash.toLowerCase())) {
++        throw new AvalancheRpcValidationError(
++          'Duplicate Avalanche transaction hash',
++        );
++      }
++      hashes.add(hash.toLowerCase());
++    }
++  }
++
++  /** Detaches and freezes validated block identity before asynchronous work. */
++  private captureBlock(block: EthersBlock | null): BlockIdentity {
++    this.assertBlock(block);
++    return Object.freeze({
++      number: block.number,
++      hash: block.hash,
++      parentHash: block.parentHash,
++      timestamp: block.timestamp,
++      length: block.length,
++      transactions: Object.freeze([...block.transactions]),
++    });
++  }
++
++  /** Copies signed transaction fields and nested arrays from the provider object. */
++  private captureTransaction(tx: TransactionResponse): TransactionResponse {
++    try {
++      // Parsing detaches signature/access-list/authorization arrays from the
++      // provider object, whose primitive fields are also copied before any wait.
++      const signed = Transaction.from(tx);
++      if (signed.hash === null || !this.sameHash(signed.hash, tx.hash))
++        throw new Error('Unsigned or mismatched transaction');
++      return new TransactionResponse(
++        {
++          ...tx,
++          signature: signed.signature!,
++          accessList: signed.accessList,
++          blobVersionedHashes: signed.blobVersionedHashes,
++          authorizationList: signed.authorizationList,
++        },
++        tx.provider,
++      );
++    } catch {
++      throw new AvalancheRpcValidationError(
++        'Invalid Avalanche signed transaction',
++      );
++    }
++  }
++
++  /** Rejects disagreement between captured and canonical block contents. */
++  private assertSameBlock(left: BlockIdentity, right: BlockIdentity): void {
++    if (
++      left.number !== right.number ||
++      !this.sameHash(left.hash, right.hash) ||
++      !this.sameHash(left.parentHash, right.parentHash) ||
++      left.timestamp !== right.timestamp ||
++      left.length !== right.length ||
++      left.transactions.some(
++        (hash, index) => !this.sameHash(hash, right.transactions[index]),
++      )
++    ) {
++      throw new AvalancheRpcValidationError(
++        'Inconsistent Avalanche canonical block',
++      );
++    }
++  }
++
++  /** Captures the finalized block and revalidates it by numeric canonical lookup. */
++  private getFinalizedBlock = async (): Promise<BlockIdentity> => {
++    const finalized = this.captureBlock(
++      await this.provider.getBlock('finalized'),
++    );
++    const canonical = this.captureBlock(
++      await this.provider.getBlock(finalized.number),
++    );
++    this.assertSameBlock(finalized, canonical);
++    return finalized;
++  };
++
++  /** Returns the canonical finalized height on the configured chain. */
++  getCurrentHeight = async (): Promise<number> => {
++    await this.assertChainId();
++    return (await this.getFinalizedBlock()).number;
++  };
++
++  /** Reads a validated block at or below the finalized execution frontier. */
++  getBlockAtHeight = async (height: number): Promise<Block> => {
++    this.assertNumber(height, 'requested height');
++    await this.assertChainId();
++    const finalized = await this.getFinalizedBlock();
++    if (height > finalized.number) {
++      throw new Error('Avalanche block execution is not settled');
++    }
++    const block = this.captureBlock(await this.provider.getBlock(height));
++    if (block.number !== height) {
++      throw new AvalancheRpcValidationError(
++        'Unexpected Avalanche block number',
++      );
++    }
++    if (height === finalized.number) {
++      this.assertSameBlock(finalized, block);
++    }
++    return {
++      hash: block.hash,
++      height: block.number,
++      parentHash: block.parentHash,
++      timestamp: block.timestamp,
++      txCount: block.length,
++    };
++  };
++
++  /** Admits signed transactions with canonical inclusion and matching receipts. */
++  getBlockTxs = async (
++    blockHash: string,
++    expectedHeight?: number,
++  ): Promise<Array<TransactionResponse>> => {
++    this.assertHash(blockHash, 'requested block hash');
++    if (expectedHeight !== undefined) {
++      this.assertNumber(expectedHeight, 'requested height');
++    }
++    await this.assertChainId();
++    const finalized = await this.getFinalizedBlock();
++    const providerBlock = await this.provider.getBlock(blockHash, true);
++    const block = this.captureBlock(providerBlock);
++    if (!this.sameHash(block.hash, blockHash)) {
++      throw new AvalancheRpcValidationError('Unexpected Avalanche block hash');
++    }
++    if (expectedHeight !== undefined && block.number !== expectedHeight) {
++      throw new AvalancheRpcValidationError(
++        'Unexpected Avalanche transaction block height',
++      );
++    }
++    if (block.number > finalized.number) {
++      throw new Error('Avalanche block execution is not settled');
++    }
++    let transactions: TransactionResponse[];
++    try {
++      transactions = providerBlock!.prefetchedTransactions;
++    } catch {
++      throw new AvalancheRpcValidationError(
++        'Missing Avalanche prefetched transactions',
++      );
++    }
++    if (!Array.isArray(transactions) || transactions.length !== block.length) {
++      throw new AvalancheRpcValidationError(
++        'Incomplete Avalanche prefetched transactions',
++      );
++    }
++    transactions = Array.from(transactions, (tx) =>
++      this.captureTransaction(tx),
++    );
++    const canonical = this.captureBlock(
++      await this.provider.getBlock(block.number),
++    );
++    this.assertSameBlock(block, canonical);
++    if (block.number === finalized.number) {
++      this.assertSameBlock(finalized, block);
++    }
++    const settledTransactions: TransactionResponse[] = [];
++    for (const [index, tx] of transactions.entries()) {
++      if (
++        tx == null ||
++        tx.chainId !== this.expectedChainId ||
++        tx.blockNumber !== block.number ||
++        tx.index !== index
++      ) {
++        throw new AvalancheRpcValidationError(
++          'Inconsistent Avalanche transaction identity',
++        );
++      }
++      this.assertHash(tx.hash, 'transaction hash');
++      this.assertHash(tx.blockHash, 'transaction block hash');
++      if (
++        !this.sameHash(tx.hash, block.transactions[index]) ||
++        !this.sameHash(tx.blockHash, block.hash)
++      ) {
++        throw new AvalancheRpcValidationError(
++          'Inconsistent Avalanche transaction block binding',
++        );
++      }
++      const receipt = await this.provider.getTransactionReceipt(tx.hash);
++      if (receipt == null) {
++        throw new Error('Missing Avalanche receipt');
++      }
++      if (
++        receipt.blockNumber !== block.number ||
++        receipt.index !== index ||
++        (receipt.status !== 0 && receipt.status !== 1)
++      ) {
++        throw new AvalancheRpcValidationError('Inconsistent Avalanche receipt');
++      }
++      this.assertHash(receipt.hash, 'receipt transaction hash');
++      this.assertHash(receipt.blockHash, 'receipt block hash');
++      if (
++        !this.sameHash(receipt.hash, tx.hash) ||
++        !this.sameHash(receipt.blockHash, block.hash)
++      ) {
++        throw new AvalancheRpcValidationError(
++          'Inconsistent Avalanche receipt block binding',
++        );
++      }
++      settledTransactions.push(new SettledTransactionResponse(tx, receipt));
++    }
++    return settledTransactions;
++  };
++}
+diff --git a/packages/scanners/evm-scanner/lib/avalancheRpcScanner.ts b/packages/scanners/evm-scanner/lib/avalancheRpcScanner.ts
+new file mode 100644
+index 0000000..ac7e117
+--- /dev/null
++++ b/packages/scanners/evm-scanner/lib/avalancheRpcScanner.ts
+@@ -0,0 +1,312 @@
++import { TransactionResponse } from 'ethers';
++
++import { ScannerConfig } from '@rosen-bridge/abstract-scanner';
++import { Block } from '@rosen-bridge/scanner-interfaces';
++import { Mutex } from '@rosen-bridge/semaphore';
++
++import {
++  AvalancheRpcNetwork,
++  AvalancheRpcValidationError,
++} from './avalancheRpcNetwork';
++import { AvalancheSafetyState } from './avalancheSafetyState';
++import { EvmRpcScanner } from './evmRpcScanner';
++
++export type AvalancheScannerConfig = Omit<
++  ScannerConfig<TransactionResponse>,
++  'network'
++> & {
++  network: AvalancheRpcNetwork;
++  /** Stable operator-assigned provider identity; never a URL or credential. */
++  sourceId: string;
++};
++
++const POLICY = 'helicon-settled-v1';
++
++/** Settled C-Chain scanner. A contradiction requires operator investigation. */
++export class AvalancheRpcScanner extends EvmRpcScanner {
++  private updating = false;
++  private consuming = false;
++  private readonly healthReadMutex = new Mutex();
++  private healthReadPending = 0;
++  private healthReadActive = false;
++
++  /** Binds the scanner to its settled connector and durable source identity. */
++  constructor(private readonly config: AvalancheScannerConfig) {
++    if (!(config.network instanceof AvalancheRpcNetwork))
++      throw new Error('Avalanche scanner requires its settled RPC connector');
++    if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(config.sourceId))
++      throw new Error('Invalid Avalanche RPC source identity');
++    if (
++      !Number.isSafeInteger(config.initialHeight) ||
++      config.initialHeight < -1
++    )
++      throw new Error('Invalid Avalanche initial height');
++    if (config.heightGap !== undefined && config.heightGap !== 1)
++      throw new Error('Avalanche scanner requires contiguous blocks');
++    if (config.suffix)
++      throw new Error('Avalanche scanner requires a stable database identity');
++    super('avalanche', config);
++  }
++
++  /** Compares persisted and observed hashes independently of letter case. */
++  private sameHash(left: string, right: string): boolean {
++    return left.toLowerCase() === right.toLowerCase();
++  }
++
++  /** Downstream signing and submission must check this persisted stop state. */
++  assertUsable = async (): Promise<void> => {
++    if (this.updating)
++      throw new Error('Avalanche scanner update is still running');
++    const state = await this.config.dataSource
++      .getRepository(AvalancheSafetyState)
++      .findOneBy({ scanner: this.name() });
++    if (
++      !state ||
++      state.holdReason ||
++      state.finalizedHeight === null ||
++      !Number.isSafeInteger(state.finalizedHeight) ||
++      state.finalizedHeight < 0 ||
++      state.finalizedHash === null ||
++      !/^0x[0-9a-fA-F]{64}$/.test(state.finalizedHash) ||
++      state.chainId !== this.config.network.expectedChainId.toString() ||
++      state.sourceId !== this.config.sourceId ||
++      state.policy !== POLICY ||
++      state.initialHeight !== this.config.initialHeight
++    )
++      throw new Error(
++        'Avalanche scanner is not qualified for downstream processing',
++      );
++  };
++
++  /** Binds an observation consumer to a completed block in this scanner. */
++  assertObservation = async (height: number, hash: string): Promise<void> => {
++    await this.assertUsable();
++    if (
++      !Number.isSafeInteger(height) ||
++      height < 0 ||
++      !/^0x[0-9a-fA-F]{64}$/.test(hash)
++    )
++      throw new Error('Invalid Avalanche observation block identity');
++    const stored = await this.action.getBlockAtHeight(height);
++    if (!stored || !this.sameHash(stored.hash, hash))
++      throw new Error('Avalanche observation has no matching completed block');
++  };
++
++  /** Binds an action to a completed observation under the safety exclusion. */
++  withObservation = async <T>(
++    height: number,
++    hash: string,
++    action: () => T | Promise<T>,
++  ): Promise<T> =>
++    this.withSafety(async () => {
++      await this.assertObservation(height, hash);
++      return await action();
++    });
++
++  /** Excludes updates while a qualified action runs on this scanner instance. */
++  withSafety = async <T>(action: () => T | Promise<T>): Promise<T> => {
++    if (this.updating || this.consuming)
++      throw new Error('Avalanche scanner operation already running');
++    this.consuming = true;
++    try {
++      await this.assertUsable();
++      return await action();
++    } finally {
++      this.consuming = false;
++    }
++  };
++
++  /**
++   * Serializes bounded health reads without changing exclusive action admission.
++   * @param action Qualified read whose result must remain current until completion.
++   * @param timeoutMs Absolute wait-and-read budget in milliseconds.
++   * @param maxPending Maximum outstanding health calls, including an active call.
++   * @returns The read result before its deadline; timeout never releases an active lease.
++   */
++  withHealthRead = async <T>(
++    action: () => T | Promise<T>,
++    timeoutMs: number,
++    maxPending: number,
++  ): Promise<T> => {
++    if (
++      typeof action !== 'function' ||
++      !Number.isSafeInteger(timeoutMs) ||
++      timeoutMs < 1 ||
++      timeoutMs > 2147483647 ||
++      !Number.isSafeInteger(maxPending) ||
++      maxPending < 1
++    )
++      throw new Error('Invalid Avalanche health read bounds');
++    if (this.updating || (this.consuming && !this.healthReadActive))
++      throw new Error('Avalanche scanner operation already running');
++    if (this.healthReadPending >= maxPending)
++      throw new Error('Avalanche health read queue is full');
++    this.healthReadPending++;
++    const deadline = performance.now() + timeoutMs;
++    let expired = false;
++    const failure = new Error('Avalanche health read deadline exceeded');
++    let timer: ReturnType<typeof setTimeout>;
++    const timeout = new Promise<never>((_, reject) => {
++      timer = setTimeout(() => {
++        expired = true;
++        reject(failure);
++      }, timeoutMs);
++    });
++    const work = this.healthReadMutex.acquire().then(async (release) => {
++      try {
++        if (expired || performance.now() >= deadline) throw failure;
++        this.healthReadActive = true;
++        return await this.withSafety(async () => {
++          const value = await action();
++          if (expired || performance.now() >= deadline) throw failure;
++          return value;
++        });
++      } finally {
++        this.healthReadActive = false;
++        this.healthReadPending--;
++        clearTimeout(timer);
++        release();
++      }
++    });
++    return Promise.race([work, timeout]);
++  };
++
++  /** Advances one persisted frontier or records a hold on conflicting history. */
++  update = async (): Promise<void> => {
++    if (this.updating || this.consuming)
++      throw new Error('Avalanche scanner operation already running');
++    this.updating = true;
++    let state: AvalancheSafetyState | null = null;
++    try {
++      const repository =
++        this.config.dataSource.getRepository(AvalancheSafetyState);
++      state = await repository.findOneBy({ scanner: this.name() });
++      if (!state) {
++        const existingBlocks = await this.action.blockRepository.countBy({
++          scanner: this.name(),
++        });
++        state = await repository.save(
++          repository.create({
++            scanner: this.name(),
++            chainId: this.config.network.expectedChainId.toString(),
++            sourceId: this.config.sourceId,
++            policy: POLICY,
++            initialHeight: this.config.initialHeight,
++            finalizedHeight: null,
++            finalizedHash: null,
++            holdReason: existingBlocks ? 'unqualified-existing-history' : null,
++          }),
++        );
++      }
++      if (state.holdReason)
++        throw new Error(`Avalanche scanner held: ${state.holdReason}`);
++      if (
++        state.chainId !== this.config.network.expectedChainId.toString() ||
++        state.sourceId !== this.config.sourceId ||
++        state.initialHeight !== this.config.initialHeight ||
++        state.policy !== POLICY
++      )
++        throw new AvalancheRpcValidationError('scanner-identity-changed');
++      if (
++        (state.finalizedHeight === null) !== (state.finalizedHash === null) ||
++        (state.finalizedHeight !== null &&
++          (!Number.isSafeInteger(state.finalizedHeight) ||
++            state.finalizedHeight < 0)) ||
++        (state.finalizedHash !== null &&
++          !/^0x[0-9a-fA-F]{64}$/.test(state.finalizedHash))
++      )
++        throw new AvalancheRpcValidationError('invalid-persisted-frontier');
++
++      const network = this.config.network;
++      const seen = new Map<number, Block>();
++      /** Rejects inconsistent block responses seen during this update. */
++      const getBlock = async (height: number): Promise<Block> => {
++        const block = await network.getBlockAtHeight(height);
++        const earlier = seen.get(height);
++        if (
++          earlier &&
++          (!this.sameHash(earlier.hash, block.hash) ||
++            !this.sameHash(earlier.parentHash, block.parentHash) ||
++            earlier.timestamp !== block.timestamp ||
++            earlier.txCount !== block.txCount)
++        )
++          throw new AvalancheRpcValidationError('settled-response-conflict');
++        seen.set(height, block);
++        return block;
++      };
++      const frontier = await network.getCurrentHeight();
++      if (state.finalizedHeight !== null) {
++        if (frontier < state.finalizedHeight)
++          throw new AvalancheRpcValidationError('settled-frontier-regressed');
++        const previous = await getBlock(state.finalizedHeight);
++        if (!this.sameHash(previous.hash, state.finalizedHash!))
++          throw new AvalancheRpcValidationError('settled-frontier-conflict');
++      }
++      const current = await getBlock(frontier);
++      const [persistedTip] = await this.action.blockRepository.find({
++        where: { scanner: this.name() },
++        order: { height: 'DESC' },
++        take: 1,
++      });
++      if (persistedTip && persistedTip.height > frontier)
++        throw new AvalancheRpcValidationError('persisted-tip-above-frontier');
++      let last = await this.action.getLastSavedBlock();
++      if (last) {
++        if (last.height > frontier)
++          throw new AvalancheRpcValidationError('processed-tip-above-frontier');
++        const canonical = await getBlock(last.height);
++        if (
++          !this.sameHash(canonical.hash, last.hash) ||
++          !this.sameHash(canonical.parentHash, last.parentHash)
++        )
++          throw new AvalancheRpcValidationError('processed-tip-conflict');
++      }
++      state.finalizedHeight = frontier;
++      state.finalizedHash = current.hash;
++      await repository.save(state);
++      this.blockChainLastHeight = frontier;
++
++      if (last) await this.verifyExtractorsInitialization(last);
++      for (
++        let height = last ? last.height + 1 : this.config.initialHeight + 1;
++        height <= frontier;
++        height++
++      ) {
++        const block = await getBlock(height);
++        const persisted = await this.action.blockRepository.findOneBy({
++          scanner: this.name(),
++          height,
++        });
++        if (
++          persisted &&
++          (!this.sameHash(persisted.hash, block.hash) ||
++            !this.sameHash(persisted.parentHash, block.parentHash) ||
++            persisted.timestamp !== block.timestamp)
++        )
++          throw new AvalancheRpcValidationError('persisted-block-conflict');
++        if (last && !this.sameHash(block.parentHash, last.hash))
++          throw new AvalancheRpcValidationError('settled-parent-conflict');
++        if (!last)
++          await this.verifyExtractorsInitialization({
++            height: height - 1,
++            hash: block.parentHash,
++          });
++        const saved = await this.processBlock(block);
++        if (typeof saved === 'boolean')
++          throw new Error('Avalanche block extraction incomplete');
++        last = saved;
++      }
++      if (last) await this.removeOldUnusedBlocks(last);
++    } catch (error) {
++      if (state && error instanceof AvalancheRpcValidationError) {
++        state.holdReason = 'settled-rpc-or-history-conflict';
++        await this.config.dataSource
++          .getRepository(AvalancheSafetyState)
++          .save(state);
++      }
++      throw error;
++    } finally {
++      this.updating = false;
++    }
++  };
++}
+diff --git a/packages/scanners/evm-scanner/lib/avalancheSafetyState.ts b/packages/scanners/evm-scanner/lib/avalancheSafetyState.ts
+new file mode 100644
+index 0000000..2a2ec43
+--- /dev/null
++++ b/packages/scanners/evm-scanner/lib/avalancheSafetyState.ts
+@@ -0,0 +1,66 @@
++import {
++  Column,
++  Entity,
++  MigrationInterface,
++  PrimaryColumn,
++  QueryRunner,
++  Table,
++} from '@rosen-bridge/extended-typeorm';
++
++/** Durable identity and stop state for a single-writer C-Chain scanner. */
++@Entity('avalanche_safety_state')
++export class AvalancheSafetyState {
++  @PrimaryColumn({ type: 'varchar' })
++  scanner: string;
++
++  @Column({ type: 'varchar' })
++  chainId: string;
++
++  @Column({ type: 'varchar' })
++  sourceId: string;
++
++  @Column({ type: 'varchar' })
++  policy: string;
++
++  @Column({ type: 'int' })
++  initialHeight: number;
++
++  @Column({ type: 'int', nullable: true })
++  finalizedHeight: number | null;
++
++  @Column({ type: 'varchar', nullable: true })
++  finalizedHash: string | null;
++
++  @Column({ type: 'varchar', nullable: true })
++  holdReason: string | null;
++}
++
++/** Register alongside the scanner migrations for SQLite or PostgreSQL. */
++export class AvalancheSafetyState1790769600000 implements MigrationInterface {
++  /** Creates the scanner identity, finalized frontier and hold-state table. */
++  async up(runner: QueryRunner): Promise<void> {
++    await runner.createTable(
++      new Table({
++        name: 'avalanche_safety_state',
++        columns: [
++          { name: 'scanner', type: 'varchar', isPrimary: true },
++          { name: 'chainId', type: 'varchar' },
++          { name: 'sourceId', type: 'varchar' },
++          { name: 'policy', type: 'varchar' },
++          { name: 'initialHeight', type: 'int' },
++          { name: 'finalizedHeight', type: 'int', isNullable: true },
++          { name: 'finalizedHash', type: 'varchar', isNullable: true },
++          { name: 'holdReason', type: 'varchar', isNullable: true },
++        ],
++      }),
++    );
++  }
++
++  /** Removes only an empty safety table, preserving any recorded scanner state. */
++  async down(runner: QueryRunner): Promise<void> {
++    const rows = await runner.manager.count(AvalancheSafetyState);
++    if (rows !== 0)
++      throw new Error('Cannot remove a populated Avalanche safety state');
++    await runner.dropTable('avalanche_safety_state');
++  }
++}
+diff --git a/packages/scanners/evm-scanner/lib/index.ts b/packages/scanners/evm-scanner/lib/index.ts
+index 2bd7837..45c738d 100644
+--- a/packages/scanners/evm-scanner/lib/index.ts
++++ b/packages/scanners/evm-scanner/lib/index.ts
+@@ -1,2 +1,14 @@
+ export { EvmRpcScanner } from './evmRpcScanner';
++export {
++  AvalancheRpcScanner,
++  AvalancheScannerConfig,
++} from './avalancheRpcScanner';
++export {
++  AvalancheSafetyState,
++  AvalancheSafetyState1790769600000,
++} from './avalancheSafetyState';
+ export { EvmRpcNetwork } from './evmRpcNetwork';
++export {
++  AvalancheRpcNetwork,
++  AvalancheRpcValidationError,
++} from './avalancheRpcNetwork';
+diff --git a/packages/scanners/evm-scanner/package.json b/packages/scanners/evm-scanner/package.json
+index 1941392..da0f88f 100644
+--- a/packages/scanners/evm-scanner/package.json
++++ b/packages/scanners/evm-scanner/package.json
+@@ -29,8 +29,10 @@
+   },
+   "dependencies": {
+     "@rosen-bridge/abstract-scanner": "^4.0.0",
++    "@rosen-bridge/extended-typeorm": "1.1.1",
+     "@rosen-bridge/scanner-interfaces": "^1.0.0",
+-    "ethers": "6.16.0"
++    "ethers": "6.16.0",
++    "@rosen-bridge/semaphore": "^0.1.0"
+   },
+   "engines": {
+     "node": ">=22.18.0",
+diff --git a/packages/scanners/evm-scanner/tests/avalancheRpcNetwork.spec.ts b/packages/scanners/evm-scanner/tests/avalancheRpcNetwork.spec.ts
+new file mode 100644
+index 0000000..728e3fa
+--- /dev/null
++++ b/packages/scanners/evm-scanner/tests/avalancheRpcNetwork.spec.ts
+@@ -0,0 +1,1379 @@
++import {
++  isCallException,
++  Transaction,
++  TransactionReceipt,
++  TransactionResponse,
++} from 'ethers';
++import { createServer, Server } from 'node:http';
++import { vi } from 'vitest';
++
++import {
++  AvalancheRpcNetwork,
++  AvalancheRpcValidationError,
++} from '../lib/avalancheRpcNetwork';
++import { fixture, hash, run } from './avalancheRpcTestUtils';
++import { chainId } from './avalancheTestData';
++import { rpc } from './mocked/avalancheRpc.mock';
++import { mockRealJsonRpcProvider } from './mocked/realJsonRpcProvider.mock';
++
++vi.mock('ethers', async (importOriginal) => {
++  const { rpc } = await import('./mocked/avalancheRpc.mock');
++  return {
++    ...(await importOriginal<typeof import('ethers')>()),
++    JsonRpcProvider: vi.fn().mockImplementation(() => rpc),
++  };
++});
++
++describe('AvalancheRpcNetwork', () => {
++  let network: AvalancheRpcNetwork;
++
++  let data: ReturnType<typeof fixture>;
++
++  beforeEach(() => {
++    vi.clearAllMocks();
++    rpc.send.mockReset();
++    rpc.getBlock.mockReset();
++    rpc.getBlockNumber.mockReset();
++    rpc.getTransactionReceipt.mockReset();
++    network = new AvalancheRpcNetwork('https://rpc.invalid', chainId, 1000);
++    data = fixture();
++  });
++
++  describe('constructor', () => {
++    describe('transport', () => {
++      const networks: AvalancheRpcNetwork[] = [];
++      let server: Server | undefined;
++      afterEach(async () => {
++        networks.splice(0).forEach((network) => network['provider'].destroy());
++        if (server) {
++          server.closeAllConnections();
++          await new Promise<void>((resolve, reject) =>
++            server!.close((error) => (error ? reject(error) : resolve())),
++          );
++          server = undefined;
++        }
++      });
++      let restoreProvider: () => void;
++      beforeEach(async () => {
++        restoreProvider = await mockRealJsonRpcProvider();
++      });
++      afterEach(() => restoreProvider());
++
++      /**
++       * @target AvalancheRpcNetwork.constructor rejects an invalid explicit
++       * Avalanche timeout (%s)
++       * @dependencies
++       * - Loopback HTTP server and synthetic JSON-RPC request.
++       * @scenario
++       * - Construct Avalanche adapters with each invalid explicit timeout.
++       * @expected
++       * - Timeout validation rejects.
++       */
++      it.each([0, -1, 0.5, NaN, Infinity, 2147483648])(
++        'rejects an invalid explicit Avalanche timeout (%s)',
++        (timeout) => {
++          expect(
++            () =>
++              new AvalancheRpcNetwork('http://127.0.0.1:1', 43113n, timeout),
++          ).toThrow('Invalid Avalanche RPC timeout');
++        },
++      );
++
++      /**
++       * @target AvalancheRpcNetwork.constructor times out a stalled local HTTP
++       * response using the configured deadline
++       * @dependencies
++       * - Loopback HTTP server and synthetic JSON-RPC request.
++       * @scenario
++       * - Start a stalled loopback HTTP server and issue a request with a 100
++       * millisecond deadline.
++       * @expected
++       * - The request rejects with TIMEOUT.
++       */
++      it('times out a stalled local HTTP response using the configured deadline', async () => {
++        server = createServer(() => {
++          // Deliberately leave the response open until the RPC deadline expires.
++        });
++        await new Promise<void>((resolve) =>
++          server!.listen(0, '127.0.0.1', resolve),
++        );
++        const address = server.address();
++        if (!address || typeof address === 'string')
++          throw new Error('No server port');
++        const network = new AvalancheRpcNetwork(
++          `http://127.0.0.1:${address.port}`,
++          43113n,
++          100,
++        );
++        networks.push(network);
++        await expect(
++          network['provider']._send({
++            jsonrpc: '2.0',
++            id: 1,
++            method: 'eth_chainId',
++            params: [],
++          }),
++        ).rejects.toMatchObject({ code: 'TIMEOUT' });
++      });
++      /**
++       * @target AvalancheRpcNetwork.constructor preserves raw receipt removed flags (%s)
++       * @dependencies Real ethers JsonRpcProvider, loopback HTTP and a synthetic receipt
++       * @scenario Return the selected raw removed value through the actual ethers receipt formatter
++       * @expected Preserve the exact value without converting absent or invalid values to false
++       */
++      it.each([false, true, undefined, null, 0, 'false'])(
++        'preserves raw receipt removed flags (%s)',
++        async (removed) => {
++          const tx = data.transactions[0];
++          const log = {
++            address: tx.to,
++            blockHash: hash('1'),
++            blockNumber: '0xa',
++            transactionHash: tx.hash,
++            transactionIndex: '0x0',
++            logIndex: '0x0',
++            topics: [hash('a')],
++            data: '0x',
++            ...(removed === undefined ? {} : { removed }),
++          };
++          const rawReceipt = {
++            to: tx.to,
++            from: tx.from,
++            transactionHash: tx.hash,
++            transactionIndex: '0x0',
++            blockHash: hash('1'),
++            blockNumber: '0xa',
++            gasUsed: '0x5208',
++            cumulativeGasUsed: '0x5208',
++            effectiveGasPrice: '0x1',
++            status: '0x1',
++            type: '0x2',
++            logsBloom: '0x' + '00'.repeat(256),
++            logs: [log],
++          };
++          const calls: string[] = [];
++          server = createServer((request, response) => {
++            let input = '';
++            request.on('data', (chunk) => (input += chunk));
++            request.on('end', () => {
++              const payload = JSON.parse(input);
++              const answer = (item: { id: number; method: string }) => {
++                calls.push(item.method);
++                return {
++                  jsonrpc: '2.0',
++                  id: item.id,
++                  result: item.method === 'eth_chainId' ? '0xa86a' : rawReceipt,
++                };
++              };
++              response.setHeader('content-type', 'application/json');
++              response.end(
++                JSON.stringify(
++                  Array.isArray(payload)
++                    ? payload.map(answer)
++                    : answer(payload),
++                ),
++              );
++            });
++          });
++          await new Promise<void>((resolve) =>
++            server!.listen(0, '127.0.0.1', resolve),
++          );
++          const address = server.address();
++          if (!address || typeof address === 'string')
++            throw new Error('No server port');
++          const actual = new AvalancheRpcNetwork(
++            `http://127.0.0.1:${address.port}`,
++            43114n,
++            1000,
++          );
++          networks.push(actual);
++          const receipt = await actual['provider'].getTransactionReceipt(
++            tx.hash,
++          );
++          expect(receipt?.logs[0].removed).toEqual(removed);
++          expect(receipt?.logs[0]).toMatchObject({
++            transactionHash: tx.hash,
++            blockHash: hash('1'),
++            blockNumber: 10,
++            index: 0,
++          });
++          expect(
++            calls.filter((method) => method === 'eth_getTransactionReceipt'),
++          ).toHaveLength(1);
++        },
++      );
++    });
++
++    /**
++     * @target AvalancheRpcNetwork.constructor rejects unsupported configured
++     * chain %s
++     * @dependencies
++     * - Mocked ethers JsonRpcProvider methods.
++     * - Synthetic signed transactions, canonical blocks and receipts.
++     * @scenario
++     * - Construct an adapter for each unsupported chain ID.
++     * @expected
++     * - Construction rejects the unsupported ID.
++     */
++    it.each([0n, 1n, 43112n, 43115n])(
++      'rejects unsupported configured chain %s',
++      (id) => {
++        expect(
++          () => new AvalancheRpcNetwork('https://rpc.invalid', id),
++        ).toThrow('C-Chain ID');
++      },
++    );
++
++    /**
++     * @target AvalancheRpcNetwork.constructor supports explicit chain %s
++     * @dependencies
++     * - Mocked ethers JsonRpcProvider methods.
++     * - Synthetic signed transactions, canonical blocks and receipts.
++     * @scenario
++     * - Select each supported chain ID
++     * - read its height and transactions.
++     * @expected
++     * - Height is 20 and two transactions are qualified.
++     */
++    it.each([43113n, 43114n])('supports explicit chain %s', async (id) => {
++      fixture(id);
++      const configured = new AvalancheRpcNetwork('https://rpc.invalid', id);
++      await expect(configured.getCurrentHeight()).resolves.toEqual(20);
++      await expect(configured.getBlockTxs(hash('1'))).resolves.toHaveLength(2);
++    });
++  });
++
++  describe('getCurrentHeight', () => {
++    /**
++     * @target AvalancheRpcNetwork.getCurrentHeight getCurrentHeight rechecks
++     * raw chain identity on each operation
++     * @dependencies
++     * - Mocked ethers JsonRpcProvider methods.
++     * - Synthetic signed transactions, canonical blocks and receipts.
++     * @scenario
++     * - Run the operation, change eth_chainId, and run it again.
++     * @expected
++     * - The second call rejects and re-reads raw chain identity.
++     */
++    it('getCurrentHeight rechecks raw chain identity on each operation', async () => {
++      const operation = 'getCurrentHeight' as const;
++
++      await run(network, operation);
++      rpc.send.mockResolvedValue('0xa86a');
++      await expect(async () => {
++        await run(network, operation);
++      }).rejects.toThrow('C-Chain ID');
++      expect(rpc.send).toHaveBeenCalledTimes(2);
++      expect(rpc.send).toHaveBeenLastCalledWith('eth_chainId', []);
++    });
++
++    /**
++     * @target AvalancheRpcNetwork.getCurrentHeight rejects malformed or
++     * unexpected chain quantity %s
++     * @dependencies
++     * - Mocked ethers JsonRpcProvider methods.
++     * - Synthetic signed transactions, canonical blocks and receipts.
++     * @scenario
++     * - Return each malformed or unexpected eth_chainId response.
++     * @expected
++     * - The request rejects before reading any block.
++     */
++    it.each([
++      null,
++      undefined,
++      43113,
++      43113n,
++      '43113',
++      '0x0a869',
++      '0xA869',
++      '0X a869',
++      '0x',
++      '0x0',
++    ])('rejects malformed or unexpected chain quantity %s', async (id) => {
++      rpc.send.mockResolvedValue(id);
++      await expect(async () => {
++        await network.getCurrentHeight();
++      }).rejects.toThrow('C-Chain ID');
++      expect(rpc.getBlock).not.toHaveBeenCalled();
++    });
++
++    /**
++     * @target AvalancheRpcNetwork.getCurrentHeight returns the settled height
++     * and binds its numeric canonical block
++     * @dependencies
++     * - Mocked ethers JsonRpcProvider methods.
++     * - Synthetic signed transactions, canonical blocks and receipts.
++     * @scenario
++     * - Return matching finalized and numeric canonical blocks.
++     * @expected
++     * - Height is 20, with no latest-height query.
++     */
++    it('returns the settled height and binds its numeric canonical block', async () => {
++      await expect(network.getCurrentHeight()).resolves.toEqual(20);
++      expect(rpc.getBlock.mock.calls).toEqual([['finalized'], [20]]);
++      expect(rpc.getBlockNumber).not.toHaveBeenCalled();
++    });
++
++    /**
++     * @target AvalancheRpcNetwork.getCurrentHeight captures finalized %s
++     * before its canonical lookup
++     * @dependencies
++     * - Mocked ethers JsonRpcProvider methods.
++     * - Synthetic signed transactions, canonical blocks and receipts.
++     * @scenario
++     * - Mutate the selected finalized field during canonical lookup.
++     * @expected
++     * - The changed response rejects against the captured identity.
++     */
++    it.each([
++      'number',
++      'hash',
++      'parentHash',
++      'timestamp',
++      'transactions',
++    ] as const)(
++      'captures finalized %s before its canonical lookup',
++      async (field) => {
++        data.finalized.length = 1;
++        data.finalized.transactions = [hash('5')];
++        rpc.getBlock.mockImplementation(async (tag: string | number) => {
++          if (tag === 'finalized') return data.finalized;
++          if (tag === 20) {
++            if (field === 'transactions')
++              data.finalized.transactions[0] = hash('6');
++            else if (field === 'number') data.finalized.number = 21;
++            else if (field === 'timestamp') data.finalized.timestamp = 201;
++            else data.finalized[field] = hash('f');
++            return data.finalized;
++          }
++          return null;
++        });
++        await expect(async () => {
++          await network.getCurrentHeight();
++        }).rejects.toThrow(Error);
++      },
++    );
++
++    /**
++     * @target AvalancheRpcNetwork.getCurrentHeight getCurrentHeight fails
++     * without a finalized result instead of falling back
++     * @dependencies
++     * - Mocked ethers JsonRpcProvider methods.
++     * - Synthetic signed transactions, canonical blocks and receipts.
++     * @scenario
++     * - Return no finalized block and invoke the selected operation.
++     * @expected
++     * - The operation rejects with no latest-height fallback.
++     */
++    it('getCurrentHeight fails without a finalized result instead of falling back', async () => {
++      const operation = 'getCurrentHeight' as const;
++
++      rpc.getBlock.mockResolvedValue(null);
++      await expect(async () => {
++        await run(network, operation);
++      }).rejects.toThrow(Error);
++      expect(rpc.getBlock).toHaveBeenCalledExactlyOnceWith('finalized');
++      expect(rpc.getBlockNumber).not.toHaveBeenCalled();
++    });
++
++    /**
++     * @target AvalancheRpcNetwork.getCurrentHeight propagates unsupported
++     * finalized-tag errors
++     * @dependencies
++     * - Mocked ethers JsonRpcProvider methods.
++     * - Synthetic signed transactions, canonical blocks and receipts.
++     * @scenario
++     * - Reject the finalized-tag lookup with a transport error.
++     * @expected
++     * - The original error message propagates after one lookup.
++     */
++    it('propagates unsupported finalized-tag errors', async () => {
++      rpc.getBlock.mockRejectedValue(new Error('unsupported finalized tag'));
++      await expect(async () => {
++        await network.getCurrentHeight();
++      }).rejects.toThrow('unsupported finalized tag');
++      expect(rpc.getBlock).toHaveBeenCalledTimes(1);
++    });
++
++    /**
++     * @target AvalancheRpcNetwork.getCurrentHeight rejects a
++     * finalized/canonical %s mismatch
++     * @dependencies
++     * - Mocked ethers JsonRpcProvider methods.
++     * - Synthetic signed transactions, canonical blocks and receipts.
++     * @scenario
++     * - Return finalized and canonical blocks differing in the selected field.
++     * @expected
++     * - The mismatch rejects.
++     */
++    it.each(['hash', 'number', 'parentHash', 'timestamp', 'length'] as const)(
++      'rejects a finalized/canonical %s mismatch',
++      async (field) => {
++        const wrong = {
++          ...data.finalized,
++          [field]: typeof data.finalized[field] === 'number' ? 21 : hash('f'),
++        };
++        rpc.getBlock
++          .mockResolvedValueOnce(data.finalized)
++          .mockResolvedValueOnce(wrong);
++        await expect(async () => {
++          await network.getCurrentHeight();
++        }).rejects.toThrow(Error);
++      },
++    );
++
++    /**
++     * @target AvalancheRpcNetwork.getCurrentHeight rejects invalid finalized
++     * height %s
++     * @dependencies
++     * - Mocked ethers JsonRpcProvider methods.
++     * - Synthetic signed transactions, canonical blocks and receipts.
++     * @scenario
++     * - Replace the finalized height with each invalid numeric value.
++     * @expected
++     * - Block-number validation rejects.
++     */
++    it.each([-1, 0.5, Number.MAX_SAFE_INTEGER + 1, NaN, Infinity])(
++      'rejects invalid finalized height %s',
++      async (number) => {
++        data.finalized.number = number;
++        await expect(async () => {
++          await network.getCurrentHeight();
++        }).rejects.toThrow('block number');
++      },
++    );
++
++    /**
++     * @target AvalancheRpcNetwork.getCurrentHeight rejects invalid finalized
++     * hash %s
++     * @dependencies
++     * - Mocked ethers JsonRpcProvider methods.
++     * - Synthetic signed transactions, canonical blocks and receipts.
++     * @scenario
++     * - Replace the finalized hash with each invalid hash shape.
++     * @expected
++     * - Block-hash validation rejects.
++     */
++    it.each(['0x1234', hash('0'), 'not-a-hash'])(
++      'rejects invalid finalized hash %s',
++      async (value) => {
++        data.finalized.hash = value;
++        await expect(async () => {
++          await network.getCurrentHeight();
++        }).rejects.toThrow('block hash');
++      },
++    );
++
++    /**
++     * @target AvalancheRpcNetwork.getCurrentHeight does not relabel transport
++     * errors as validation failures
++     * @dependencies
++     * - Mocked ethers JsonRpcProvider methods.
++     * - Synthetic signed transactions, canonical blocks and receipts.
++     * @scenario
++     * - Reject eth_chainId with a specific Error instance.
++     * @expected
++     * - The exact original Error instance propagates.
++     */
++    it('does not relabel transport errors as validation failures', async () => {
++      const failure = new Error('RPC unavailable');
++      rpc.send.mockRejectedValue(failure);
++      await expect(network.getCurrentHeight()).rejects.toBe(failure);
++    });
++  });
++
++  describe('getBlockAtHeight', () => {
++    /**
++     * @target AvalancheRpcNetwork.getBlockAtHeight getBlockAtHeight rechecks
++     * raw chain identity on each operation
++     * @dependencies
++     * - Mocked ethers JsonRpcProvider methods.
++     * - Synthetic signed transactions, canonical blocks and receipts.
++     * @scenario
++     * - Run the operation, change eth_chainId, and run it again.
++     * @expected
++     * - The second call rejects and re-reads raw chain identity.
++     */
++    it('getBlockAtHeight rechecks raw chain identity on each operation', async () => {
++      const operation = 'getBlockAtHeight' as const;
++
++      await run(network, operation);
++      rpc.send.mockResolvedValue('0xa86a');
++      await expect(async () => {
++        await run(network, operation);
++      }).rejects.toThrow('C-Chain ID');
++      expect(rpc.send).toHaveBeenCalledTimes(2);
++      expect(rpc.send).toHaveBeenLastCalledWith('eth_chainId', []);
++    });
++
++    /**
++     * @target AvalancheRpcNetwork.getBlockAtHeight refuses a frontier raised
++     * above its captured height during canonical lookup
++     * @dependencies
++     * - Mocked ethers JsonRpcProvider methods.
++     * - Synthetic signed transactions, canonical blocks and receipts.
++     * @scenario
++     * - Raise a captured frontier of 9 during its canonical lookup
++     * - request 10.
++     * @expected
++     * - The request rejects before looking up height 10.
++     */
++    it('refuses a frontier raised above its captured height during canonical lookup', async () => {
++      data.finalized.number = 9;
++      rpc.getBlock.mockImplementation(async (tag: string | number) => {
++        if (tag === 'finalized') return data.finalized;
++        if (tag === 9) {
++          data.finalized.number = 20;
++          return data.finalized;
++        }
++        if (tag === 10) return data.canonical;
++        return null;
++      });
++      await expect(async () => {
++        await network.getBlockAtHeight(10);
++      }).rejects.toThrow(Error);
++      expect(rpc.getBlock).not.toHaveBeenCalledWith(10);
++    });
++
++    /**
++     * @target AvalancheRpcNetwork.getBlockAtHeight retains finalized identity
++     * across the subsequent header lookup
++     * @dependencies
++     * - Mocked ethers JsonRpcProvider methods.
++     * - Synthetic signed transactions, canonical blocks and receipts.
++     * @scenario
++     * - Change the finalized identity during the subsequent header lookup.
++     * @expected
++     * - The conflicting canonical block rejects.
++     */
++    it('retains finalized identity across the subsequent header lookup', async () => {
++      rpc.getBlock.mockImplementation(async (tag: string | number) => {
++        if (tag === 'finalized') return data.finalized;
++        if (tag === 20 && rpc.getBlock.mock.calls.length === 2)
++          return data.finalized;
++        data.finalized.number = 21;
++        return { ...data.finalized, number: 20, hash: hash('f') };
++      });
++      await expect(async () => {
++        await network.getBlockAtHeight(20);
++      }).rejects.toThrow('canonical block');
++    });
++
++    /**
++     * @target AvalancheRpcNetwork.getBlockAtHeight getBlockAtHeight fails
++     * without a finalized result instead of falling back
++     * @dependencies
++     * - Mocked ethers JsonRpcProvider methods.
++     * - Synthetic signed transactions, canonical blocks and receipts.
++     * @scenario
++     * - Return no finalized block and invoke the selected operation.
++     * @expected
++     * - The operation rejects with no latest-height fallback.
++     */
++    it('getBlockAtHeight fails without a finalized result instead of falling back', async () => {
++      const operation = 'getBlockAtHeight' as const;
++
++      rpc.getBlock.mockResolvedValue(null);
++      await expect(async () => {
++        await run(network, operation);
++      }).rejects.toThrow(Error);
++      expect(rpc.getBlock).toHaveBeenCalledExactlyOnceWith('finalized');
++      expect(rpc.getBlockNumber).not.toHaveBeenCalled();
++    });
++
++    /**
++     * @target AvalancheRpcNetwork.getBlockAtHeight returns a settled header
++     * @dependencies
++     * - Mocked ethers JsonRpcProvider methods.
++     * - Synthetic signed transactions, canonical blocks and receipts.
++     * @scenario
++     * - Request height 10 within matching finalized and canonical history.
++     * @expected
++     * - The returned header matches the synthetic block fields.
++     */
++    it('returns a settled header', async () => {
++      await expect(network.getBlockAtHeight(10)).resolves.toEqual({
++        hash: hash('1'),
++        height: 10,
++        parentHash: hash('2'),
++        timestamp: 100,
++        txCount: 2,
++      });
++    });
++
++    /**
++     * @target AvalancheRpcNetwork.getBlockAtHeight rejects invalid requested
++     * height %s
++     * @dependencies
++     * - Mocked ethers JsonRpcProvider methods.
++     * - Synthetic signed transactions, canonical blocks and receipts.
++     * @scenario
++     * - Request each invalid numeric height.
++     * @expected
++     * - Validation rejects before any block lookup.
++     */
++    it.each([-1, 0.5, Number.MAX_SAFE_INTEGER + 1, NaN, Infinity])(
++      'rejects invalid requested height %s',
++      async (height) => {
++        await expect(async () => {
++          await network.getBlockAtHeight(height);
++        }).rejects.toThrow('requested height');
++        expect(rpc.getBlock).not.toHaveBeenCalled();
++      },
++    );
++
++    /**
++     * @target AvalancheRpcNetwork.getBlockAtHeight does not read a height
++     * beyond captured settlement
++     * @dependencies
++     * - Mocked ethers JsonRpcProvider methods.
++     * - Synthetic signed transactions, canonical blocks and receipts.
++     * @scenario
++     * - Request height 21 above the captured frontier of 20.
++     * @expected
++     * - The request rejects without looking up height 21.
++     */
++    it('does not read a height beyond captured settlement', async () => {
++      await expect(async () => {
++        await network.getBlockAtHeight(21);
++      }).rejects.toThrow('not settled');
++      expect(rpc.getBlock).not.toHaveBeenCalledWith(21);
++    });
++
++    /**
++     * @target AvalancheRpcNetwork.getBlockAtHeight rejects an incorrect
++     * returned height
++     * @dependencies
++     * - Mocked ethers JsonRpcProvider methods.
++     * - Synthetic signed transactions, canonical blocks and receipts.
++     * @scenario
++     * - Return height 9 for the requested height 10.
++     * @expected
++     * - Block-number validation rejects.
++     */
++    it('rejects an incorrect returned height', async () => {
++      data.canonical.number = 9;
++      await expect(async () => {
++        await network.getBlockAtHeight(10);
++      }).rejects.toThrow('block number');
++    });
++
++    /**
++     * @target AvalancheRpcNetwork.getBlockAtHeight rejects malformed header
++     * %s=%s
++     * @dependencies
++     * - Mocked ethers JsonRpcProvider methods.
++     * - Synthetic signed transactions, canonical blocks and receipts.
++     * @scenario
++     * - Replace the selected canonical header field with the table value.
++     * @expected
++     * - Malformed header validation rejects.
++     */
++    it.each([
++      ['timestamp', -1],
++      ['timestamp', 0.5],
++      ['parentHash', '0x12'],
++      ['length', -1],
++    ])('rejects malformed header %s=%s', async (field, value) => {
++      Object.assign(data.canonical, { [field]: value });
++      await expect(async () => {
++        await network.getBlockAtHeight(10);
++      }).rejects.toThrow(Error);
++    });
++
++    /**
++     * @target AvalancheRpcNetwork.getBlockAtHeight rejects a changed finalized
++     * identity at the same height
++     * @dependencies
++     * - Mocked ethers JsonRpcProvider methods.
++     * - Synthetic signed transactions, canonical blocks and receipts.
++     * @scenario
++     * - Return a changed finalized hash at the same numeric height.
++     * @expected
++     * - Canonical identity validation rejects.
++     */
++    it('rejects a changed finalized identity at the same height', async () => {
++      rpc.getBlock
++        .mockResolvedValueOnce(data.finalized)
++        .mockResolvedValueOnce(data.finalized)
++        .mockResolvedValueOnce({ ...data.finalized, hash: hash('f') });
++      await expect(async () => {
++        await network.getBlockAtHeight(20);
++      }).rejects.toThrow('canonical block');
++    });
++  });
++
++  describe('getBlockTxs', () => {
++    /**
++     * @target AvalancheRpcNetwork.getBlockTxs getBlockTxs rechecks raw chain
++     * identity on each operation
++     * @dependencies
++     * - Mocked ethers JsonRpcProvider methods.
++     * - Synthetic signed transactions, canonical blocks and receipts.
++     * @scenario
++     * - Run the operation, change eth_chainId, and run it again.
++     * @expected
++     * - The second call rejects and re-reads raw chain identity.
++     */
++    it('getBlockTxs rechecks raw chain identity on each operation', async () => {
++      const operation = 'getBlockTxs' as const;
++
++      await run(network, operation);
++      rpc.send.mockResolvedValue('0xa86a');
++      await expect(async () => {
++        await run(network, operation);
++      }).rejects.toThrow('C-Chain ID');
++      expect(rpc.send).toHaveBeenCalledTimes(2);
++      expect(rpc.send).toHaveBeenLastCalledWith('eth_chainId', []);
++    });
++
++    /**
++     * @target AvalancheRpcNetwork.getBlockTxs captures transaction block %s
++     * before its canonical lookup
++     * @dependencies
++     * - Mocked ethers JsonRpcProvider methods.
++     * - Synthetic signed transactions, canonical blocks and receipts.
++     * @scenario
++     * - Mutate the selected transaction-block field during canonical lookup.
++     * @expected
++     * - The request rejects before querying transaction receipts.
++     */
++    it.each([
++      'number',
++      'hash',
++      'parentHash',
++      'timestamp',
++      'transactions',
++    ] as const)(
++      'captures transaction block %s before its canonical lookup',
++      async (field) => {
++        rpc.getBlock.mockImplementation(async (tag: string | number) => {
++          if (tag === 'finalized' || tag === 20) return data.finalized;
++          if (tag === hash('1')) return data.block;
++          if (tag === 10) {
++            if (field === 'transactions')
++              data.block.transactions[0] = hash('6');
++            else if (field === 'number') data.block.number = 11;
++            else if (field === 'timestamp') data.block.timestamp = 101;
++            else data.block[field] = hash('f');
++            return data.block;
++          }
++          return null;
++        });
++        await expect(async () => {
++          await network.getBlockTxs(hash('1'), 10);
++        }).rejects.toThrow('canonical block');
++        expect(rpc.getTransactionReceipt).not.toHaveBeenCalled();
++      },
++    );
++
++    /**
++     * @target AvalancheRpcNetwork.getBlockTxs captures transaction %s before
++     * receipt waits
++     * @dependencies
++     * - Mocked ethers JsonRpcProvider methods.
++     * - Synthetic signed transactions, canonical blocks and receipts.
++     * @scenario
++     * - Capture a signed transaction field
++     * - mutate it while fetching receipts.
++     * @expected
++     * - The returned field and signed hash retain the captured values.
++     */
++    it.each([
++      'value',
++      'nonce',
++      'data',
++      'to',
++      'gasLimit',
++      'chainId',
++      'maxFeePerGas',
++      'maxPriorityFeePerGas',
++    ] as const)(
++      'captures transaction %s before receipt waits',
++      async (field) => {
++        const expected = data.transactions[0][field];
++        const mutations = {
++          value: 99n,
++          nonce: 99,
++          data: '0x12',
++          to: `0x${'34'.repeat(20)}`,
++          gasLimit: 22000n,
++          chainId: 43114n,
++          maxFeePerGas: 20n,
++          maxPriorityFeePerGas: 2n,
++        };
++        rpc.getTransactionReceipt.mockImplementation(async (id: string) => {
++          Object.assign(data.transactions[0], { [field]: mutations[field] });
++          return data.receipts.find((receipt) => receipt.hash === id);
++        });
++        const result = await network.getBlockTxs(hash('1'), 10);
++        expect(result[0][field]).toEqual(expected);
++        expect(Transaction.from(result[0]).hash).toEqual(data.receipts[0].hash);
++      },
++    );
++
++    /**
++     * @target AvalancheRpcNetwork.getBlockTxs captures every transaction
++     * before the first dependent block wait
++     * @dependencies
++     * - Mocked ethers JsonRpcProvider methods.
++     * - Synthetic signed transactions, canonical blocks and receipts.
++     * @scenario
++     * - Capture both signed bodies
++     * - mutate the second during canonical lookup.
++     * @expected
++     * - Both returned serialized bodies match their captured values.
++     */
++    it('captures every transaction before the first dependent block wait', async () => {
++      const expected = data.transactions.map(
++        (tx) => Transaction.from(tx).serialized,
++      );
++      rpc.getBlock.mockImplementation(async (tag: string | number) => {
++        if (tag === 'finalized' || tag === 20) return data.finalized;
++        if (tag === hash('1')) return data.block;
++        if (tag === 10) {
++          Object.assign(data.transactions[1], { value: 99n });
++          return data.canonical;
++        }
++        return null;
++      });
++      const result = await network.getBlockTxs(hash('1'), 10);
++      expect(result.map((tx) => Transaction.from(tx).serialized)).toEqual(
++        expected,
++      );
++    });
++
++    /**
++     * @target AvalancheRpcNetwork.getBlockTxs detaches nested access lists
++     * from provider objects before waits
++     * @dependencies
++     * - Mocked ethers JsonRpcProvider methods.
++     * - Synthetic signed transactions, canonical blocks and receipts.
++     * @scenario
++     * - Add an access-list storage key
++     * - mutate it while fetching receipts.
++     * @expected
++     * - The returned signed body retains the original nested key.
++     */
++    it('detaches nested access lists from provider objects before waits', async () => {
++      const original = Transaction.from(data.transactions[0]);
++      original.accessList = [
++        { address: `0x${'34'.repeat(20)}`, storageKeys: [hash('5')] },
++      ];
++      const replacement = {
++        ...data.transactions[0],
++        hash: original.hash!,
++        from: original.from!,
++        accessList: original.accessList,
++      } as TransactionResponse;
++      data.transactions[0] = replacement;
++      data.block.transactions[0] = original.hash!;
++      data.canonical.transactions[0] = original.hash!;
++      data.receipts[0].hash = original.hash!;
++      data.receipts[0].from = original.from!;
++      const expected = original.serialized;
++      rpc.getTransactionReceipt.mockImplementation(async (id: string) => {
++        replacement.accessList![0].storageKeys[0] = hash('6');
++        return data.receipts.find((receipt) => receipt.hash === id);
++      });
++      const result = await network.getBlockTxs(hash('1'), 10);
++      expect(Transaction.from(result[0]).serialized).toEqual(expected);
++    });
++
++    /**
++     * @target AvalancheRpcNetwork.getBlockTxs getBlockTxs fails without a
++     * finalized result instead of falling back
++     * @dependencies
++     * - Mocked ethers JsonRpcProvider methods.
++     * - Synthetic signed transactions, canonical blocks and receipts.
++     * @scenario
++     * - Return no finalized block and invoke the selected operation.
++     * @expected
++     * - The operation rejects with no latest-height fallback.
++     */
++    it('getBlockTxs fails without a finalized result instead of falling back', async () => {
++      const operation = 'getBlockTxs' as const;
++
++      rpc.getBlock.mockResolvedValue(null);
++      await expect(async () => {
++        await run(network, operation);
++      }).rejects.toThrow(Error);
++      expect(rpc.getBlock).toHaveBeenCalledExactlyOnceWith('finalized');
++      expect(rpc.getBlockNumber).not.toHaveBeenCalled();
++    });
++
++    /**
++     * @target AvalancheRpcNetwork.getBlockTxs returns complete bound
++     * transactions, including failed transactions for downstream filtering
++     * @dependencies
++     * - Mocked ethers JsonRpcProvider methods.
++     * - Synthetic signed transactions, canonical blocks and receipts.
++     * @scenario
++     * - Mark one receipt failed
++     * - read the complete settled block.
++     * @expected
++     * - Both bound transactions return and both receipts are queried.
++     */
++    it('returns complete bound transactions, including failed transactions for downstream filtering', async () => {
++      data.receipts[1].status = 0;
++      await expect(network.getBlockTxs(hash('1'))).resolves.toEqual(
++        data.transactions.map((tx) => expect.objectContaining(tx)),
++      );
++      expect(rpc.getTransactionReceipt).toHaveBeenCalledTimes(2);
++      expect(rpc.getBlock).toHaveBeenCalledWith(hash('1'), true);
++    });
++
++    /**
++     * @target AvalancheRpcNetwork.getBlockTxs returns an empty settled block
++     * without fabricating transactions
++     * @dependencies
++     * - Mocked ethers JsonRpcProvider methods.
++     * - Synthetic signed transactions, canonical blocks and receipts.
++     * @scenario
++     * - Return the empty finalized block for the requested hash.
++     * @expected
++     * - The transaction list is empty and no receipts are queried.
++     */
++    it('returns an empty settled block without fabricating transactions', async () => {
++      rpc.getBlock.mockResolvedValue(data.finalized);
++      await expect(network.getBlockTxs(hash('3'))).resolves.toEqual([]);
++      expect(rpc.getTransactionReceipt).not.toHaveBeenCalled();
++    });
++
++    /**
++     * @target AvalancheRpcNetwork.getBlockTxs does not accept an early receipt
++     * above settlement
++     * @dependencies
++     * - Mocked ethers JsonRpcProvider methods.
++     * - Synthetic signed transactions, canonical blocks and receipts.
++     * @scenario
++     * - Place the transaction block above the finalized frontier.
++     * @expected
++     * - The request rejects without reading receipts.
++     */
++    it('does not accept an early receipt above settlement', async () => {
++      data.finalized.number = 9;
++      await expect(async () => {
++        await network.getBlockTxs(hash('1'));
++      }).rejects.toThrow('not settled');
++      expect(rpc.getTransactionReceipt).not.toHaveBeenCalled();
++    });
++
++    /**
++     * @target AvalancheRpcNetwork.getBlockTxs rejects a wrong block hash
++     * returned for the requested hash
++     * @dependencies
++     * - Mocked ethers JsonRpcProvider methods.
++     * - Synthetic signed transactions, canonical blocks and receipts.
++     * @scenario
++     * - Return a different hash for the requested transaction block.
++     * @expected
++     * - Block-hash validation rejects.
++     */
++    it('rejects a wrong block hash returned for the requested hash', async () => {
++      rpc.getBlock
++        .mockResolvedValueOnce(data.finalized)
++        .mockResolvedValueOnce(data.finalized)
++        .mockResolvedValueOnce({ ...data.block, hash: hash('f') });
++      await expect(async () => {
++        await network.getBlockTxs(hash('1'));
++      }).rejects.toThrow('block hash');
++    });
++
++    /**
++     * @target AvalancheRpcNetwork.getBlockTxs rejects a block whose canonical
++     * numeric hash disagrees
++     * @dependencies
++     * - Mocked ethers JsonRpcProvider methods.
++     * - Synthetic signed transactions, canonical blocks and receipts.
++     * @scenario
++     * - Change the numeric canonical block hash.
++     * @expected
++     * - Canonical identity validation rejects.
++     */
++    it('rejects a block whose canonical numeric hash disagrees', async () => {
++      data.canonical.hash = hash('f');
++      await expect(async () => {
++        await network.getBlockTxs(hash('1'));
++      }).rejects.toThrow('canonical block');
++    });
++
++    /**
++     * @target AvalancheRpcNetwork.getBlockTxs rejects canonical transaction
++     * order disagreement
++     * @dependencies
++     * - Mocked ethers JsonRpcProvider methods.
++     * - Synthetic signed transactions, canonical blocks and receipts.
++     * @scenario
++     * - Reverse the canonical transaction-hash order.
++     * @expected
++     * - Canonical transaction-order validation rejects.
++     */
++    it('rejects canonical transaction order disagreement', async () => {
++      data.canonical.transactions.reverse();
++      await expect(async () => {
++        await network.getBlockTxs(hash('1'));
++      }).rejects.toThrow('canonical block');
++    });
++
++    /**
++     * @target AvalancheRpcNetwork.getBlockTxs rejects duplicate block
++     * transaction hashes
++     * @dependencies
++     * - Mocked ethers JsonRpcProvider methods.
++     * - Synthetic signed transactions, canonical blocks and receipts.
++     * @scenario
++     * - Duplicate one transaction hash in the block.
++     * @expected
++     * - Duplicate-hash validation rejects.
++     */
++    it('rejects duplicate block transaction hashes', async () => {
++      data.block.transactions[1] = data.block.transactions[0];
++      await expect(async () => {
++        await network.getBlockTxs(hash('1'));
++      }).rejects.toThrow('Duplicate');
++    });
++
++    /**
++     * @target AvalancheRpcNetwork.getBlockTxs rejects missing prefetched
++     * transactions
++     * @dependencies
++     * - Mocked ethers JsonRpcProvider methods.
++     * - Synthetic signed transactions, canonical blocks and receipts.
++     * @scenario
++     * - Remove the prefetched transactions from a nonempty block.
++     * @expected
++     * - Missing-prefetched-transaction validation rejects.
++     */
++    it('rejects missing prefetched transactions', async () => {
++      data.block.prefetchedTransactions = [];
++      await expect(async () => {
++        await network.getBlockTxs(hash('1'));
++      }).rejects.toThrow('prefetched');
++    });
++
++    /**
++     * @target AvalancheRpcNetwork.getBlockTxs rejects prefetched transaction
++     * order disagreement
++     * @dependencies
++     * - Mocked ethers JsonRpcProvider methods.
++     * - Synthetic signed transactions, canonical blocks and receipts.
++     * @scenario
++     * - Reverse the prefetched transaction order.
++     * @expected
++     * - Transaction identity validation rejects.
++     */
++    it('rejects prefetched transaction order disagreement', async () => {
++      data.block.prefetchedTransactions = [...data.transactions].reverse();
++      await expect(async () => {
++        await network.getBlockTxs(hash('1'));
++      }).rejects.toThrow('transaction identity');
++    });
++
++    /**
++     * @target AvalancheRpcNetwork.getBlockTxs rejects transaction %s mismatch
++     * @dependencies
++     * - Mocked ethers JsonRpcProvider methods.
++     * - Synthetic signed transactions, canonical blocks and receipts.
++     * @scenario
++     * - Replace the selected transaction identity field with the table value.
++     * @expected
++     * - The transaction mismatch rejects.
++     */
++    it.each([
++      ['chainId', 1n],
++      ['blockNumber', 9],
++      ['index', 1],
++      ['blockHash', hash('f')],
++      ['blockHash', null],
++      ['hash', hash('f')],
++      ['hash', '0x12'],
++    ])('rejects transaction %s mismatch', async (field, value) => {
++      Object.assign(data.transactions[0], { [field]: value });
++      await expect(async () => {
++        await network.getBlockTxs(hash('1'));
++      }).rejects.toThrow(Error);
++    });
++
++    /**
++     * @target AvalancheRpcNetwork.getBlockTxs binds signed transaction %s to
++     * its hash
++     * @dependencies
++     * - Mocked ethers JsonRpcProvider methods.
++     * - Synthetic signed transactions, canonical blocks and receipts.
++     * @scenario
++     * - Change one signed-body field without replacing the signed hash.
++     * @expected
++     * - Signed transaction binding rejects.
++     */
++    it.each(['value', 'nonce', 'from', 'signature'] as const)(
++      'binds signed transaction %s to its hash',
++      async (field) => {
++        const changes = {
++          value: 6n,
++          nonce: 7,
++          from: `0x${'34'.repeat(20)}`,
++          signature: null,
++        };
++        Object.assign(data.transactions[0], { [field]: changes[field] });
++        await expect(async () => {
++          await network.getBlockTxs(hash('1'));
++        }).rejects.toThrow(Error);
++      },
++    );
++
++    /**
++     * @target AvalancheRpcNetwork.getBlockTxs rejects receipt %s mismatch
++     * @dependencies
++     * - Mocked ethers JsonRpcProvider methods.
++     * - Synthetic signed transactions, canonical blocks and receipts.
++     * @scenario
++     * - Return a receipt differing in the selected identity or status field.
++     * @expected
++     * - Receipt validation rejects.
++     */
++    it.each([
++      ['blockNumber', 9],
++      ['index', 1],
++      ['blockHash', hash('f')],
++      ['blockHash', null],
++      ['hash', hash('f')],
++      ['status', null],
++      ['status', 2],
++      ['status', '1'],
++    ])('rejects receipt %s mismatch', async (field, value) => {
++      rpc.getTransactionReceipt.mockResolvedValueOnce({
++        ...data.receipts[0],
++        [field]: value,
++      });
++      await expect(async () => {
++        await network.getBlockTxs(hash('1'));
++      }).rejects.toThrow(Error);
++    });
++
++    /**
++     * @target AvalancheRpcNetwork.getBlockTxs fails the whole block if a later
++     * receipt is missing
++     * @dependencies
++     * - Mocked ethers JsonRpcProvider methods.
++     * - Synthetic signed transactions, canonical blocks and receipts.
++     * @scenario
++     * - Return the first receipt and omit the second.
++     * @expected
++     * - The entire block request rejects.
++     */
++    it('fails the whole block if a later receipt is missing', async () => {
++      rpc.getTransactionReceipt
++        .mockResolvedValueOnce(data.receipts[0])
++        .mockResolvedValueOnce(null);
++      await expect(async () => {
++        await network.getBlockTxs(hash('1'));
++      }).rejects.toThrow('receipt');
++    });
++
++    /**
++     * @target AvalancheRpcNetwork.getBlockTxs propagates receipt transport
++     * failures
++     * @dependencies
++     * - Mocked ethers JsonRpcProvider methods.
++     * - Synthetic signed transactions, canonical blocks and receipts.
++     * @scenario
++     * - Reject the receipt request with a transport error.
++     * @expected
++     * - The receipt transport error propagates.
++     */
++    it('propagates receipt transport failures', async () => {
++      rpc.getTransactionReceipt.mockRejectedValue(new Error('RPC unavailable'));
++      await expect(async () => {
++        await network.getBlockTxs(hash('1'));
++      }).rejects.toThrow('RPC unavailable');
++    });
++
++    /**
++     * @target AvalancheRpcNetwork.getBlockTxs distinguishes contradictions
++     * from retryable missing data
++     * @dependencies
++     * - Mocked ethers JsonRpcProvider methods.
++     * - Synthetic signed transactions, canonical blocks and receipts.
++     * @scenario
++     * - First contradict the canonical hash, then omit a receipt.
++     * @expected
++     * - Only the contradiction has the validation-error type.
++     */
++    it('distinguishes contradictions from retryable missing data', async () => {
++      data.canonical.hash = hash('f');
++      await expect(async () => {
++        await network.getBlockTxs(hash('1'));
++      }).rejects.toThrow(AvalancheRpcValidationError);
++      data.canonical.hash = hash('1');
++      rpc.getTransactionReceipt.mockResolvedValue(null);
++      await expect(network.getBlockTxs(hash('1'))).rejects.not.toThrow(
++        AvalancheRpcValidationError,
++      );
++    });
++
++    /**
++     * @target AvalancheRpcNetwork.getBlockTxs binds transactions to the
++     * scanner supplied height
++     * @dependencies
++     * - Mocked ethers JsonRpcProvider methods.
++     * - Synthetic signed transactions, canonical blocks and receipts.
++     * @scenario
++     * - Supply scanner height 10 for the matching block.
++     * @expected
++     * - The complete matching transaction bodies return.
++     */
++    it('binds transactions to the scanner supplied height', async () => {
++      await expect(network.getBlockTxs(hash('1'), 10)).resolves.toEqual(
++        data.transactions.map((tx) => expect.objectContaining(tx)),
++      );
++    });
++
++    /**
++     * @target AvalancheRpcNetwork.getBlockTxs rejects a scanner height
++     * mismatch before reading receipts
++     * @dependencies
++     * - Mocked ethers JsonRpcProvider methods.
++     * - Synthetic signed transactions, canonical blocks and receipts.
++     * @scenario
++     * - Supply scanner height 11 for the block at height 10.
++     * @expected
++     * - A validation error occurs before any receipt query.
++     */
++    it('rejects a scanner height mismatch before reading receipts', async () => {
++      await expect(async () => {
++        await network.getBlockTxs(hash('1'), 11);
++      }).rejects.toThrow(AvalancheRpcValidationError);
++      expect(rpc.getTransactionReceipt).not.toHaveBeenCalled();
++    });
++
++    /**
++     * @target AvalancheRpcNetwork.getBlockTxs keeps a validated failure
++     * reverted when the provider later reports success
++     * @dependencies
++     * - Mocked ethers JsonRpcProvider methods.
++     * - Synthetic signed transactions, canonical blocks and receipts.
++     * @scenario
++     * - Capture a failed receipt, change the provider status, and call
++     * wait(0).
++     * @expected
++     * - CALL_EXCEPTION retains the failed captured receipt.
++     */
++    it('keeps a validated failure reverted when the provider later reports success', async () => {
++      data.receipts[0].status = 0;
++      const [tx] = await network.getBlockTxs(hash('1'), 10);
++      data.receipts[0].status = 1;
++      rpc.getTransactionReceipt.mockResolvedValue(data.receipts[0]);
++      const error = await tx.wait(0).catch((failure: unknown) => failure);
++      expect(isCallException(error)).toEqual(true);
++      expect(error).toMatchObject({
++        code: 'CALL_EXCEPTION',
++        receipt: { status: 0, hash: tx.hash, blockHash: hash('1') },
++      });
++      expect(rpc.getTransactionReceipt).toHaveBeenCalledTimes(2);
++    });
++
++    /**
++     * @target AvalancheRpcNetwork.getBlockTxs returns the same immutable
++     * validated receipt after a contradictory provider response
++     * @dependencies
++     * - Mocked ethers JsonRpcProvider methods.
++     * - Synthetic signed transactions, canonical blocks and receipts.
++     * @scenario
++     * - Capture a successful receipt, contradict the provider, and wait twice.
++     * @expected
++     * - Both waits return the same frozen captured receipt instance.
++     */
++    it('returns the same immutable validated receipt after a contradictory provider response', async () => {
++      const [tx] = await network.getBlockTxs(hash('1'), 10);
++      data.receipts[0].blockHash = hash('f');
++      data.receipts[0].blockNumber = 999;
++      data.receipts[0].status = 0;
++      rpc.getTransactionReceipt.mockResolvedValue(data.receipts[0]);
++      const first = await tx.wait(0);
++      const second = await tx.wait(0);
++      expect(first).toBeInstanceOf(TransactionReceipt);
++      expect(first).toBe(second);
++      expect(first).toMatchObject({
++        status: 1,
++        hash: tx.hash,
++        blockHash: hash('1'),
++        blockNumber: 10,
++      });
++      expect(Object.isFrozen(first)).toEqual(true);
++      expect(first!.logs).toEqual([]);
++      expect(rpc.getTransactionReceipt).toHaveBeenCalledTimes(2);
++    });
++
++    /**
++     * @target AvalancheRpcNetwork.getBlockTxs preserves the signed transaction
++     * body and provider metadata
++     * @dependencies
++     * - Mocked ethers JsonRpcProvider methods.
++     * - Synthetic signed transactions, canonical blocks and receipts.
++     * @scenario
++     * - Read the complete settled block and inspect each returned transaction.
++     * @expected
++     * - Signed bodies, provider references and block metadata are preserved.
++     */
++    it('preserves the signed transaction body and provider metadata', async () => {
++      const result = await network.getBlockTxs(hash('1'), 10);
++      for (const [index, tx] of result.entries()) {
++        expect(tx).toBeInstanceOf(TransactionResponse);
++        expect(tx.provider).toBe(data.transactions[index].provider);
++        expect(Transaction.from(tx).serialized).toEqual(
++          Transaction.from(data.transactions[index]).serialized,
++        );
++        expect(tx).toMatchObject({
++          blockHash: hash('1'),
++          blockNumber: 10,
++          index,
++        });
++      }
++    });
++
++    /**
++     * @target AvalancheRpcNetwork.getBlockTxs rejects unsupported wait depth
++     * %s without another receipt query
++     * @dependencies
++     * - Mocked ethers JsonRpcProvider methods.
++     * - Synthetic signed transactions, canonical blocks and receipts.
++     * @scenario
++     * - Qualify the block, then call wait with each unsupported depth.
++     * @expected
++     * - Wait rejects without querying another receipt.
++     */
++    it.each([undefined, -1, 1, 2, 0.5, NaN, Infinity])(
++      'rejects unsupported wait depth %s without another receipt query',
++      async (confirms) => {
++        const [tx] = await network.getBlockTxs(hash('1'), 10);
++        await expect(async () => {
++          await tx.wait(confirms);
++        }).rejects.toThrow('only wait(0)');
++        expect(rpc.getTransactionReceipt).toHaveBeenCalledTimes(2);
++      },
++    );
++
++    /**
++     * @target AvalancheRpcNetwork.getBlockTxs rejects malformed scanner height
++     * %s
++     * @dependencies
++     * - Mocked ethers JsonRpcProvider methods.
++     * - Synthetic signed transactions, canonical blocks and receipts.
++     * @scenario
++     * - Supply each malformed scanner height.
++     * @expected
++     * - A validation error occurs before any block or receipt query.
++     */
++    it.each([-1, 0.5, Number.MAX_SAFE_INTEGER + 1, NaN, Infinity])(
++      'rejects malformed scanner height %s',
++      async (height) => {
++        await expect(async () => {
++          await network.getBlockTxs(hash('1'), height);
++        }).rejects.toThrow(AvalancheRpcValidationError);
++        expect(rpc.getBlock).not.toHaveBeenCalled();
++        expect(rpc.getTransactionReceipt).not.toHaveBeenCalled();
++      },
++    );
++  });
++});
+diff --git a/packages/scanners/evm-scanner/tests/avalancheRpcScanner.spec.ts b/packages/scanners/evm-scanner/tests/avalancheRpcScanner.spec.ts
+new file mode 100644
+index 0000000..fab2b98
+--- /dev/null
++++ b/packages/scanners/evm-scanner/tests/avalancheRpcScanner.spec.ts
+@@ -0,0 +1,1312 @@
++import { randomUUID } from 'node:crypto';
++import { unlinkSync } from 'node:fs';
++import { tmpdir } from 'node:os';
++import { join } from 'node:path';
++
++import { BlockEntity, PROCEED } from '@rosen-bridge/abstract-scanner';
++import { DataSource } from '@rosen-bridge/extended-typeorm';
++import { Block } from '@rosen-bridge/scanner-interfaces';
++
++import {
++  AvalancheRpcNetwork,
++  AvalancheRpcValidationError,
++} from '../lib/avalancheRpcNetwork';
++import {
++  AvalancheRpcScanner,
++  AvalancheScannerConfig,
++} from '../lib/avalancheRpcScanner';
++import { AvalancheSafetyState } from '../lib/avalancheSafetyState';
++import { block, hash, openDatabase } from './avalancheScannerTestUtils';
++import { mockScannerNetwork } from './mocked/avalancheScannerNetwork.mock';
++
++describe('AvalancheRpcScanner', () => {
++  let database: DataSource;
++
++  let databasePath: string;
++
++  let network: AvalancheRpcNetwork;
++
++  let config: AvalancheScannerConfig;
++
++  beforeEach(async () => {
++    databasePath = join(tmpdir(), `avalanche-scanner-${randomUUID()}.sqlite`);
++    database = await openDatabase(databasePath);
++    network = new AvalancheRpcNetwork('http://127.0.0.1:1', 43113n);
++    mockScannerNetwork(network);
++    config = {
++      dataSource: database,
++      network,
++      initialHeight: 0,
++      sourceId: 'operator-fuji-a',
++      blockCleanupConfig: {
++        blockCleanupThresholdDuration: 86400,
++        blockTrimCountInRound: 2000,
++      },
++    };
++  });
++
++  afterEach(async () => {
++    network['provider'].destroy();
++    if (database.isInitialized) await database.destroy();
++    unlinkSync(databasePath);
++    vi.restoreAllMocks();
++  });
++
++  describe('update', () => {
++    /**
++     * @target AvalancheRpcScanner.update processes contiguous settled blocks
++     * and persists identity and frontier
++     * @dependencies
++     * - Temporary SQLite database and scanner migrations.
++     * - Spies on AvalancheRpcNetwork; synthetic blocks and action callbacks.
++     * @scenario
++     * - Scan settled blocks 1 through 3 using a fresh SQLite database.
++     * @expected
++     * - Blocks and chain/source/policy/frontier persist with no hold.
++     */
++    it('processes contiguous settled blocks and persists identity and frontier', async () => {
++      const scanner = new AvalancheRpcScanner(config);
++      await scanner.update();
++      expect(
++        await database
++          .getRepository(BlockEntity)
++          .find({ order: { height: 'ASC' } }),
++      ).toEqual(
++        [1, 2, 3].map((height) =>
++          expect.objectContaining({
++            height,
++            hash: hash(height),
++            status: PROCEED,
++          }),
++        ),
++      );
++      expect(
++        await database
++          .getRepository(AvalancheSafetyState)
++          .findOneByOrFail({ scanner: 'avalanche' }),
++      ).toMatchObject({
++        chainId: '43113',
++        sourceId: 'operator-fuji-a',
++        policy: 'helicon-settled-v1',
++        finalizedHeight: 3,
++        finalizedHash: hash(3),
++        holdReason: null,
++      });
++      expect(scanner.getBlockChainLastHeight()).toEqual(3);
++    });
++
++    /**
++     * @target AvalancheRpcScanner.update preserves blocks and the hold across
++     * a database close and restart
++     * @dependencies
++     * - Temporary SQLite database and scanner migrations.
++     * - Spies on AvalancheRpcNetwork; synthetic blocks and action callbacks.
++     * @scenario
++     * - Scan blocks, introduce a hash conflict, close and reopen SQLite, then
++     * retry.
++     * @expected
++     * - History remains unchanged and the durable hold prevents further RPC.
++     */
++    it('preserves blocks and the hold across a database close and restart', async () => {
++      const scanner = new AvalancheRpcScanner(config);
++      await scanner.update();
++      const original = await database.getRepository(BlockEntity).find();
++      vi.mocked(network.getBlockAtHeight).mockImplementation(
++        async (height) => ({
++          ...block(height),
++          hash: hash(100 + height),
++        }),
++      );
++      await expect(async () => {
++        await scanner.update();
++      }).rejects.toThrow('settled-frontier-conflict');
++      expect(await database.getRepository(BlockEntity).find()).toEqual(
++        original,
++      );
++      await database.destroy();
++      database = await openDatabase(databasePath);
++      vi.mocked(network.getBlockAtHeight).mockImplementation(async (height) =>
++        block(height),
++      );
++      vi.mocked(network.getCurrentHeight).mockClear();
++      await expect(async () => {
++        await new AvalancheRpcScanner({
++          ...config,
++          dataSource: database,
++        }).update();
++      }).rejects.toThrow('scanner held');
++      expect(network.getCurrentHeight).not.toHaveBeenCalled();
++      expect(await database.getRepository(BlockEntity).find()).toEqual(
++        original,
++      );
++    });
++
++    /**
++     * @target AvalancheRpcScanner.update holds on changed persisted %s
++     * identity before querying the network
++     * @dependencies
++     * - Temporary SQLite database and scanner migrations.
++     * - Spies on AvalancheRpcNetwork; synthetic blocks and action callbacks.
++     * @scenario
++     * - Persist initial history, change one identity field, then restart
++     * scanning.
++     * @expected
++     * - Identity validation rejects before querying the network.
++     */
++    it.each([
++      ['source', { sourceId: 'operator-fuji-b' }],
++      ['policy', undefined],
++      ['chain', undefined],
++    ] as const)(
++      'holds on changed persisted %s identity before querying the network',
++      async (kind, override) => {
++        await new AvalancheRpcScanner(config).update();
++        if (kind !== 'source')
++          await database
++            .getRepository(AvalancheSafetyState)
++            .update(
++              { scanner: 'avalanche' },
++              kind === 'policy'
++                ? { policy: 'different-policy' }
++                : { chainId: '43114' },
++            );
++        vi.mocked(network.getCurrentHeight).mockClear();
++        await expect(async () => {
++          await new AvalancheRpcScanner({ ...config, ...override }).update();
++        }).rejects.toThrow('scanner-identity-changed');
++        expect(network.getCurrentHeight).not.toHaveBeenCalled();
++      },
++    );
++
++    /**
++     * @target AvalancheRpcScanner.update holds on a regressing settled
++     * frontier
++     * @dependencies
++     * - Temporary SQLite database and scanner migrations.
++     * - Spies on AvalancheRpcNetwork; synthetic blocks and action callbacks.
++     * @scenario
++     * - Scan through height 3, then report a settled height of 2.
++     * @expected
++     * - The regressing frontier rejects.
++     */
++    it('holds on a regressing settled frontier', async () => {
++      const scanner = new AvalancheRpcScanner(config);
++      await scanner.update();
++      vi.mocked(network.getCurrentHeight).mockResolvedValue(2);
++      await expect(async () => {
++        await scanner.update();
++      }).rejects.toThrow('settled-frontier-regressed');
++    });
++
++    /**
++     * @target AvalancheRpcScanner.update holds on a discontinuous parent
++     * before extracting the next block
++     * @dependencies
++     * - Temporary SQLite database and scanner migrations.
++     * - Spies on AvalancheRpcNetwork; synthetic blocks and action callbacks.
++     * @scenario
++     * - Scan through height 3, then return a conflicting parent for height 4.
++     * @expected
++     * - The update rejects before extraction and preserves three blocks.
++     */
++    it('holds on a discontinuous parent before extracting the next block', async () => {
++      const scanner = new AvalancheRpcScanner(config);
++      await scanner.update();
++      vi.mocked(network.getCurrentHeight).mockResolvedValue(4);
++      vi.mocked(network.getBlockAtHeight).mockImplementation(
++        async (height) => ({
++          ...block(height),
++          parentHash: height === 4 ? hash(99) : hash(height - 1),
++        }),
++      );
++      vi.mocked(network.getBlockTxs).mockClear();
++      await expect(async () => {
++        await scanner.update();
++      }).rejects.toThrow('settled-parent-conflict');
++      expect(network.getBlockTxs).not.toHaveBeenCalled();
++      expect(await database.getRepository(BlockEntity).count()).toEqual(3);
++    });
++
++    /**
++     * @target AvalancheRpcScanner.update retries an unavailable provider
++     * without clearing history or recording a contradiction
++     * @dependencies
++     * - Temporary SQLite database and scanner migrations.
++     * - Spies on AvalancheRpcNetwork; synthetic blocks and action callbacks.
++     * @scenario
++     * - Scan history, reject one height query as unavailable, then retry.
++     * @expected
++     * - The error propagates without a persistent contradiction hold.
++     */
++    it('retries an unavailable provider without clearing history or recording a contradiction', async () => {
++      const scanner = new AvalancheRpcScanner(config);
++      await scanner.update();
++      vi.mocked(network.getCurrentHeight).mockRejectedValueOnce(
++        new Error('provider unavailable'),
++      );
++      await expect(async () => {
++        await scanner.update();
++      }).rejects.toThrow('provider unavailable');
++      expect(
++        (
++          await database
++            .getRepository(AvalancheSafetyState)
++            .findOneByOrFail({ scanner: 'avalanche' })
++        ).holdReason,
++      ).toBeNull();
++      await scanner.update();
++    });
++
++    /**
++     * @target AvalancheRpcScanner.update preserves a partially extracted block
++     * when its identity changes on restart
++     * @dependencies
++     * - Temporary SQLite database and scanner migrations.
++     * - Spies on AvalancheRpcNetwork; synthetic blocks and action callbacks.
++     * @scenario
++     * - Fail first-block extraction, restart, and return a changed first-block
++     * identity.
++     * @expected
++     * - Partial history remains, extraction is skipped and a hold persists.
++     */
++    it('preserves a partially extracted block when its identity changes on restart', async () => {
++      const scanner = new AvalancheRpcScanner(config);
++      const extractor = {
++        getId: () => 'synthetic-extractor',
++        processTransactions: vi.fn().mockResolvedValue(false),
++        initializeData: vi.fn().mockResolvedValue(undefined),
++        forkBlock: vi.fn().mockResolvedValue(undefined),
++        createUsedBlocksQuery: () => [],
++        hasEventInHeightRange: async () => true,
++      };
++      await scanner.registerExtractor(extractor);
++      await expect(async () => {
++        await scanner.update();
++      }).rejects.toThrow('extraction incomplete');
++      const original = await database
++        .getRepository(BlockEntity)
++        .findOneByOrFail({ height: 1, scanner: 'avalanche' });
++      expect(original.status).toEqual('PROCESSING');
++      const restarted = new AvalancheRpcScanner(config);
++      await restarted.registerExtractor(extractor);
++      extractor.processTransactions.mockClear().mockResolvedValue(true);
++      vi.mocked(network.getBlockAtHeight).mockImplementation(
++        async (height) => ({
++          ...block(height),
++          hash: height === 1 ? hash(101) : hash(height),
++          parentHash: height === 2 ? hash(101) : hash(height - 1),
++        }),
++      );
++      await expect(async () => {
++        await restarted.update();
++      }).rejects.toThrow('persisted-block-conflict');
++      expect(extractor.processTransactions).not.toHaveBeenCalled();
++      expect(await database.getRepository(BlockEntity).find()).toEqual([
++        original,
++      ]);
++      expect(
++        (
++          await database
++            .getRepository(AvalancheSafetyState)
++            .findOneByOrFail({ scanner: 'avalanche' })
++        ).holdReason,
++      ).not.toBeNull();
++    });
++
++    /**
++     * @target AvalancheRpcScanner.update does not skip a partial first block
++     * after the initial-height policy changes
++     * @dependencies
++     * - Temporary SQLite database and scanner migrations.
++     * - Spies on AvalancheRpcNetwork; synthetic blocks and action callbacks.
++     * @scenario
++     * - Persist a partial first block, then restart with a changed initial
++     * height.
++     * @expected
++     * - Identity validation rejects before RPC and preserves the partial
++     * block.
++     */
++    it('does not skip a partial first block after the initial-height policy changes', async () => {
++      const scanner = new AvalancheRpcScanner(config);
++      vi.spyOn(
++        scanner as unknown as {
++          processBlock: (block: Block) => Promise<false>;
++        },
++        'processBlock',
++      ).mockImplementationOnce(async () => {
++        await database
++          .getRepository(BlockEntity)
++          .save({ ...block(1), scanner: 'avalanche', status: 'PROCESSING' });
++        return false;
++      });
++      await expect(async () => {
++        await scanner.update();
++      }).rejects.toThrow('extraction incomplete');
++      const original = await database.getRepository(BlockEntity).find();
++      vi.mocked(network.getCurrentHeight).mockClear();
++      await expect(async () => {
++        await new AvalancheRpcScanner({ ...config, initialHeight: 1 }).update();
++      }).rejects.toThrow('scanner-identity-changed');
++      expect(network.getCurrentHeight).not.toHaveBeenCalled();
++      expect(await database.getRepository(BlockEntity).find()).toEqual(
++        original,
++      );
++    });
++
++    /**
++     * @target AvalancheRpcScanner.update does not extract a frontier that
++     * changes after the captured checkpoint
++     * @dependencies
++     * - Temporary SQLite database and scanner migrations.
++     * - Spies on AvalancheRpcNetwork; synthetic blocks and action callbacks.
++     * @scenario
++     * - Change the frontier hash between checkpoint capture and its later
++     * read.
++     * @expected
++     * - Conflicting extraction is skipped and only two blocks persist.
++     */
++    it('does not extract a frontier that changes after the captured checkpoint', async () => {
++      let reads = 0;
++      vi.mocked(network.getBlockAtHeight).mockImplementation(async (height) => {
++        if (height === 3 && ++reads === 2)
++          return { ...block(height), hash: hash(103) };
++        return block(height);
++      });
++      await expect(async () => {
++        await new AvalancheRpcScanner(config).update();
++      }).rejects.toThrow('settled-response-conflict');
++      expect(network.getBlockTxs).not.toHaveBeenCalledWith(hash(103), 3);
++      expect(await database.getRepository(BlockEntity).count()).toEqual(2);
++    });
++
++    /**
++     * @target AvalancheRpcScanner.update holds on a typed RPC contradiction
++     * before storing a block
++     * @dependencies
++     * - Temporary SQLite database and scanner migrations.
++     * - Spies on AvalancheRpcNetwork; synthetic blocks and action callbacks.
++     * @scenario
++     * - Reject the height query with AvalancheRpcValidationError.
++     * @expected
++     * - No block is stored and the contradiction hold persists.
++     */
++    it('holds on a typed RPC contradiction before storing a block', async () => {
++      vi.mocked(network.getCurrentHeight).mockRejectedValue(
++        new AvalancheRpcValidationError('wrong-chain'),
++      );
++      await expect(async () => {
++        await new AvalancheRpcScanner(config).update();
++      }).rejects.toThrow('wrong-chain');
++      expect(await database.getRepository(BlockEntity).count()).toEqual(0);
++      expect(
++        (
++          await database
++            .getRepository(AvalancheSafetyState)
++            .findOneByOrFail({ scanner: 'avalanche' })
++        ).holdReason,
++      ).not.toBeNull();
++    });
++
++    /**
++     * @target AvalancheRpcScanner.update refuses to reinterpret pre-existing
++     * unqualified scanner history
++     * @dependencies
++     * - Temporary SQLite database and scanner migrations.
++     * - Spies on AvalancheRpcNetwork; synthetic blocks and action callbacks.
++     * @scenario
++     * - Insert processed history without qualified safety state and start
++     * scanning.
++     * @expected
++     * - The scanner rejects unqualified history before RPC.
++     */
++    it('refuses to reinterpret pre-existing unqualified scanner history', async () => {
++      await database
++        .getRepository(BlockEntity)
++        .save({ ...block(1), scanner: 'avalanche', status: PROCEED });
++      await expect(async () => {
++        await new AvalancheRpcScanner(config).update();
++      }).rejects.toThrow('unqualified-existing-history');
++      expect(network.getCurrentHeight).not.toHaveBeenCalled();
++    });
++  });
++
++  describe('assertUsable', () => {
++    /**
++     * @target AvalancheRpcScanner.assertUsable rejects uninitialized and held
++     * scanner state
++     * @dependencies
++     * - Temporary SQLite database and scanner migrations.
++     * - Spies on AvalancheRpcNetwork and synthetic contiguous blocks.
++     * @scenario
++     * - Request usability before scanning.
++     * - Scan through the finalized frontier and request usability again.
++     * - Persist a hold and repeat the usability check.
++     * @expected
++     * - Only the initialized scanner without a hold is usable.
++     */
++    it('rejects uninitialized and held scanner state', async () => {
++      const scanner = new AvalancheRpcScanner(config);
++      await expect(async () => {
++        await scanner.assertUsable();
++      }).rejects.toThrow('not qualified');
++      await scanner.update();
++      await scanner.assertUsable();
++      await database
++        .getRepository(AvalancheSafetyState)
++        .update({ scanner: 'avalanche' }, { holdReason: 'synthetic-hold' });
++      await expect(async () => {
++        await scanner.assertUsable();
++      }).rejects.toThrow('not qualified');
++    });
++  });
++
++  describe('assertObservation', () => {
++    /**
++     * @target AvalancheRpcScanner.assertObservation gates downstream consumers
++     * on initialization, matching block and persisted hold
++     * @dependencies
++     * - Temporary SQLite database and scanner migrations.
++     * - Spies on AvalancheRpcNetwork; synthetic blocks and action callbacks.
++     * @scenario
++     * - Check before initialization, scan, alter block status, then persist a
++     * hold.
++     * @expected
++     * - Only a matching processed observation in qualified state is usable.
++     */
++    it('gates downstream consumers on initialization, matching block and persisted hold', async () => {
++      const scanner = new AvalancheRpcScanner(config);
++      await expect(async () => {
++        await scanner.assertObservation(1, hash(1));
++      }).rejects.toThrow('not qualified');
++      await scanner.update();
++      await scanner.assertObservation(1, hash(1));
++      await expect(async () => {
++        await scanner.assertObservation(1, hash(101));
++      }).rejects.toThrow('no matching');
++      await expect(async () => {
++        await scanner.assertObservation(4, hash(4));
++      }).rejects.toThrow('no matching');
++      await database
++        .getRepository(BlockEntity)
++        .update({ height: 1, scanner: 'avalanche' }, { status: 'PROCESSING' });
++      await expect(async () => {
++        await scanner.assertObservation(1, hash(1));
++      }).rejects.toThrow('no matching');
++      await database
++        .getRepository(AvalancheSafetyState)
++        .update({ scanner: 'avalanche' }, { holdReason: 'synthetic-hold' });
++      await expect(async () => {
++        await scanner.assertObservation(2, hash(2));
++      }).rejects.toThrow('not qualified');
++    });
++  });
++
++  describe('withObservation', () => {
++    /**
++     * @target AvalancheRpcScanner.withObservation does not invoke an
++     * observation action while %s
++     * @dependencies
++     * - Temporary SQLite database and scanner migrations.
++     * - Spies on AvalancheRpcNetwork; synthetic blocks and action callbacks.
++     * @scenario
++     * - Leave the scanner unqualified or persist a hold
++     * - submit an action.
++     * @expected
++     * - The observation action is rejected and never invoked.
++     */
++    it.each(['unqualified', 'held'] as const)(
++      'does not invoke an observation action while %s',
++      async (state) => {
++        const scanner = new AvalancheRpcScanner(config);
++        if (state === 'held') {
++          await scanner.update();
++          await database
++            .getRepository(AvalancheSafetyState)
++            .update({ scanner: 'avalanche' }, { holdReason: 'synthetic-hold' });
++        }
++        const action = vi.fn();
++        await expect(async () => {
++          await scanner.withObservation(1, hash(1), action);
++        }).rejects.toThrow('not qualified');
++        expect(action).not.toHaveBeenCalled();
++      },
++    );
++
++    /**
++     * @target AvalancheRpcScanner.withObservation rejects an observation
++     * action during an update
++     * @dependencies
++     * - Temporary SQLite database and scanner migrations.
++     * - Spies on AvalancheRpcNetwork; synthetic blocks and action callbacks.
++     * @scenario
++     * - Pause an update in its height query, then request an observation
++     * action.
++     * @expected
++     * - The action is excluded until the update finishes.
++     */
++    it('rejects an observation action during an update', async () => {
++      const scanner = new AvalancheRpcScanner(config);
++      await scanner.update();
++      let finish!: (height: number) => void;
++      vi.mocked(network.getCurrentHeight).mockReturnValueOnce(
++        new Promise<number>((resolve) => {
++          finish = resolve;
++        }),
++      );
++      const updating = scanner.update();
++      const action = vi.fn();
++      await expect(async () => {
++        await scanner.withObservation(1, hash(1), action);
++      }).rejects.toThrow('already running');
++      expect(action).not.toHaveBeenCalled();
++      finish(3);
++      await updating;
++    });
++
++    /**
++     * @target AvalancheRpcScanner.withObservation rejects an update before RPC
++     * while an observation action is pending
++     * @dependencies
++     * - Temporary SQLite database and scanner migrations.
++     * - Spies on AvalancheRpcNetwork; synthetic blocks and action callbacks.
++     * @scenario
++     * - Pause a consuming observation action, attempt an update, then finish
++     * it.
++     * @expected
++     * - RPC is excluded during consumption and resumes after completion.
++     */
++    it('rejects an update before RPC while an observation action is pending', async () => {
++      const scanner = new AvalancheRpcScanner(config);
++      await scanner.update();
++      let finish!: (value: string) => void;
++      let entered!: () => void;
++      const started = new Promise<void>((resolve) => {
++        entered = resolve;
++      });
++      const consuming = scanner.withObservation(1, hash(1), () => {
++        entered();
++        return new Promise<string>((resolve) => {
++          finish = resolve;
++        });
++      });
++      await started;
++      vi.mocked(network.getCurrentHeight).mockClear();
++      vi.mocked(network.getBlockAtHeight).mockClear();
++      vi.mocked(network.getBlockTxs).mockClear();
++      await expect(async () => {
++        await scanner.update();
++      }).rejects.toThrow('already running');
++      expect(network.getCurrentHeight).not.toHaveBeenCalled();
++      expect(network.getBlockAtHeight).not.toHaveBeenCalled();
++      expect(network.getBlockTxs).not.toHaveBeenCalled();
++      finish('completed');
++      await expect(consuming).resolves.toEqual('completed');
++      await scanner.update();
++      expect(network.getCurrentHeight).toHaveBeenCalledOnce();
++    });
++
++    /**
++     * @target AvalancheRpcScanner.withObservation excludes a second consumer
++     * before the first validation awaits
++     * @dependencies
++     * - Temporary SQLite database and scanner migrations.
++     * - Spies on AvalancheRpcNetwork; synthetic blocks and action callbacks.
++     * @scenario
++     * - Start the first observation action and immediately submit a second.
++     * @expected
++     * - The second is excluded before the first validation await finishes.
++     */
++    it('excludes a second consumer before the first validation awaits', async () => {
++      const scanner = new AvalancheRpcScanner(config);
++      await scanner.update();
++      const first = vi.fn().mockReturnValue('first');
++      const second = vi.fn();
++      const consuming = scanner.withObservation(1, hash(1), first);
++      await expect(async () => {
++        await scanner.withObservation(1, hash(1), second);
++      }).rejects.toThrow('already running');
++      expect(second).not.toHaveBeenCalled();
++      await expect(consuming).resolves.toEqual('first');
++      expect(first).toHaveBeenCalledOnce();
++    });
++
++    /**
++     * @target AvalancheRpcScanner.withObservation releases exclusion after a
++     * %s action failure
++     * @dependencies
++     * - Temporary SQLite database and scanner migrations.
++     * - Spies on AvalancheRpcNetwork; synthetic blocks and action callbacks.
++     * @scenario
++     * - Throw or reject inside the action, then update and invoke another
++     * action.
++     * @expected
++     * - The exact failure propagates and exclusion is released for recovery.
++     */
++    it.each(['synchronous', 'asynchronous'] as const)(
++      'releases exclusion after a %s action failure',
++      async (kind) => {
++        const scanner = new AvalancheRpcScanner(config);
++        await scanner.update();
++        const failure = new Error('synthetic-action-failure');
++        await expect(
++          scanner.withObservation(1, hash(1), () => {
++            if (kind === 'asynchronous') return Promise.reject(failure);
++            throw failure;
++          }),
++        ).rejects.toBe(failure);
++        await scanner.update();
++        await expect(
++          scanner.withObservation(1, hash(1), () => 'recovered'),
++        ).resolves.toEqual('recovered');
++      },
++    );
++
++    /**
++     * @target AvalancheRpcScanner.withObservation releases exclusion after
++     * observation validation fails
++     * @dependencies
++     * - Temporary SQLite database and scanner migrations.
++     * - Spies on AvalancheRpcNetwork; synthetic blocks and action callbacks.
++     * @scenario
++     * - Reject an incorrect observation hash, then update and use the correct
++     * hash.
++     * @expected
++     * - The first action is not invoked; the later valid action returns 42.
++     */
++    it('releases exclusion after observation validation fails', async () => {
++      const scanner = new AvalancheRpcScanner(config);
++      await scanner.update();
++      const action = vi.fn();
++      await expect(async () => {
++        await scanner.withObservation(1, hash(101), action);
++      }).rejects.toThrow('no matching');
++      expect(action).not.toHaveBeenCalled();
++      await scanner.update();
++      await expect(
++        scanner.withObservation(1, hash(1), () => 42),
++      ).resolves.toEqual(42);
++    });
++  });
++
++  describe('withSafety', () => {
++    /**
++     * @target AvalancheRpcScanner.withSafety releases the safety exclusion
++     * after rejecting uninitialized state
++     * @dependencies
++     * - Temporary SQLite database and scanner migrations.
++     * - Spies on AvalancheRpcNetwork; synthetic blocks and action callbacks.
++     * @scenario
++     * - Request safety before initialization, then scan and retry.
++     * @expected
++     * - The first action is skipped and the qualified retry runs once.
++     */
++    it('releases the safety exclusion after rejecting uninitialized state', async () => {
++      const scanner = new AvalancheRpcScanner(config);
++      const action = vi.fn().mockReturnValue('qualified');
++      await expect(async () => {
++        await scanner.withSafety(action);
++      }).rejects.toThrow('not qualified');
++      expect(action).not.toHaveBeenCalled();
++      await scanner.update();
++      await expect(scanner.withSafety(action)).resolves.toEqual('qualified');
++      expect(action).toHaveBeenCalledOnce();
++    });
++
++    /**
++     * @target AvalancheRpcScanner.withSafety does not invoke a safety action
++     * with unqualified persisted state %j
++     * @dependencies
++     * - Temporary SQLite database and scanner migrations.
++     * - Spies on AvalancheRpcNetwork; synthetic blocks and action callbacks.
++     * @scenario
++     * - Scan initial history, mutate one persisted qualification field, and
++     * submit an action.
++     * @expected
++     * - The unqualified state rejects without invoking the action.
++     */
++    it.each([
++      { holdReason: 'synthetic-hold' },
++      { sourceId: 'other-source' },
++      { chainId: '43114' },
++      { policy: 'other-policy' },
++      { initialHeight: 1 },
++      { finalizedHeight: null },
++      { finalizedHash: null },
++    ])(
++      'does not invoke a safety action with unqualified persisted state %j',
++      async (override) => {
++        const scanner = new AvalancheRpcScanner(config);
++        await scanner.update();
++        await database
++          .getRepository(AvalancheSafetyState)
++          .update({ scanner: 'avalanche' }, override);
++        const action = vi.fn();
++        await expect(async () => {
++          await scanner.withSafety(action);
++        }).rejects.toThrow('not qualified');
++        expect(action).not.toHaveBeenCalled();
++      },
++    );
++
++    /**
++     * @target AvalancheRpcScanner.withSafety rejects a safety action during an
++     * update
++     * @dependencies
++     * - Temporary SQLite database and scanner migrations.
++     * - Spies on AvalancheRpcNetwork; synthetic blocks and action callbacks.
++     * @scenario
++     * - Pause an update, request safety, then finish the update and retry.
++     * @expected
++     * - The first action is excluded and the later action runs once.
++     */
++    it('rejects a safety action during an update', async () => {
++      const scanner = new AvalancheRpcScanner(config);
++      await scanner.update();
++      let finish!: (height: number) => void;
++      vi.mocked(network.getCurrentHeight).mockReturnValueOnce(
++        new Promise<number>((resolve) => {
++          finish = resolve;
++        }),
++      );
++      const updating = scanner.update();
++      const action = vi.fn();
++      await expect(async () => {
++        await scanner.withSafety(action);
++      }).rejects.toThrow('already running');
++      expect(action).not.toHaveBeenCalled();
++      finish(3);
++      await updating;
++      await scanner.withSafety(action);
++      expect(action).toHaveBeenCalledOnce();
++    });
++
++    /**
++     * @target AvalancheRpcScanner.withSafety acquires safety exclusion before
++     * its first await
++     * @dependencies
++     * - Temporary SQLite database and scanner migrations.
++     * - Spies on AvalancheRpcNetwork; synthetic blocks and action callbacks.
++     * @scenario
++     * - Start a safety action and immediately submit a second action.
++     * @expected
++     * - The second is excluded before the first await; the first returns 42.
++     */
++    it('acquires safety exclusion before its first await', async () => {
++      const scanner = new AvalancheRpcScanner(config);
++      await scanner.update();
++      const action = vi.fn();
++      const consuming = scanner.withSafety(() => 42);
++      await expect(async () => {
++        await scanner.withSafety(action);
++      }).rejects.toThrow('already running');
++      expect(action).not.toHaveBeenCalled();
++      await expect(consuming).resolves.toEqual(42);
++    });
++
++    /**
++     * @target AvalancheRpcScanner.withSafety holds safety exclusion through
++     * async completion against updates and reentrant consumers
++     * @dependencies
++     * - Temporary SQLite database and scanner migrations.
++     * - Spies on AvalancheRpcNetwork; synthetic blocks and action callbacks.
++     * @scenario
++     * - Pause a safety action
++     * - attempt an update and both consumer routes
++     * - then finish.
++     * @expected
++     * - RPC and actions remain excluded until completion, then recover.
++     */
++    it('holds safety exclusion through async completion against updates and reentrant consumers', async () => {
++      const scanner = new AvalancheRpcScanner(config);
++      await scanner.update();
++      let finish!: (value: string) => void;
++      let entered!: () => void;
++      const started = new Promise<void>((resolve) => {
++        entered = resolve;
++      });
++      const consuming = scanner.withSafety(() => {
++        entered();
++        return new Promise<string>((resolve) => {
++          finish = resolve;
++        });
++      });
++      await started;
++      vi.mocked(network.getCurrentHeight).mockClear();
++      vi.mocked(network.getBlockAtHeight).mockClear();
++      vi.mocked(network.getBlockTxs).mockClear();
++      const action = vi.fn();
++      await expect(async () => {
++        await scanner.update();
++      }).rejects.toThrow('already running');
++      await expect(async () => {
++        await scanner.withSafety(action);
++      }).rejects.toThrow('already running');
++      await expect(async () => {
++        await scanner.withObservation(1, hash(1), action);
++      }).rejects.toThrow('already running');
++      expect(action).not.toHaveBeenCalled();
++      expect(network.getCurrentHeight).not.toHaveBeenCalled();
++      expect(network.getBlockAtHeight).not.toHaveBeenCalled();
++      expect(network.getBlockTxs).not.toHaveBeenCalled();
++      finish('completed');
++      await expect(consuming).resolves.toEqual('completed');
++      await scanner.update();
++      await scanner.withObservation(1, hash(1), action);
++      expect(action).toHaveBeenCalledOnce();
++    });
++
++    /**
++     * @target AvalancheRpcScanner.withSafety releases safety exclusion after a
++     * %s action failure
++     * @dependencies
++     * - Temporary SQLite database and scanner migrations.
++     * - Spies on AvalancheRpcNetwork; synthetic blocks and action callbacks.
++     * @scenario
++     * - Throw or reject inside a safety action, then update and run another
++     * action.
++     * @expected
++     * - The exact failure propagates and a later action succeeds.
++     */
++    it.each(['synchronous', 'asynchronous'] as const)(
++      'releases safety exclusion after a %s action failure',
++      async (kind) => {
++        const scanner = new AvalancheRpcScanner(config);
++        await scanner.update();
++        const failure = new Error('synthetic-action-failure');
++        await expect(
++          scanner.withSafety(() => {
++            if (kind === 'asynchronous') return Promise.reject(failure);
++            throw failure;
++          }),
++        ).rejects.toBe(failure);
++        await scanner.update();
++        await expect(scanner.withSafety(() => 'recovered')).resolves.toEqual(
++          'recovered',
++        );
++      },
++    );
++  });
++
++  describe('constructor', () => {
++    /**
++     * @target AvalancheRpcScanner.constructor rejects an invalid scanner
++     * configuration
++     * @dependencies
++     * - Temporary SQLite database and scanner migrations.
++     * - Spies on AvalancheRpcNetwork; synthetic blocks and action callbacks.
++     * @scenario
++     * - Construct a scanner with each invalid configuration override.
++     * @expected
++     * - Invalid scanner configuration rejects.
++     */
++    it.each([
++      { sourceId: 'https://provider.example/token' },
++      { sourceId: '' },
++      { heightGap: 2 },
++      { suffix: 'different-state' },
++      { initialHeight: 1.5 },
++      { initialHeight: -2 },
++    ])('rejects an invalid scanner configuration', (override) => {
++      expect(() => new AvalancheRpcScanner({ ...config, ...override })).toThrow(
++        Error,
++      );
++    });
++  });
++  describe('withHealthRead', () => {
++    /**
++     * @target AvalancheRpcScanner.withHealthRead rechecks qualification when a queued read is admitted
++     * @dependencies SQLite scanner state and a held read.
++     * @scenario Queue a read, change persisted qualification, then release its predecessor.
++     * @expected The queued callback refuses the changed state and never publishes its result.
++     */
++    it('rechecks qualification when a queued read is admitted', async () => {
++      const scanner = new AvalancheRpcScanner(config);
++      await scanner.update();
++      let release!: () => void;
++      let entered!: () => void;
++      const started = new Promise<void>((r) => {
++        entered = r;
++      });
++      const gate = new Promise<void>((r) => {
++        release = r;
++      });
++      const first = scanner.withHealthRead(
++        async () => {
++          entered();
++          await gate;
++        },
++        1000,
++        2,
++      );
++      await started;
++      const action = vi.fn();
++      const queued = scanner.withHealthRead(action, 1000, 2);
++      const refusal = expect(queued).rejects.toThrow('not qualified');
++      try {
++        await database
++          .getRepository(AvalancheSafetyState)
++          .update({ scanner: 'avalanche' }, { holdReason: 'fixture-drift' });
++      } finally {
++        release();
++      }
++      await first;
++      await refusal;
++      expect(action).not.toHaveBeenCalled();
++    });
++
++    /**
++     * @target AvalancheRpcScanner.withHealthRead refuses an update admitted before health acquisition
++     * @dependencies SQLite state, actual Mutex scheduling and held scanner RPC.
++     * @scenario Request health then synchronously start an update before Mutex admission.
++     * @expected Update retains its lease; health refuses without callback invocation and later recovers.
++     */
++    it('refuses an update admitted before health acquisition', async () => {
++      const scanner = new AvalancheRpcScanner(config);
++      await scanner.update();
++      let release!: () => void;
++      let entered!: () => void;
++      const started = new Promise<void>((r) => {
++        entered = r;
++      });
++      const gate = new Promise<void>((r) => {
++        release = r;
++      });
++      vi.mocked(network.getCurrentHeight).mockImplementationOnce(async () => {
++        entered();
++        await gate;
++        return 3;
++      });
++      const action = vi.fn(),
++        read = scanner.withHealthRead(action, 1000, 2);
++      const refusal = expect(read).rejects.toThrow('already running');
++      const updating = scanner.update();
++      try {
++        await started;
++        await refusal;
++        expect(action).not.toHaveBeenCalled();
++      } finally {
++        release();
++      }
++      await updating;
++      await expect(scanner.withHealthRead(() => 42, 1000, 2)).resolves.toEqual(
++        42,
++      );
++    });
++
++    /**
++     * @target AvalancheRpcScanner.withHealthRead serializes health reads and retains exclusive action admission
++     * @dependencies SQLite scanner state and held read callbacks.
++     * @scenario Start two health reads while the first is held; attempt an exclusive action and update.
++     * @expected Reads complete in order; exclusive actions and updates refuse until the lease ends.
++     */
++    it('serializes health reads and retains exclusive action admission', async () => {
++      const scanner = new AvalancheRpcScanner(config);
++      await scanner.update();
++      let release!: () => void;
++      let entered!: () => void;
++      const started = new Promise<void>((r) => {
++        entered = r;
++      });
++      const gate = new Promise<void>((r) => {
++        release = r;
++      });
++      const order: number[] = [];
++      const first = scanner.withHealthRead(
++        async () => {
++          order.push(1);
++          entered();
++          await gate;
++          return 1;
++        },
++        1000,
++        3,
++      );
++      await started;
++      const second = scanner.withHealthRead(
++        () => {
++          order.push(2);
++          return 2;
++        },
++        1000,
++        3,
++      );
++      const action = vi.fn();
++      try {
++        await expect(scanner.withSafety(action)).rejects.toThrow(
++          'already running',
++        );
++        await expect(
++          scanner.withObservation(1, hash(1), action),
++        ).rejects.toThrow('already running');
++        await expect(scanner.update()).rejects.toThrow('already running');
++        expect(order).toEqual([1]);
++        expect(action).not.toHaveBeenCalled();
++      } finally {
++        release();
++      }
++      await expect(Promise.all([first, second])).resolves.toEqual([1, 2]);
++      expect(order).toEqual([1, 2]);
++      await scanner.update();
++    });
++
++    /**
++     * @target AvalancheRpcScanner.withHealthRead refuses health reads during an existing %s operation
++     * @dependencies SQLite state and a held exclusive action or scanner RPC.
++     * @scenario Admit an update or exclusive consumer before requesting health.
++     * @expected Health callback is never invoked, then admission recovers after completion.
++     */
++    it.each(['update', 'consumer'] as const)(
++      'refuses health reads during an existing %s operation',
++      async (kind) => {
++        const scanner = new AvalancheRpcScanner(config);
++        await scanner.update();
++        let release!: () => void;
++        let entered!: () => void;
++        const started = new Promise<void>((r) => {
++          entered = r;
++        });
++        const gate = new Promise<void>((r) => {
++          release = r;
++        });
++        if (kind === 'update')
++          vi.mocked(network.getCurrentHeight).mockImplementationOnce(
++            async () => {
++              entered();
++              await gate;
++              return 3;
++            },
++          );
++        const busy =
++          kind === 'update'
++            ? scanner.update()
++            : scanner.withSafety(async () => {
++                entered();
++                await gate;
++              });
++        await started;
++        const action = vi.fn().mockReturnValue(42);
++        try {
++          await expect(scanner.withHealthRead(action, 1000, 3)).rejects.toThrow(
++            'already running',
++          );
++          expect(action).not.toHaveBeenCalled();
++        } finally {
++          release();
++        }
++        await busy;
++        await expect(scanner.withHealthRead(action, 1000, 3)).resolves.toEqual(
++          42,
++        );
++      },
++    );
++
++    /**
++     * @target AvalancheRpcScanner.withHealthRead refuses finite queue overload without invoking the extra callback
++     * @dependencies SQLite state and a held health read.
++     * @scenario Fill one active and one waiting slot, then request a third.
++     * @expected Overload fails immediately; admitted calls recover and slots are reusable.
++     */
++    it('refuses finite queue overload without invoking the extra callback', async () => {
++      const scanner = new AvalancheRpcScanner(config);
++      await scanner.update();
++      let release!: () => void;
++      let entered!: () => void;
++      const started = new Promise<void>((r) => {
++        entered = r;
++      });
++      const gate = new Promise<void>((r) => {
++        release = r;
++      });
++      const first = scanner.withHealthRead(
++        async () => {
++          entered();
++          await gate;
++          return 1;
++        },
++        1000,
++        2,
++      );
++      await started;
++      const second = scanner.withHealthRead(() => 2, 1000, 2),
++        extra = vi.fn();
++      try {
++        await expect(scanner.withHealthRead(extra, 1000, 2)).rejects.toThrow(
++          'queue is full',
++        );
++        expect(extra).not.toHaveBeenCalled();
++      } finally {
++        release();
++      }
++      await expect(Promise.all([first, second])).resolves.toEqual([1, 2]);
++      await expect(scanner.withHealthRead(() => 3, 1000, 2)).resolves.toEqual(
++        3,
++      );
++    });
++
++    /**
++     * @target AvalancheRpcScanner.withHealthRead expires a waiting callback without late invocation
++     * @dependencies SQLite state and held active read.
++     * @scenario Let a queued request expire before releasing its predecessor.
++     * @expected Timeout rejects; the expired callback never runs and cleanup permits later reads.
++     */
++    it('expires a waiting callback without late invocation', async () => {
++      const scanner = new AvalancheRpcScanner(config);
++      await scanner.update();
++      let release!: () => void;
++      let entered!: () => void;
++      const started = new Promise<void>((r) => {
++        entered = r;
++      });
++      const gate = new Promise<void>((r) => {
++        release = r;
++      });
++      const first = scanner.withHealthRead(
++        async () => {
++          entered();
++          await gate;
++        },
++        1000,
++        2,
++      );
++      await started;
++      const action = vi.fn();
++      const expired = scanner.withHealthRead(action, 20, 2);
++      try {
++        await expect(expired).rejects.toThrow('deadline exceeded');
++        expect(action).not.toHaveBeenCalled();
++      } finally {
++        release();
++      }
++      await first;
++      await new Promise((r) => setImmediate(r));
++      expect(action).not.toHaveBeenCalled();
++      await expect(scanner.withHealthRead(() => 42, 1000, 2)).resolves.toEqual(
++        42,
++      );
++    });
++
++    /**
++     * @target AvalancheRpcScanner.withHealthRead retains an expired active lease until its actual %s
++     * @dependencies SQLite state and a read completing after its deadline.
++     * @scenario Expire an active read, attempt update, then resolve or reject the real work.
++     * @expected Deadline rejects with no late result; update remains excluded until work ends and recovers.
++     */
++    it.each(['resolution', 'rejection'] as const)(
++      'retains an expired active lease until its actual %s',
++      async (kind) => {
++        const scanner = new AvalancheRpcScanner(config);
++        await scanner.update();
++        let release!: () => void;
++        let entered!: () => void;
++        const started = new Promise<void>((r) => {
++          entered = r;
++        });
++        const gate = new Promise<void>((resolve, reject) => {
++          release = () =>
++            kind === 'resolution'
++              ? resolve()
++              : reject(new Error('late-failure'));
++        });
++        const read = scanner.withHealthRead(
++          async () => {
++            entered();
++            await gate;
++            return 42;
++          },
++          20,
++          2,
++        );
++        await started;
++        try {
++          await expect(read).rejects.toThrow('deadline exceeded');
++          await expect(scanner.update()).rejects.toThrow('already running');
++        } finally {
++          release();
++        }
++        await new Promise((r) => setImmediate(r));
++        await scanner.update();
++        await expect(
++          scanner.withHealthRead(() => 43, 1000, 2),
++        ).resolves.toEqual(43);
++      },
++    );
++
++    /**
++     * @target AvalancheRpcScanner.withHealthRead releases admission after a %s callback failure
++     * @dependencies SQLite state and a failing read callback.
++     * @scenario Throw synchronously or reject asynchronously, then update and read.
++     * @expected The exact failure propagates; queue and scanner exclusion recover.
++     */
++    it.each(['synchronous', 'asynchronous'] as const)(
++      'releases admission after a %s callback failure',
++      async (kind) => {
++        const scanner = new AvalancheRpcScanner(config);
++        await scanner.update();
++        const failure = new Error('read-failure');
++        await expect(
++          scanner.withHealthRead(
++            () => {
++              if (kind === 'asynchronous') return Promise.reject(failure);
++              throw failure;
++            },
++            1000,
++            2,
++          ),
++        ).rejects.toBe(failure);
++        await scanner.update();
++        await expect(
++          scanner.withHealthRead(() => 42, 1000, 2),
++        ).resolves.toEqual(42);
++      },
++    );
++
++    /**
++     * @target AvalancheRpcScanner.withHealthRead refuses unqualified state before callback invocation
++     * @dependencies SQLite scanner state with a persisted hold.
++     * @scenario Persist a hold before health admission.
++     * @expected Qualification fails and callback is not invoked; clearing the fixture hold permits recovery.
++     */
++    it('refuses unqualified state before callback invocation', async () => {
++      const scanner = new AvalancheRpcScanner(config);
++      await scanner.update();
++      const repo = database.getRepository(AvalancheSafetyState),
++        state = await repo.findOneByOrFail({ scanner: 'avalanche' });
++      state.holdReason = 'synthetic-hold';
++      await repo.save(state);
++      const action = vi.fn().mockReturnValue(42);
++      await expect(scanner.withHealthRead(action, 1000, 2)).rejects.toThrow(
++        'not qualified',
++      );
++      expect(action).not.toHaveBeenCalled();
++      state.holdReason = null;
++      await repo.save(state);
++      await expect(scanner.withHealthRead(action, 1000, 2)).resolves.toEqual(
++        42,
++      );
++    });
++
++    /**
++     * @target AvalancheRpcScanner.withHealthRead refuses invalid %s bounds before callback invocation
++     * @dependencies SQLite scanner configuration and invalid deadline or capacity.
++     * @scenario Supply a nonpositive, unsafe or overflowing bound.
++     * @expected Bounds refuse without invoking callbacks or acquiring a lease.
++     */
++    it.each([
++      ['zero deadline', 0, 2],
++      ['overflow deadline', 2147483648, 2],
++      ['fractional deadline', 1.5, 2],
++      ['zero capacity', 1000, 0],
++      ['unsafe capacity', 1000, Number.MAX_SAFE_INTEGER + 1],
++    ] as const)(
++      'refuses invalid %s bounds before callback invocation',
++      async (_label, timeout, capacity) => {
++        const scanner = new AvalancheRpcScanner(config),
++          action = vi.fn();
++        await expect(
++          scanner.withHealthRead(action, timeout, capacity),
++        ).rejects.toThrow('Invalid');
++        expect(action).not.toHaveBeenCalled();
++      },
++    );
++  });
++});
+diff --git a/packages/scanners/evm-scanner/tests/avalancheRpcTestUtils.ts b/packages/scanners/evm-scanner/tests/avalancheRpcTestUtils.ts
+new file mode 100644
+index 0000000..209abab
+--- /dev/null
++++ b/packages/scanners/evm-scanner/tests/avalancheRpcTestUtils.ts
+@@ -0,0 +1,120 @@
++import { Transaction, TransactionResponse } from 'ethers';
++
++import { AvalancheRpcNetwork } from '../lib/avalancheRpcNetwork';
++import { chainId } from './avalancheTestData';
++import { rpc } from './mocked/avalancheRpc.mock';
++
++/**
++ * Build a canonical synthetic block or transaction hash.
++ */
++export const hash = (byte: string) => `0x${byte.repeat(64)}`;
++
++/**
++ * Create a signed synthetic transaction response with the selected chain ID.
++ */
++export const transaction = (
++  index: number,
++  id = chainId,
++): TransactionResponse => {
++  const signed = Transaction.from({
++    type: 2,
++    chainId: id,
++    nonce: index,
++    to: `0x${'12'.repeat(20)}`,
++    gasLimit: 21000n,
++    maxFeePerGas: 10n,
++    maxPriorityFeePerGas: 1n,
++    value: 5n,
++    // Synthetic signatures; these fixtures do not use signing keys.
++    signature: {
++      r: `0x${'01'.repeat(32)}`,
++      s: `0x${'02'.repeat(32)}`,
++      v: 27,
++    },
++  });
++  return {
++    type: signed.type,
++    chainId: signed.chainId,
++    nonce: signed.nonce,
++    to: signed.to,
++    from: signed.from,
++    gasLimit: signed.gasLimit,
++    maxFeePerGas: signed.maxFeePerGas,
++    maxPriorityFeePerGas: signed.maxPriorityFeePerGas,
++    value: signed.value,
++    data: signed.data,
++    accessList: signed.accessList,
++    signature: signed.signature,
++    hash: signed.hash,
++    blockHash: hash('1'),
++    blockNumber: 10,
++    index,
++    provider: rpc,
++  } as unknown as TransactionResponse;
++};
++
++/**
++ * Prepare matching finalized, canonical, transaction and receipt responses.
++ */
++export const fixture = (id = chainId) => {
++  const transactions = [transaction(0, id), transaction(1, id)];
++  const block = {
++    number: 10,
++    hash: hash('1'),
++    parentHash: hash('2'),
++    timestamp: 100,
++    length: transactions.length,
++    transactions: transactions.map((tx) => tx.hash),
++    prefetchedTransactions: transactions,
++  };
++  const canonical = { ...block, transactions: [...block.transactions] };
++  const finalized = {
++    number: 20,
++    hash: hash('3'),
++    parentHash: hash('4'),
++    timestamp: 200,
++    length: 0,
++    transactions: [] as string[],
++    prefetchedTransactions: [] as TransactionResponse[],
++  };
++  const receipts = transactions.map((tx) => ({
++    hash: tx.hash,
++    blockHash: tx.blockHash,
++    blockNumber: tx.blockNumber,
++    index: tx.index,
++    status: 1,
++    to: tx.to,
++    from: tx.from,
++    contractAddress: null,
++    logsBloom: '0x' + '00'.repeat(256),
++    gasUsed: 21000n,
++    cumulativeGasUsed: 21000n,
++    gasPrice: 1n,
++    type: 2,
++    root: null,
++    logs: [],
++  }));
++  rpc.send.mockResolvedValue(`0x${id.toString(16)}`);
++  rpc.getBlock.mockImplementation(async (tag: string | number) => {
++    if (tag === 'finalized' || tag === finalized.number) return finalized;
++    if (tag === block.hash) return block;
++    if (tag === block.number) return canonical;
++    return null;
++  });
++  rpc.getTransactionReceipt.mockImplementation(async (txHash: string) =>
++    receipts.find((receipt) => receipt.hash === txHash),
++  );
++  return { block, canonical, finalized, transactions, receipts };
++};
++
++/**
++ * Invoke the selected public read operation against the synthetic RPC adapter.
++ */
++export const run = (
++  network: AvalancheRpcNetwork,
++  operation: 'getCurrentHeight' | 'getBlockAtHeight' | 'getBlockTxs',
++) => {
++  if (operation === 'getCurrentHeight') return network.getCurrentHeight();
++  if (operation === 'getBlockAtHeight') return network.getBlockAtHeight(10);
++  return network.getBlockTxs(hash('1'));
++};
+diff --git a/packages/scanners/evm-scanner/tests/avalancheSafetyState.spec.ts b/packages/scanners/evm-scanner/tests/avalancheSafetyState.spec.ts
+new file mode 100644
+index 0000000..0e6a3ad
+--- /dev/null
++++ b/packages/scanners/evm-scanner/tests/avalancheSafetyState.spec.ts
+@@ -0,0 +1,72 @@
++import { randomUUID } from 'node:crypto';
++import { unlinkSync } from 'node:fs';
++import { tmpdir } from 'node:os';
++import { join } from 'node:path';
++
++import { DataSource } from '@rosen-bridge/extended-typeorm';
++
++import { AvalancheRpcNetwork } from '../lib/avalancheRpcNetwork';
++import {
++  AvalancheRpcScanner,
++  AvalancheScannerConfig,
++} from '../lib/avalancheRpcScanner';
++import { AvalancheSafetyState1790769600000 } from '../lib/avalancheSafetyState';
++import { openDatabase } from './avalancheScannerTestUtils';
++import { mockScannerNetwork } from './mocked/avalancheScannerNetwork.mock';
++
++describe('AvalancheSafetyState1790769600000', () => {
++  let database: DataSource;
++  let databasePath: string;
++  let network: AvalancheRpcNetwork;
++  let config: AvalancheScannerConfig;
++  beforeEach(async () => {
++    databasePath = join(tmpdir(), `avalanche-scanner-${randomUUID()}.sqlite`);
++    database = await openDatabase(databasePath);
++    network = new AvalancheRpcNetwork('http://127.0.0.1:1', 43113n);
++    mockScannerNetwork(network);
++    config = {
++      dataSource: database,
++      network,
++      initialHeight: 0,
++      sourceId: 'operator-fuji-a',
++      blockCleanupConfig: {
++        blockCleanupThresholdDuration: 86400,
++        blockTrimCountInRound: 2000,
++      },
++    };
++  });
++  afterEach(async () => {
++    network['provider'].destroy();
++    if (database.isInitialized) await database.destroy();
++    unlinkSync(databasePath);
++    vi.restoreAllMocks();
++  });
++  describe('down', () => {
++    /**
++     * @target AvalancheSafetyState1790769600000.down prevents a migration
++     * rollback from erasing populated safety state
++     * @dependencies
++     * - File SQLite database with the actual abstract-scanner and Avalanche
++     * safety migrations, QueryRunner and scanner safety repository.
++     * - Actual AvalancheRpcScanner and explicit Fuji network with mocked
++     * settled height, contiguous headers and empty transaction batches.
++     * @scenario
++     * - Run the actual scanner update to persist qualified safety state.
++     * - Attempt to roll back its migration and release the QueryRunner.
++     * @expected
++     * - Rollback rejects while populated safety state exists.
++     */
++
++    it('prevents a migration rollback from erasing populated safety state', async () => {
++      await new AvalancheRpcScanner(config).update();
++      const runner = database.createQueryRunner();
++      try {
++        await expect(async () => {
++          await new AvalancheSafetyState1790769600000().down(runner);
++        }).rejects.toThrow('populated Avalanche safety state');
++      } finally {
++        await runner.release();
++      }
++    });
++  });
++});
+diff --git a/packages/scanners/evm-scanner/tests/avalancheScannerTestUtils.ts b/packages/scanners/evm-scanner/tests/avalancheScannerTestUtils.ts
+new file mode 100644
+index 0000000..65aa141
+--- /dev/null
++++ b/packages/scanners/evm-scanner/tests/avalancheScannerTestUtils.ts
+@@ -0,0 +1,44 @@
++import {
++  BlockEntity,
++  ExtractorStatusEntity,
++  migrations,
++} from '@rosen-bridge/abstract-scanner';
++import { DataSource } from '@rosen-bridge/extended-typeorm';
++import { Block } from '@rosen-bridge/scanner-interfaces';
++
++import {
++  AvalancheSafetyState,
++  AvalancheSafetyState1790769600000,
++} from '../lib/avalancheSafetyState';
++
++/**
++ * Build a deterministic synthetic block hash for a height.
++ */
++export const hash = (height: number) =>
++  '0x' + height.toString(16).padStart(64, '0');
++/**
++ * Build a contiguous synthetic block header for a height.
++ */
++export const block = (height: number): Block => ({
++  height,
++  hash: hash(height),
++  parentHash: hash(height - 1),
++  timestamp: 1790769600 + height,
++  txCount: 0,
++});
++
++/**
++ * Open the isolated scanner database and apply its migrations.
++ */
++export const openDatabase = async (databasePath: string) => {
++  const source = new DataSource({
++    type: 'sqlite',
++    database: databasePath,
++    entities: [BlockEntity, ExtractorStatusEntity, AvalancheSafetyState],
++    migrations: [...migrations.sqlite, AvalancheSafetyState1790769600000],
++    synchronize: false,
++  });
++  await source.initialize();
++  await source.runMigrations();
++  return source;
++};
+diff --git a/packages/scanners/evm-scanner/tests/avalancheTestData.ts b/packages/scanners/evm-scanner/tests/avalancheTestData.ts
+new file mode 100644
+index 0000000..c438c3b
+--- /dev/null
++++ b/packages/scanners/evm-scanner/tests/avalancheTestData.ts
+@@ -0,0 +1,2 @@
++/** Fuji chain identity used by the synthetic RPC fixtures. */
++export const chainId = 43113n;
+diff --git a/packages/scanners/evm-scanner/tests/mocked/avalancheRpc.mock.ts b/packages/scanners/evm-scanner/tests/mocked/avalancheRpc.mock.ts
+new file mode 100644
+index 0000000..4221b77
+--- /dev/null
++++ b/packages/scanners/evm-scanner/tests/mocked/avalancheRpc.mock.ts
+@@ -0,0 +1,10 @@
++import { vi } from 'vitest';
++
++/** Mock chain identity, finalized/canonical blocks, height and transaction receipts. */
++export const rpc = {
++  send: vi.fn(),
++  getBlock: vi.fn(),
++  getBlockNumber: vi.fn(),
++  getTransactionReceipt: vi.fn(),
++  _getConnection: () => ({ timeout: 0 }),
++};
+diff --git a/packages/scanners/evm-scanner/tests/mocked/avalancheScannerNetwork.mock.ts b/packages/scanners/evm-scanner/tests/mocked/avalancheScannerNetwork.mock.ts
+new file mode 100644
+index 0000000..b279796
+--- /dev/null
++++ b/packages/scanners/evm-scanner/tests/mocked/avalancheScannerNetwork.mock.ts
+@@ -0,0 +1,13 @@
++import { vi } from 'vitest';
++
++import { AvalancheRpcNetwork } from '../../lib/avalancheRpcNetwork';
++import { block } from '../avalancheScannerTestUtils';
++
++/** Supply a settled height, contiguous headers and empty transaction batches. */
++export const mockScannerNetwork = (network: AvalancheRpcNetwork) => {
++  vi.spyOn(network, 'getCurrentHeight').mockResolvedValue(3);
++  vi.spyOn(network, 'getBlockAtHeight').mockImplementation(async (height) =>
++    block(height),
++  );
++  vi.spyOn(network, 'getBlockTxs').mockResolvedValue([]);
++};

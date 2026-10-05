@@ -1,0 +1,78 @@
+diff --git a/.changeset/avalanche-explorer-selection.md b/.changeset/avalanche-explorer-selection.md
+new file mode 100644
+index 0000000..0c56270
+--- /dev/null
++++ b/.changeset/avalanche-explorer-selection.md
+@@ -0,0 +1,5 @@
++---
++"@rosen-ui/utils": minor
++---
++
++Add address and transaction links for explicitly selected Avalanche C-Chain networks.
+diff --git a/.changeset/utils-avalanche-explorer-export.md b/.changeset/utils-avalanche-explorer-export.md
+new file mode 100644
+index 0000000..a4351cd
+--- /dev/null
++++ b/.changeset/utils-avalanche-explorer-export.md
+@@ -0,0 +1,5 @@
++---
++'@rosen-ui/utils': patch
++---
++
++Export the existing Avalanche explorer selector for consumers that carry an explicit supported deployment.
+diff --git a/packages/utils/src/avalancheExplorerUrl.ts b/packages/utils/src/avalancheExplorerUrl.ts
+new file mode 100644
+index 0000000..9378e78
+--- /dev/null
++++ b/packages/utils/src/avalancheExplorerUrl.ts
+@@ -0,0 +1,6 @@
++/** Selects the C-Chain explorer only after an explicit EVM network selection. */
++export const avalancheExplorerUrl = (chainId?: number): `https://${string}` | undefined => {
++  if (chainId === 43113) return 'https://testnet.snowtrace.io';
++  if (chainId === 43114) return 'https://snowtrace.io';
++  return undefined;
++};
+diff --git a/packages/utils/src/index.ts b/packages/utils/src/index.ts
+index 0469308..685f3b5 100644
+--- a/packages/utils/src/index.ts
++++ b/packages/utils/src/index.ts
+@@ -1,3 +1,4 @@
++export * from './avalancheExplorerUrl';
+ export * from './batch';
+ export * from './bigint';
+ export * from './decimals';
+diff --git a/packages/utils/tests/avalancheExplorerUrl.spec.ts b/packages/utils/tests/avalancheExplorerUrl.spec.ts
+new file mode 100644
+index 0000000..c4b05c3
+--- /dev/null
++++ b/packages/utils/tests/avalancheExplorerUrl.spec.ts
+@@ -0,0 +1,20 @@
++import { describe, expect, it } from 'vitest';
++
++import { avalancheExplorerUrl } from '../src/avalancheExplorerUrl';
++
++describe('avalancheExplorerUrl', () => {
++  /**
++   * @target avalancheExplorerUrl should resolve deployment %s
++   * @dependencies none
++   * @scenario select Fuji, mainnet, absent or another EVM chain
++   * @expected correct selected origin or no explorer
++   */
++  it.each([
++    [43113, 'https://testnet.snowtrace.io'],
++    [43114, 'https://snowtrace.io'],
++    [undefined, undefined],
++    [1, undefined],
++  ] as const)('should resolve deployment %s', (chainId, expected) => {
++    expect(avalancheExplorerUrl(chainId)).toEqual(expected);
++  });
++});
+diff --git a/packages/utils/vitest.config.ts b/packages/utils/vitest.config.ts
+new file mode 100644
+index 0000000..b7104f7
+--- /dev/null
++++ b/packages/utils/vitest.config.ts
+@@ -0,0 +1,3 @@
++import { defineConfig } from 'vitest/config';
++
++export default defineConfig({ test: { include: ['tests/**/*.spec.ts'] } });

@@ -1,0 +1,1060 @@
+diff --git a/.changeset/avalanche-native-asset-health.md b/.changeset/avalanche-native-asset-health.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..c134cea00f2eef45dc565205d2bec4b5fb4febf9
+--- /dev/null
++++ b/.changeset/avalanche-native-asset-health.md
+@@ -0,0 +1,7 @@
++---
++'@rosen-bridge/asset-check': minor
++---
++
++Add AVAX and admitted mapped ERC20 health parameters with explicit C-Chain
++identity, raw-unit thresholds, qualified finalized balance sources and retained
++concurrent-read exclusion.
+diff --git a/packages/asset-check/lib/avalanche/README.md b/packages/asset-check/lib/avalanche/README.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..18ecf9b27756c90b68a84fb973836f56757c6db7
+--- /dev/null
++++ b/packages/asset-check/lib/avalanche/README.md
+@@ -0,0 +1,44 @@
++# Avalanche asset health
++
++`AvalancheRpcAssetHealthCheckParam` extends `AbstractAssetHealthCheckParam` for
++native AVAX or an admitted mapped ERC20 asset. Supply explicit chainId 43113 or
++43114, a stable sourceId, the monitored C-Chain address, and warning/critical
++thresholds in raw asset units. AVAX thresholds use wei.
++Balances at a threshold are classified in that threshold's severity.
++
++The source must provide `expectedChainId`, `assertNetwork()` and
++`getAddressBalanceForNativeToken(address)`. Its balance method must qualify a
++canonical finalized execution block; a generic EVM reader that uses `latest`
++does not satisfy this contract. The health parameter checks network identity
++before and after the read, validates uint256 balance bounds, captures policy
++values and refuses changed source identity or methods during an update.
++
++Omit `token` for AVAX. For an admitted ERC20 asset, set `token` to its normalized
++lowercase contract `tokenId`, display `name` and execution `decimals`. The source
++must also provide `getAddressBalanceForERC20Asset(address, tokenId)` with the
++same finalized qualification. Thresholds and returned balances stay in that
++asset's raw execution units; display decimals never rescale the comparison.
++Instantiate one parameter per admitted asset. The caller owns token admission.
++
++Create separate instances with different sourceId values for independent
++providers. The consumer selects and qualifies those sources; this class does
++not implement RPC failover or prove endpoint independence. It does not authorize
++payments or signing and cannot establish finality for a source that omits its
++required qualification.
++
++Pending and failed updates report BROKEN. Overlapping updates retain only the
++newest attempt's status and metadata. Error details exclude provider messages.
++
++`getLastUpdatedTime()` is the local status-assessment time. Initial and pending
++BROKEN states have this timestamp so the shared notification/history consumer
++can record them. It is not a qualified balance timestamp.
++`getLastBalanceObservedTime()` separately records the local completion time of
++the last successful qualified balance read and remains absent before success.
++An older completion cannot update either timestamp while a newer attempt owns
++the status. These clocks do not represent blockchain block timestamps.
++
++The Guard's Avalanche RPC adapter supplies this source interface. Its existing
++asset health registration instantiates this shared parameter for AVAX and each
++admitted mapped ERC20 asset with the prepared chainId/sourceId/lock address and
++configured raw-unit thresholds.
++Scanner/source health checks remain separate.
+diff --git a/packages/asset-check/lib/avalanche/index.ts b/packages/asset-check/lib/avalanche/index.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..e2c8252528e8827ad23e50279961c9e5595d32ac
+--- /dev/null
++++ b/packages/asset-check/lib/avalanche/index.ts
+@@ -0,0 +1 @@
++export * from './rpc';
+diff --git a/packages/asset-check/lib/avalanche/rpc.ts b/packages/asset-check/lib/avalanche/rpc.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..3de8f5f3448ff39cb9bac15ea1083e9590d147ca
+--- /dev/null
++++ b/packages/asset-check/lib/avalanche/rpc.ts
+@@ -0,0 +1,217 @@
++import { getAddress } from 'ethers';
++
++import { HealthStatusLevel } from '@rosen-bridge/health-check';
++
++import { AbstractAssetHealthCheckParam } from '../abstract';
++
++/** A source must qualify raw balances against canonical finalized execution. */
++export interface AvalancheAssetSource {
++  readonly expectedChainId: bigint;
++  assertNetwork: () => Promise<void>;
++  getAddressBalanceForNativeToken: (address: string) => Promise<bigint>;
++  getAddressBalanceForERC20Asset?: (
++    address: string,
++    tokenId: string,
++  ) => Promise<bigint>;
++}
++
++/** Thresholds use raw asset units and the network selection is explicit. */
++export interface AvalancheAssetHealthConfig {
++  readonly chainId: 43113 | 43114;
++  readonly sourceId: string;
++  readonly address: string;
++  readonly warnThreshold: bigint;
++  readonly criticalThreshold: bigint;
++  /** Admitted mapped ERC20 identity; thresholds use its raw execution units. */
++  readonly token?: Readonly<{
++    tokenId: string;
++    name: string;
++    decimals: number;
++  }>;
++}
++
++/** Native or admitted mapped-token health; the source owns settlement validation. */
++export class AvalancheRpcAssetHealthCheckParam extends AbstractAssetHealthCheckParam {
++  readonly #source: AvalancheAssetSource;
++  readonly #chainId: bigint;
++  readonly #sourceId: string;
++  readonly #address: string;
++  readonly #warn: bigint;
++  readonly #critical: bigint;
++  readonly #assertNetwork: AvalancheAssetSource['assertNetwork'];
++  readonly #balance: AvalancheAssetSource['getAddressBalanceForNativeToken'];
++  readonly #tokenBalance: AvalancheAssetSource['getAddressBalanceForERC20Asset'];
++  readonly #token:
++    | Readonly<{ tokenId: string; name: string; decimals: number }>
++    | undefined;
++  #generation = 0n;
++  #assessedAt = Date.now();
++  #balanceObservedAt: number | undefined;
++  #status = HealthStatusLevel.BROKEN;
++  #details: string | undefined =
++    'No Avalanche native balance has been observed.';
++
++  /** Capture immutable policy and source methods before any network access. */
++  constructor(
++    config: AvalancheAssetHealthConfig,
++    source: AvalancheAssetSource,
++  ) {
++    const maximum = (1n << 256n) - 1n;
++    if (
++      !config ||
++      (config.chainId !== 43113 && config.chainId !== 43114) ||
++      typeof config.sourceId !== 'string' ||
++      !/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(config.sourceId) ||
++      typeof config.warnThreshold !== 'bigint' ||
++      typeof config.criticalThreshold !== 'bigint' ||
++      config.criticalThreshold < 0n ||
++      config.warnThreshold < config.criticalThreshold ||
++      config.warnThreshold > maximum ||
++      !source ||
++      source.expectedChainId !== BigInt(config.chainId) ||
++      typeof source.assertNetwork !== 'function' ||
++      typeof source.getAddressBalanceForNativeToken !== 'function'
++    )
++      throw new Error('Invalid Avalanche asset health configuration');
++    const address = getAddress(config.address);
++    if (address === '0x0000000000000000000000000000000000000000')
++      throw new Error('Invalid Avalanche asset health address');
++    const token = config.token;
++    if (
++      token !== undefined &&
++      (!token ||
++        typeof token !== 'object' ||
++        Array.isArray(token) ||
++        typeof token.tokenId !== 'string' ||
++        !/^0x[0-9a-f]{40}$/.test(token.tokenId) ||
++        token.tokenId === '0x0000000000000000000000000000000000000000' ||
++        typeof token.name !== 'string' ||
++        !/^[A-Za-z0-9][A-Za-z0-9 ._-]{0,63}$/.test(token.name) ||
++        !Number.isSafeInteger(token.decimals) ||
++        token.decimals < 0 ||
++        token.decimals > 255 ||
++        typeof source.getAddressBalanceForERC20Asset !== 'function')
++    )
++      throw new Error('Invalid Avalanche token health configuration');
++    super(
++      'avalanche',
++      token?.tokenId ?? 'avax',
++      token?.name ?? 'AVAX',
++      address,
++      config.warnThreshold,
++      config.criticalThreshold,
++      token?.decimals ?? 18,
++    );
++    this.#chainId = BigInt(config.chainId);
++    this.#sourceId = config.sourceId;
++    this.#address = address;
++    this.#warn = config.warnThreshold;
++    this.#critical = config.criticalThreshold;
++    this.#source = source;
++    this.#assertNetwork = source.assertNetwork;
++    this.#balance = source.getAddressBalanceForNativeToken;
++    this.#tokenBalance = source.getAddressBalanceForERC20Asset;
++    this.#token = token ? Object.freeze({ ...token }) : undefined;
++    if (token) this.#details = 'No Avalanche ERC20 balance has been observed.';
++  }
++
++  /** Refuse a changed adapter identity or implementation during an update. */
++  private assertSource = (): void => {
++    if (
++      this.#source.expectedChainId !== this.#chainId ||
++      this.#source.assertNetwork !== this.#assertNetwork ||
++      this.#source.getAddressBalanceForNativeToken !== this.#balance ||
++      (this.#token &&
++        this.#source.getAddressBalanceForERC20Asset !== this.#tokenBalance)
++    )
++      throw new Error('Avalanche asset health source changed');
++  };
++
++  /** Distinguish source, selected network and canonical address instances. */
++  getId = (): string =>
++    `asset_${this.#token?.tokenId ?? 'avax'}_${this.#chainId}_${this.#sourceId}_${this.#address}`;
++
++  /** Return the current attempt's fail-closed status. */
++  getHealthStatus = (): HealthStatusLevel => this.#status;
++
++  /** Return sanitized current-attempt details. */
++  getDetails = (): string | undefined => this.#details;
++
++  /** Local status-assessment time, including initial and pending BROKEN states. */
++  getLastUpdatedTime = (): Date => new Date(this.#assessedAt);
++
++  /** Local completion time of the last qualified balance; absent before success. */
++  getLastBalanceObservedTime = (): Date | undefined =>
++    this.#balanceObservedAt === undefined
++      ? undefined
++      : new Date(this.#balanceObservedAt);
++
++  /** Qualify balance and retain only the latest attempt's result and metadata. */
++  updateStatus = async (): Promise<void> => {
++    const generation = ++this.#generation;
++    this.#status = HealthStatusLevel.BROKEN;
++    this.#details = 'Avalanche health observation is pending.';
++    this.#assessedAt = Date.now();
++    this.lastTrialErrorMessage = undefined;
++    this.lastTrialErrorTime = undefined;
++    try {
++      this.assertSource();
++      await this.#assertNetwork.call(this.#source);
++      this.assertSource();
++      const balance = this.#token
++        ? await this.#tokenBalance!.call(
++            this.#source,
++            this.#address,
++            this.#token.tokenId,
++          )
++        : await this.#balance.call(this.#source, this.#address);
++      this.assertSource();
++      await this.#assertNetwork.call(this.#source);
++      this.assertSource();
++      if (
++        typeof balance !== 'bigint' ||
++        balance < 0n ||
++        balance > (1n << 256n) - 1n
++      )
++        throw new Error('Invalid Avalanche balance');
++      if (generation !== this.#generation) return;
++      this.tokenAmount = balance;
++      this.#status =
++        balance <= this.#critical
++          ? HealthStatusLevel.BROKEN
++          : balance <= this.#warn
++            ? HealthStatusLevel.UNSTABLE
++            : HealthStatusLevel.HEALTHY;
++      this.#details =
++        this.#status === HealthStatusLevel.HEALTHY
++          ? undefined
++          : `${this.#token ? 'ERC20' : 'Native AVAX'} balance is at or below the ${
++              this.#status === HealthStatusLevel.BROKEN ? 'critical' : 'warning'
++            } threshold.`;
++      this.#assessedAt = Date.now();
++      this.#balanceObservedAt = this.#assessedAt;
++      this.lastTrialErrorMessage = undefined;
++      this.lastTrialErrorTime = undefined;
++    } catch {
++      if (generation === this.#generation) {
++        this.#status = HealthStatusLevel.BROKEN;
++        this.#details = `Unable to read Avalanche ${this.#token ? 'ERC20' : 'native'} balance.`;
++        this.#assessedAt = Date.now();
++        this.lastTrialErrorMessage = this.#details;
++        this.lastTrialErrorTime = new Date();
++      }
++      throw new Error(
++        `Unable to read Avalanche ${this.#token ? 'ERC20' : 'native'} balance.`,
++      );
++    }
++  };
++
++  /** Preserve attempt-owned metadata instead of the base update's late writes. */
++  update = async (): Promise<void> => {
++    try {
++      await this.updateStatus();
++    } catch {
++      // updateStatus records a sanitized error for the latest attempt only.
++    }
++  };
++}
+diff --git a/packages/asset-check/lib/index.ts b/packages/asset-check/lib/index.ts
+index af1fd308adbb1258133bede8fbd00d7c4f8d4c02..eb72dc377c4ac8caaa2b15ca325ee9d7ed45d052 100644
+--- a/packages/asset-check/lib/index.ts
++++ b/packages/asset-check/lib/index.ts
+@@ -5,3 +5,4 @@ export * from './evm';
+ export * from './doge';
+ export * from './firo';
+ export * from './handshake';
++export * from './avalanche';
+diff --git a/packages/asset-check/package.json b/packages/asset-check/package.json
+index 9f55e7ead06b9776fd32966525c7bc151f9bed78..03456bda9c9108d48659add9146a8d41a1330ad7 100644
+--- a/packages/asset-check/package.json
++++ b/packages/asset-check/package.json
+@@ -41,5 +41,8 @@
+   "engines": {
+     "node": ">=22.18.0",
+     "npm": "11.6.2"
++  },
++  "devDependencies": {
++    "@rosen-chains/avalanche-rpc": "^0.1.0"
+   }
+ }
+diff --git a/packages/asset-check/tests/avalanche/avalancheRpcTestUtils.ts b/packages/asset-check/tests/avalanche/avalancheRpcTestUtils.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..716f4de22e5aec7007b980264358f6a3622eef9b
+--- /dev/null
++++ b/packages/asset-check/tests/avalanche/avalancheRpcTestUtils.ts
+@@ -0,0 +1,31 @@
++import { AvalancheRpcNetwork } from '@rosen-chains/avalanche-rpc';
++
++import { AvalancheRpcAssetHealthCheckParam } from '../../lib/avalanche';
++import { createGuardRpcMock } from './mocked/avalancheGuardRpc.mock';
++
++/** Joins a real qualified Guard RPC adapter to actual shared asset health. */
++export const setup = () => {
++  const { address, block, rpc } = createGuardRpcMock();
++  const network = new AvalancheRpcNetwork(
++    'http://127.0.0.1:1',
++    { getRepository: () => ({}) } as unknown as ConstructorParameters<
++      typeof AvalancheRpcNetwork
++    >[1],
++    address,
++    43113n,
++    'synthetic-health',
++    1000,
++  );
++  Object.defineProperty(network, 'provider', { value: rpc });
++  const health = new AvalancheRpcAssetHealthCheckParam(
++    {
++      chainId: 43113,
++      sourceId: 'synthetic-health',
++      address,
++      warnThreshold: 100n,
++      criticalThreshold: 10n,
++    },
++    network,
++  );
++  return { health, rpc, block, address };
++};
+diff --git a/packages/asset-check/tests/avalanche/avalancheTestUtils.ts b/packages/asset-check/tests/avalanche/avalancheTestUtils.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..b549f464fccda8a78d413a16b51dd0dda9e1a7c4
+--- /dev/null
++++ b/packages/asset-check/tests/avalanche/avalancheTestUtils.ts
+@@ -0,0 +1,30 @@
++import {
++  AvalancheAssetHealthConfig,
++  AvalancheRpcAssetHealthCheckParam,
++} from '../../lib/avalanche';
++import { createQualifiedSource } from './mocked/avalancheAssetSource.mock';
++
++/** Creates a real health parameter over an independent synthetic qualified source. */
++export const setup = (chainId: 43113 | 43114 = 43113) => {
++  const config: AvalancheAssetHealthConfig = {
++    chainId,
++    sourceId: 'synthetic-rpc',
++    address: '0x' + '12'.repeat(20),
++    warnThreshold: 100n,
++    criticalThreshold: 10n,
++  };
++  const source = createQualifiedSource(chainId);
++  const health = new AvalancheRpcAssetHealthCheckParam(config, source);
++  return { config, source, health };
++};
++
++/** A controllable asynchronous result for latest-attempt ownership fixtures. */
++export const deferred = () => {
++  let resolve!: (value: bigint) => void;
++  let reject!: (reason: Error) => void;
++  const promise = new Promise<bigint>((accept, refuse) => {
++    resolve = accept;
++    reject = refuse;
++  });
++  return { promise, resolve, reject };
++};
+diff --git a/packages/asset-check/tests/avalanche/mocked/avalancheAssetSource.mock.ts b/packages/asset-check/tests/avalanche/mocked/avalancheAssetSource.mock.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..1b41522053373b2a1c77ed1ce35d9313b3db9983
+--- /dev/null
++++ b/packages/asset-check/tests/avalanche/mocked/avalancheAssetSource.mock.ts
+@@ -0,0 +1,10 @@
++import { vi } from 'vitest';
++
++/** Creates an inert qualified balance source for one explicitly selected network. */
++export const createQualifiedSource = (chainId: 43113 | 43114) => {
++  return {
++    expectedChainId: BigInt(chainId),
++    assertNetwork: vi.fn(async () => {}),
++    getAddressBalanceForNativeToken: vi.fn(async () => 101n),
++  };
++};
+diff --git a/packages/asset-check/tests/avalanche/mocked/avalancheGuardRpc.mock.ts b/packages/asset-check/tests/avalanche/mocked/avalancheGuardRpc.mock.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..6986b9c205e3ab2b8ceeb5270655c54f4dc29a55
+--- /dev/null
++++ b/packages/asset-check/tests/avalanche/mocked/avalancheGuardRpc.mock.ts
+@@ -0,0 +1,23 @@
++import { vi } from 'vitest';
++
++/** Creates a canonical finalized block and synthetic RPC responses. */
++export const createGuardRpcMock = () => {
++  const address = '0x' + '12'.repeat(20);
++  const block = {
++    number: 12,
++    hash: '0x' + 'ab'.repeat(32),
++    parentHash: '0x' + 'cd'.repeat(32),
++  };
++  const rpc = {
++    getBlock: vi.fn(async () => block),
++    send: vi.fn(async (method: string): Promise<unknown> => {
++      if (method === 'eth_chainId') return '0xa869';
++      if (method === 'eth_getBalance') return '0x65';
++      if (method === 'eth_getBlockByNumber')
++        return { number: '0xc', hash: block.hash };
++      throw new Error('Unexpected RPC method');
++    }),
++  };
++
++  return { address, block, rpc };
++};
+diff --git a/packages/asset-check/tests/avalanche/rpc.spec.ts b/packages/asset-check/tests/avalanche/rpc.spec.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..f206f3d483a760d146f82e39b344eea608dc004d
+--- /dev/null
++++ b/packages/asset-check/tests/avalanche/rpc.spec.ts
+@@ -0,0 +1,621 @@
++import { describe, expect, it, vi } from 'vitest';
++
++import { HealthCheck, HealthStatusLevel } from '@rosen-bridge/health-check';
++
++import {
++  AvalancheAssetHealthConfig,
++  AvalancheAssetSource,
++  AvalancheRpcAssetHealthCheckParam,
++} from '../../lib/avalanche';
++import { setup as setupGuardRpc } from './avalancheRpcTestUtils';
++import { setup, deferred } from './avalancheTestUtils';
++
++describe('AvalancheRpcAssetHealthCheckParam', () => {
++  describe('constructor', () => {
++    /**
++     * @target AvalancheRpcAssetHealthCheckParam.constructor refuses missing token port
++     * @dependencies Real parameter and native-only source.
++     * @scenario Configure an admitted token without its ERC20 reader.
++     * @expected Refusal before network access.
++     */
++    it('refuses missing token port', () => {
++      const { config, source } = setup();
++      expect(
++        () =>
++          new AvalancheRpcAssetHealthCheckParam(
++            {
++              ...config,
++              token: {
++                tokenId: '0x' + '34'.repeat(20),
++                name: 'JOE',
++                decimals: 18,
++              },
++            },
++            source,
++          ),
++      ).toThrow('token health');
++      expect(source.assertNetwork).not.toHaveBeenCalled();
++    });
++    /**
++     * @target AvalancheRpcAssetHealthCheckParam.constructor rejects invalid token %s
++     * @dependencies Real parameter and synthetic source; no RPC.
++     * @scenario Change exactly one token identity field.
++     * @expected Refusal occurs before a source call.
++     */
++    it.each([
++      ['tokenId', '0x' + '00'.repeat(20)],
++      ['tokenId', '0x' + 'AB'.repeat(20)],
++      ['name', 'bad\nname'],
++      ['decimals', -1],
++      ['decimals', 256],
++      ['decimals', 1.5],
++    ])('rejects invalid token %s', (field, value) => {
++      const { config, source } = setup();
++      const token = {
++        tokenId: '0x' + '34'.repeat(20),
++        name: 'JOE',
++        decimals: 18,
++        [field]: value,
++      };
++      expect(
++        () =>
++          new AvalancheRpcAssetHealthCheckParam(
++            { ...config, token } as AvalancheAssetHealthConfig,
++            { ...source, getAddressBalanceForERC20Asset: vi.fn() },
++          ),
++      ).toThrow('token health');
++      expect(source.assertNetwork).not.toHaveBeenCalled();
++    });
++    /**
++     * @target AvalancheRpcAssetHealthCheckParam.constructor rejects invalid %s: %s
++     * @dependencies synthetic source only
++     * @scenario change one field, construct the parameter
++     * @expected exception before any source call
++     */
++    it.each([
++      ['chainId', 1],
++      ['sourceId', ''],
++      ['sourceId', 'bad source'],
++      ['address', '0x00'],
++      ['address', '0x' + '00'.repeat(20)],
++      ['warnThreshold', 9n],
++      ['warnThreshold', 1n << 256n],
++      ['criticalThreshold', -1n],
++      ['criticalThreshold', '10'],
++    ])('rejects invalid %s: %s', (field, value) => {
++      const { config, source } = setup();
++      expect(
++        () =>
++          new AvalancheRpcAssetHealthCheckParam(
++            {
++              ...config,
++              [field as string]: value,
++            } as AvalancheAssetHealthConfig,
++            source,
++          ),
++      ).toThrow(Error);
++      expect(source.assertNetwork).not.toHaveBeenCalled();
++      expect(source.getAddressBalanceForNativeToken).not.toHaveBeenCalled();
++    });
++
++    /**
++     * @target AvalancheRpcAssetHealthCheckParam.constructor rejects another configured network
++     * @dependencies synthetic source only
++     * @scenario change expected chain, construct
++     * @expected rejection before RPC
++     */
++    it('rejects another configured network', () => {
++      const { config, source } = setup();
++      expect(
++        () =>
++          new AvalancheRpcAssetHealthCheckParam(config, {
++            ...source,
++            expectedChainId: 43114n,
++          }),
++      ).toThrow(Error);
++    });
++  });
++  describe('updateStatus', () => {
++    /**
++     * @target AvalancheRpcAssetHealthCheckParam.updateStatus retains newest token attempt
++     * @dependencies Real parameter, deferred old token read and independent fresh read.
++     * @scenario Pause an older low balance, finish a newer healthy read, then resolve the older read.
++     * @expected Older completion cannot replace status or observation time.
++     */
++    it('retains newest token attempt', async () => {
++      const { config, source } = setup();
++      const old = deferred();
++      const read = vi.fn(async () => 101n).mockReturnValueOnce(old.promise);
++      const health = new AvalancheRpcAssetHealthCheckParam(
++        {
++          ...config,
++          token: { tokenId: '0x' + '34'.repeat(20), name: 'JOE', decimals: 18 },
++        },
++        { ...source, getAddressBalanceForERC20Asset: read },
++      );
++      const pending = health.updateStatus();
++      await vi.waitFor(() => expect(read).toHaveBeenCalledTimes(1));
++      await health.updateStatus();
++      const observed = health.getLastBalanceObservedTime()!.getTime();
++      old.resolve(0n);
++      await pending;
++      expect(health.getHealthStatus()).toBe(HealthStatusLevel.HEALTHY);
++      expect(health.getLastBalanceObservedTime()!.getTime()).toBe(observed);
++    });
++    /**
++     * @target AvalancheRpcAssetHealthCheckParam.updateStatus reads retained mapped token with raw threshold %s
++     * @dependencies Real parameter, controlled token/native source ports.
++     * @scenario Mutate caller token identity after construction; update a raw token balance.
++     * @expected Original contract/address and raw units decide severity; native port is unused.
++     */
++    it.each([
++      [10n, HealthStatusLevel.BROKEN],
++      [100n, HealthStatusLevel.UNSTABLE],
++      [101n, HealthStatusLevel.HEALTHY],
++      [(1n << 256n) - 1n, HealthStatusLevel.HEALTHY],
++    ])(
++      'reads retained mapped token with raw threshold %s',
++      async (balance, status) => {
++        const { config, source } = setup(43114);
++        const token = {
++          tokenId: '0x' + '34'.repeat(20),
++          name: 'JOE',
++          decimals: 18,
++        };
++        const read = vi.fn(async () => balance as bigint);
++        const health = new AvalancheRpcAssetHealthCheckParam(
++          { ...config, token },
++          { ...source, getAddressBalanceForERC20Asset: read },
++        );
++        const id = health.getId();
++        token.tokenId = '0x' + '56'.repeat(20);
++        token.decimals = 9;
++        await health.updateStatus();
++        expect(read).toHaveBeenCalledWith(
++          config.address,
++          '0x' + '34'.repeat(20),
++        );
++        expect(source.getAddressBalanceForNativeToken).not.toHaveBeenCalled();
++        expect(health.getHealthStatus()).toBe(status);
++        expect(health.getId()).toBe(id);
++        expect(id).toContain('asset_0x' + '34'.repeat(20));
++      },
++    );
++    /**
++     * @target AvalancheRpcAssetHealthCheckParam.updateStatus refuses token reader drift or malformed balance %s
++     * @dependencies Real parameter with one synthetic retained token reader.
++     * @scenario Change only the selected fault during the balance read.
++     * @expected BROKEN sanitized status; no qualified balance timestamp.
++     */
++    it.each([
++      'reader drift',
++      'network drift',
++      'negative',
++      'overflow',
++      'wrong type',
++      'provider error',
++    ])('refuses token reader drift or malformed balance %s', async (fault) => {
++      const { config, source } = setup();
++      const owner: AvalancheAssetSource = {
++        ...source,
++        getAddressBalanceForERC20Asset: async () => {
++          if (fault === 'reader drift')
++            owner.getAddressBalanceForERC20Asset = async () => 101n;
++          if (fault === 'network drift')
++            Reflect.set(owner, 'expectedChainId', 43114n);
++          if (fault === 'provider error')
++            throw new Error('private provider detail');
++          return fault === 'negative'
++            ? -1n
++            : fault === 'overflow'
++              ? 1n << 256n
++              : fault === 'wrong type'
++                ? ('101' as unknown as bigint)
++                : 101n;
++        },
++      };
++      const health = new AvalancheRpcAssetHealthCheckParam(
++        {
++          ...config,
++          token: { tokenId: '0x' + '34'.repeat(20), name: 'JOE', decimals: 18 },
++        },
++        owner,
++      );
++      await expect(health.updateStatus()).rejects.toThrow(
++        'Unable to read Avalanche ERC20 balance.',
++      );
++      expect(health.getHealthStatus()).toBe(HealthStatusLevel.BROKEN);
++      expect(health.getLastBalanceObservedTime()).toBeUndefined();
++      expect(health.getDetails()).not.toContain('private');
++    });
++    /**
++     * @target AvalancheRpcAssetHealthCheckParam.updateStatus ignores inherited policy mutation before and across await
++     * @dependencies controlled source and mutable inherited fields
++     * @scenario mutate base fields before and during a pending balance request
++     * @expected original address, ID and inclusive thresholds still apply
++     */
++    it('ignores inherited policy mutation before and across await', async () => {
++      const { source, health } = setup();
++      const id = health.getId();
++      const pendingBalance = deferred();
++      Object.assign(health, {
++        address: '0x00',
++        warnThreshold: -1n,
++        criticalThreshold: -1n,
++      });
++      source.getAddressBalanceForNativeToken.mockReturnValueOnce(
++        pendingBalance.promise,
++      );
++      const pending = health.updateStatus();
++      await vi.waitFor(() =>
++        expect(source.getAddressBalanceForNativeToken).toHaveBeenCalledTimes(1),
++      );
++      Object.assign(health, {
++        address: '0x' + '34'.repeat(20),
++        warnThreshold: 0n,
++        criticalThreshold: 0n,
++      });
++      pendingBalance.resolve(10n);
++      await pending;
++      expect(health.getId()).toEqual(id);
++      expect(source.getAddressBalanceForNativeToken).toHaveBeenCalledWith(
++        '0x' + '12'.repeat(20),
++      );
++      expect(health.getHealthStatus()).toEqual(HealthStatusLevel.BROKEN);
++      source.getAddressBalanceForNativeToken.mockResolvedValue(100n);
++      await health.updateStatus();
++      expect(health.getHealthStatus()).toEqual(HealthStatusLevel.UNSTABLE);
++    });
++
++    /**
++     * @target AvalancheRpcAssetHealthCheckParam.updateStatus qualifies %s wei
++     * @dependencies synthetic finalized-balance source
++     * @scenario return a balance on either side or exactly at each threshold
++     * @expected configured state and canonical address with two identity checks
++     */
++    it.each([
++      [0n, HealthStatusLevel.BROKEN],
++      [10n, HealthStatusLevel.BROKEN],
++      [11n, HealthStatusLevel.UNSTABLE],
++      [100n, HealthStatusLevel.UNSTABLE],
++      [101n, HealthStatusLevel.HEALTHY],
++    ])('qualifies %s wei', async (balance, status) => {
++      const { source, health, config } = setup();
++      source.getAddressBalanceForNativeToken.mockResolvedValue(balance);
++      expect(health.getHealthStatus()).toEqual(HealthStatusLevel.BROKEN);
++      await health.updateStatus();
++      expect(health.getHealthStatus()).toEqual(status);
++      expect(source.assertNetwork).toHaveBeenCalledTimes(2);
++      expect(source.getAddressBalanceForNativeToken).toHaveBeenCalledWith(
++        config.address,
++      );
++    });
++
++    /**
++     * @target AvalancheRpcAssetHealthCheckParam.updateStatus rejects balance %s
++     * @dependencies synthetic source
++     * @scenario establish healthy state, return one invalid balance
++     * @expected BROKEN and sanitized failure
++     */
++    it.each([-1n, 1n << 256n, '101', 101])(
++      'rejects balance %s',
++      async (balance) => {
++        const { source, health } = setup();
++        await health.updateStatus();
++        source.getAddressBalanceForNativeToken.mockResolvedValue(
++          balance as bigint,
++        );
++        await expect(async () => await health.updateStatus()).rejects.toThrow(
++          Error,
++        );
++        expect(health.getHealthStatus()).toEqual(HealthStatusLevel.BROKEN);
++        expect(health.getLastTrialErrorMessage()).toEqual(
++          'Unable to read Avalanche native balance.',
++        );
++      },
++    );
++
++    /**
++     * @target AvalancheRpcAssetHealthCheckParam.updateStatus rejects source mutation across await
++     * @dependencies mutable synthetic adapter
++     * @scenario mutate chain while balance request is pending
++     * @expected failed update and BROKEN
++     */
++    it('rejects source mutation across await', async () => {
++      const { source, health } = setup();
++      source.getAddressBalanceForNativeToken.mockImplementation(async () => {
++        source.expectedChainId = 43114n;
++        return 101n;
++      });
++      await expect(async () => await health.updateStatus()).rejects.toThrow(
++        Error,
++      );
++      expect(health.getHealthStatus()).toEqual(HealthStatusLevel.BROKEN);
++    });
++
++    /**
++     * @target AvalancheRpcAssetHealthCheckParam.updateStatus does not consume changed caller policy
++     * @dependencies mutable synthetic configuration
++     * @scenario alter caller thresholds and address after construction
++     * @expected original captured policy still controls state and balance address
++     */
++    it('does not consume changed caller policy', async () => {
++      const { config, health, source } = setup();
++      Object.assign(config, { criticalThreshold: 1000n, address: '0x00' });
++      await health.updateStatus();
++      expect(health.getHealthStatus()).toEqual(HealthStatusLevel.HEALTHY);
++      expect(source.getAddressBalanceForNativeToken).toHaveBeenCalledWith(
++        '0x' + '12'.repeat(20),
++      );
++    });
++  });
++  describe('update', () => {
++    /**
++     * @target AvalancheRpcAssetHealthCheckParam.update ignores stale completion with failure=%s
++     * @dependencies two controlled balance requests
++     * @scenario start old request, finish new request, finish or fail old request
++     * @expected new status and metadata persist
++     */
++    it.each([false, true])(
++      'ignores stale completion with failure=%s',
++      async (fails) => {
++        const { source, health } = setup();
++        const old = deferred();
++        source.getAddressBalanceForNativeToken.mockReturnValueOnce(old.promise);
++        const pending = health.update();
++        await vi.waitFor(() =>
++          expect(source.getAddressBalanceForNativeToken).toHaveBeenCalledTimes(
++            1,
++          ),
++        );
++        await health.update();
++        const updated = health.getLastUpdatedTime();
++        if (fails) old.reject(new Error('sensitive endpoint credential'));
++        else old.resolve(0n);
++        await pending;
++        expect(health.getHealthStatus()).toEqual(HealthStatusLevel.HEALTHY);
++        expect(health.getLastUpdatedTime()).toEqual(updated);
++        expect(health.getLastTrialErrorMessage()).toEqual(undefined);
++      },
++    );
++
++    /**
++     * @target AvalancheRpcAssetHealthCheckParam.update keeps latest failure over old success
++     * @dependencies controlled old request and rejected new identity check
++     * @scenario fail new update, then resolve old request
++     * @expected BROKEN and sanitized latest error survive
++     */
++    it('keeps latest failure over old success', async () => {
++      const { source, health } = setup();
++      const old = deferred();
++      source.getAddressBalanceForNativeToken.mockReturnValueOnce(old.promise);
++      const pending = health.update();
++      await vi.waitFor(() =>
++        expect(source.getAddressBalanceForNativeToken).toHaveBeenCalledTimes(1),
++      );
++      source.assertNetwork.mockRejectedValueOnce(new Error('credential'));
++      await health.update();
++      old.resolve(101n);
++      await pending;
++      expect(health.getHealthStatus()).toEqual(HealthStatusLevel.BROKEN);
++      expect(health.getLastTrialErrorMessage()).toEqual(
++        'Unable to read Avalanche native balance.',
++      );
++      expect(Number.isFinite(health.getLastUpdatedTime().valueOf())).toEqual(
++        true,
++      );
++      expect(health.getLastBalanceObservedTime()).toEqual(undefined);
++    });
++    describe('notification/history consumer', () => {
++      /**
++       * @target AvalancheRpcAssetHealthCheckParam.update records old failure=%s with newest failure=%s
++       * @dependencies actual HealthCheck, history, notification checks and two deferred reads
++       * @scenario start two updates, resolve or reject old while newest remains pending,
++       * then resolve or reject newest
++       * @expected no history exception, finite timestamps, no fabricated sample,
++       * BROKEN pending notification and latest outcome ownership
++       */
++      it.each([
++        [false, false],
++        [true, false],
++        [false, true],
++        [true, true],
++      ])(
++        'records old failure=%s with newest failure=%s',
++        async (oldFails, newestFails) => {
++          const { source, health } = setup();
++          const old = deferred();
++          const newest = deferred();
++          const notify = vi.fn(async () => {});
++          const service = new HealthCheck(notify);
++          service.register(health);
++          source.getAddressBalanceForNativeToken
++            .mockReturnValueOnce(old.promise)
++            .mockReturnValueOnce(newest.promise);
++          const first = service.updateParam(health.getId());
++          await vi.waitFor(() =>
++            expect(
++              source.getAddressBalanceForNativeToken,
++            ).toHaveBeenCalledTimes(1),
++          );
++          const second = service.updateParam(health.getId());
++          await vi.waitFor(() =>
++            expect(
++              source.getAddressBalanceForNativeToken,
++            ).toHaveBeenCalledTimes(2),
++          );
++          const pendingAt = health.getLastUpdatedTime();
++          if (oldFails) old.reject(new Error('sensitive credential'));
++          else old.resolve(101n);
++          await first;
++          expect(health.getHealthStatus()).toEqual(HealthStatusLevel.BROKEN);
++          expect(health.getLastUpdatedTime()).toEqual(pendingAt);
++          expect(health.getLastBalanceObservedTime()).toEqual(undefined);
++          expect(health.getLastTrialErrorMessage()).toEqual(undefined);
++          expect(notify).toHaveBeenCalled();
++          if (newestFails) newest.reject(new Error('sensitive credential'));
++          else newest.resolve(101n);
++          await second;
++          expect(health.getHealthStatus()).toEqual(
++            newestFails ? HealthStatusLevel.BROKEN : HealthStatusLevel.HEALTHY,
++          );
++          expect(health.getLastBalanceObservedTime() === undefined).toEqual(
++            newestFails,
++          );
++          const history = (
++            service as unknown as {
++              healthHistory: {
++                getHistory: () => Record<
++                  string,
++                  { timestamp: number; result: string }[]
++                >;
++              };
++            }
++          ).healthHistory.getHistory()[health.getId()];
++          expect(history).toHaveLength(2);
++          expect(history[0].result).toEqual(HealthStatusLevel.BROKEN);
++          expect(history[1].result).toEqual(
++            newestFails ? 'unknown' : HealthStatusLevel.HEALTHY,
++          );
++          expect(
++            history.every((entry) => Number.isFinite(entry.timestamp)),
++          ).toEqual(true);
++          expect(JSON.stringify(notify.mock.calls)).not.toContain(
++            'sensitive credential',
++          );
++        },
++      );
++
++      /**
++       * @target AvalancheRpcAssetHealthCheckParam.update records first failure without a fabricated qualified balance
++       * @dependencies actual HealthCheck/history with notification enabled
++       * @scenario reject the first source identity check
++       * @expected finite failure history and assessment clocks, absent sample time
++       */
++      it('records first failure without a fabricated qualified balance', async () => {
++        const { source, health } = setup();
++        const service = new HealthCheck(vi.fn(async () => {}));
++        service.register(health);
++        source.assertNetwork.mockRejectedValue(new Error('credential'));
++        await service.update();
++        expect(Number.isFinite(health.getLastUpdatedTime().valueOf())).toEqual(
++          true,
++        );
++        expect(
++          Number.isFinite(health.getLastTrialErrorTime()?.valueOf()),
++        ).toEqual(true);
++        expect(health.getLastBalanceObservedTime()).toEqual(undefined);
++        expect(health.getHealthStatus()).toEqual(HealthStatusLevel.BROKEN);
++      });
++    });
++    describe('qualified Guard RPC source', () => {
++      /**
++       * @target AvalancheRpcAssetHealthCheckParam.update joins shared health to the qualified Guard balance reader
++       * @dependencies Real shared health and Guard RPC adapter; mocked provider.
++       * @scenario Return a canonical finalized block and exact qualified Guard balance.
++       * @expected Read only the finalized height and report healthy status.
++       */
++      it('joins shared health to the qualified Guard balance reader', async () => {
++        const { health, rpc, address } = setupGuardRpc();
++        await health.update();
++        expect(health.getHealthStatus()).toEqual(HealthStatusLevel.HEALTHY);
++        expect(rpc.getBlock).toHaveBeenCalledWith('finalized');
++        expect(rpc.getBlock).not.toHaveBeenCalledWith('latest');
++        expect(rpc.send).toHaveBeenCalledWith('eth_getBalance', [
++          address,
++          '0xc',
++        ]);
++        expect(rpc.send).toHaveBeenCalledWith('eth_getBlockByNumber', [
++          '0xc',
++          false,
++        ]);
++      });
++
++      /**
++       * @target AvalancheRpcAssetHealthCheckParam.update rejects %s
++       * @dependencies Real shared health and Guard RPC adapter; mocked provider.
++       * @scenario Establish healthy status then change one RPC qualification field.
++       * @expected Report BROKEN with a sanitized error and no stale healthy credit.
++       */
++      it.each([
++        'chain',
++        'balance',
++        'canonical-hash',
++        'canonical-height',
++        'finalized',
++      ])('rejects %s', async (fault) => {
++        const { health, rpc, block } = setupGuardRpc();
++        await health.update();
++        if (fault === 'finalized')
++          rpc.getBlock.mockRejectedValue(new Error('provider credential'));
++        else
++          rpc.send.mockImplementation(async (method) => {
++            if (method === 'eth_chainId')
++              return fault === 'chain' ? '0xa86a' : '0xa869';
++            if (method === 'eth_getBalance')
++              return fault === 'balance' ? '0x01' : '0x65';
++            if (method === 'eth_getBlockByNumber')
++              return {
++                number: fault === 'canonical-height' ? '0xd' : '0xc',
++                hash:
++                  fault === 'canonical-hash'
++                    ? '0x' + 'ef'.repeat(32)
++                    : block.hash,
++              };
++            throw new Error('Unexpected RPC');
++          });
++        await health.update();
++        expect(health.getHealthStatus()).toEqual(HealthStatusLevel.BROKEN);
++        expect(health.getLastTrialErrorMessage()).toEqual(
++          'Unable to read Avalanche native balance.',
++        );
++      });
++    });
++  });
++
++  describe('getId', () => {
++    /**
++     * @target AvalancheRpcAssetHealthCheckParam.getId supports independent configured instances
++     * @dependencies synthetic sources on Fuji and mainnet
++     * @scenario create two network selections and a second source
++     * @expected three different health IDs
++     */
++    it('supports independent configured instances', () => {
++      const fuji = setup();
++      const mainnet = setup(43114);
++      const second = new AvalancheRpcAssetHealthCheckParam(
++        { ...fuji.config, sourceId: 'second-rpc' },
++        fuji.source as AvalancheAssetSource,
++      );
++      expect(
++        new Set([fuji.health.getId(), mainnet.health.getId(), second.getId()])
++          .size,
++      ).toEqual(3);
++    });
++  });
++  describe('getLastUpdatedTime', () => {
++    /**
++     * @target AvalancheRpcAssetHealthCheckParam.getLastUpdatedTime distinguishes initial assessment from a balance observation
++     * @dependencies local clock fixture only
++     * @scenario construct before any source call
++     * @expected finite assessment Date and absent qualified-balance time
++     */
++    it('distinguishes initial assessment from a balance observation', () => {
++      const clock = vi.spyOn(Date, 'now').mockReturnValue(1700000000000);
++      try {
++        const { health, source } = setup();
++        expect(health.getLastUpdatedTime().valueOf()).toEqual(1700000000000);
++        expect(health.getLastBalanceObservedTime()).toEqual(undefined);
++        expect(health.getHealthStatus()).toEqual(HealthStatusLevel.BROKEN);
++        expect(source.assertNetwork).not.toHaveBeenCalled();
++        const returned = health.getLastUpdatedTime();
++        returned.setTime(Number.NaN);
++        expect(Number.isFinite(health.getLastUpdatedTime().valueOf())).toEqual(
++          true,
++        );
++      } finally {
++        clock.mockRestore();
++      }
++    });
++  });
++});

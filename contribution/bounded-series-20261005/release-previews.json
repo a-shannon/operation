@@ -1,0 +1,854 @@
+{
+  "plans": [
+    {
+      "repo": "guard-service",
+      "existingChangesets": [
+        "abstract-chain-verify-event-order",
+        "bitcoin-tx-max-fee-cap",
+        "brave-nails-greet",
+        "cardano-blockfrost-tx-failed-on-chain",
+        "cardano-koios-tx-failed-on-chain",
+        "cardano-lock-tx-failed-on-chain",
+        "evm-remove-max-priority-fee-verification",
+        "few-pandas-count",
+        "gentle-items-sing",
+        "hip-badgers-sell",
+        "lastcheck-height-tracking",
+        "mean-bugs-wave",
+        "nasty-candles-deliver",
+        "nine-cats-sort",
+        "olive-donkeys-shave",
+        "rich-planes-jump",
+        "slow-avocados-behave",
+        "spicy-toys-clean",
+        "three-pigs-itch"
+      ],
+      "releases": [
+        {
+          "name": "@rosen-chains/abstract-chain",
+          "type": "patch",
+          "oldVersion": "17.0.0",
+          "changesets": [
+            "abstract-chain-verify-event-order",
+            "nasty-candles-deliver"
+          ],
+          "newVersion": "17.0.1"
+        },
+        {
+          "name": "@rosen-chains/bitcoin",
+          "type": "minor",
+          "oldVersion": "11.0.0",
+          "changesets": [
+            "bitcoin-tx-max-fee-cap",
+            "nasty-candles-deliver"
+          ],
+          "newVersion": "11.1.0"
+        },
+        {
+          "name": "@rosen-chains/bitcoin-runes",
+          "type": "minor",
+          "oldVersion": "5.0.0",
+          "changesets": [
+            "bitcoin-tx-max-fee-cap",
+            "nasty-candles-deliver"
+          ],
+          "newVersion": "5.1.0"
+        },
+        {
+          "name": "guard-service",
+          "type": "major",
+          "oldVersion": "11.0.1",
+          "changesets": [
+            "brave-nails-greet",
+            "gentle-items-sing",
+            "hip-badgers-sell",
+            "lastcheck-height-tracking",
+            "nine-cats-sort",
+            "slow-avocados-behave",
+            "spicy-toys-clean"
+          ],
+          "newVersion": "12.0.0"
+        },
+        {
+          "name": "@rosen-chains/cardano-blockfrost-network",
+          "type": "patch",
+          "oldVersion": "10.0.4",
+          "changesets": [
+            "cardano-blockfrost-tx-failed-on-chain"
+          ],
+          "newVersion": "10.0.5"
+        },
+        {
+          "name": "@rosen-chains/cardano-koios-network",
+          "type": "patch",
+          "oldVersion": "13.0.4",
+          "changesets": [
+            "cardano-koios-tx-failed-on-chain"
+          ],
+          "newVersion": "13.0.5"
+        },
+        {
+          "name": "@rosen-chains/cardano",
+          "type": "patch",
+          "oldVersion": "17.0.0",
+          "changesets": [
+            "cardano-lock-tx-failed-on-chain",
+            "nasty-candles-deliver"
+          ],
+          "newVersion": "17.0.1"
+        },
+        {
+          "name": "@rosen-chains/evm",
+          "type": "minor",
+          "oldVersion": "10.0.2",
+          "changesets": [
+            "evm-chain-gas-policy",
+            "evm-remove-max-priority-fee-verification",
+            "nasty-candles-deliver"
+          ],
+          "newVersion": "10.1.0"
+        },
+        {
+          "name": "@rosen-chains/evm-rpc",
+          "type": "minor",
+          "oldVersion": "4.0.6",
+          "changesets": [
+            "evm-rpc-bounded-transport",
+            "mean-bugs-wave"
+          ],
+          "newVersion": "4.1.0"
+        },
+        {
+          "name": "@rosen-chains/firo-electrumx",
+          "type": "patch",
+          "oldVersion": "0.1.2",
+          "changesets": [
+            "few-pandas-count"
+          ],
+          "newVersion": "0.1.3"
+        },
+        {
+          "name": "@rosen-chains/handshake",
+          "type": "patch",
+          "oldVersion": "1.0.0",
+          "changesets": [
+            "nasty-candles-deliver"
+          ],
+          "newVersion": "1.0.1"
+        },
+        {
+          "name": "@rosen-chains/doge",
+          "type": "patch",
+          "oldVersion": "5.0.0",
+          "changesets": [
+            "nasty-candles-deliver"
+          ],
+          "newVersion": "5.0.1"
+        },
+        {
+          "name": "@rosen-chains/ergo",
+          "type": "patch",
+          "oldVersion": "15.0.0",
+          "changesets": [
+            "nasty-candles-deliver"
+          ],
+          "newVersion": "15.0.1"
+        },
+        {
+          "name": "@rosen-chains/firo",
+          "type": "patch",
+          "oldVersion": "1.0.0",
+          "changesets": [
+            "nasty-candles-deliver"
+          ],
+          "newVersion": "1.0.1"
+        },
+        {
+          "name": "@rosen-chains/handshake-rpc",
+          "type": "patch",
+          "oldVersion": "0.0.1",
+          "changesets": [
+            "olive-donkeys-shave"
+          ],
+          "newVersion": "0.0.2"
+        },
+        {
+          "name": "@rosen-chains/base",
+          "type": "minor",
+          "oldVersion": "0.0.0",
+          "changesets": [
+            "rich-planes-jump"
+          ],
+          "newVersion": "0.1.0"
+        },
+        {
+          "name": "@rosen-chains/bitcoin-esplora",
+          "type": "patch",
+          "oldVersion": "5.0.5",
+          "changesets": [],
+          "newVersion": "5.0.6"
+        },
+        {
+          "name": "@rosen-chains/bitcoin-runes-rpc",
+          "type": "patch",
+          "oldVersion": "2.0.7",
+          "changesets": [],
+          "newVersion": "2.0.8"
+        },
+        {
+          "name": "@rosen-chains/doge-blockcypher",
+          "type": "patch",
+          "oldVersion": "1.0.5",
+          "changesets": [],
+          "newVersion": "1.0.6"
+        },
+        {
+          "name": "@rosen-chains/doge-esplora",
+          "type": "patch",
+          "oldVersion": "2.0.5",
+          "changesets": [],
+          "newVersion": "2.0.6"
+        },
+        {
+          "name": "@rosen-chains/doge-rpc",
+          "type": "patch",
+          "oldVersion": "1.0.5",
+          "changesets": [],
+          "newVersion": "1.0.6"
+        },
+        {
+          "name": "@rosen-chains/ergo-explorer-network",
+          "type": "patch",
+          "oldVersion": "10.0.5",
+          "changesets": [],
+          "newVersion": "10.0.6"
+        },
+        {
+          "name": "@rosen-chains/ergo-node-network",
+          "type": "patch",
+          "oldVersion": "10.0.5",
+          "changesets": [],
+          "newVersion": "10.0.6"
+        },
+        {
+          "name": "@rosen-chains/evm-op-stack-rpc",
+          "type": "patch",
+          "oldVersion": "0.0.1",
+          "changesets": [],
+          "newVersion": "0.0.2"
+        },
+        {
+          "name": "@rosen-chains/binance",
+          "type": "patch",
+          "oldVersion": "4.0.2",
+          "changesets": [],
+          "newVersion": "4.0.3"
+        },
+        {
+          "name": "@rosen-chains/ethereum",
+          "type": "patch",
+          "oldVersion": "4.0.2",
+          "changesets": [],
+          "newVersion": "4.0.3"
+        }
+      ],
+      "packages": [
+        {
+          "name": "@rosen-chains/abstract-chain",
+          "version": "17.0.1",
+          "dependencies": {
+            "@rosen-bridge/abstract-box-selection": "^1.0.2",
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/json-bigint": "^1.1.0",
+            "@rosen-bridge/minimum-fee": "^4.0.1",
+            "@rosen-bridge/rosen-extractor": "^12.1.2",
+            "@rosen-bridge/tokens": "^6.0.2",
+            "blakejs": "^1.2.1"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-chains/base",
+          "version": "0.1.0",
+          "dependencies": {
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/tokens": "^6.0.2",
+            "@rosen-chains/evm": "^10.1.0"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-chains/binance",
+          "version": "4.0.3",
+          "dependencies": {
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/tokens": "^6.0.2",
+            "@rosen-chains/evm": "^10.1.0"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-chains/bitcoin",
+          "version": "11.1.0",
+          "dependencies": {
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/bitcoin-utxo-selection": "^2.0.3",
+            "@rosen-bridge/json-bigint": "^1.1.0",
+            "@rosen-bridge/rosen-extractor": "^12.1.2",
+            "@rosen-bridge/tokens": "^6.0.2",
+            "@rosen-chains/abstract-chain": "^17.0.1",
+            "bitcoinjs-lib": "^6.1.5"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-chains/bitcoin-runes",
+          "version": "5.1.0",
+          "dependencies": {
+            "@magiceden-oss/runestone-lib": "^1.0.2",
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/bitcoin-runes-utxo-selection": "^2.1.0",
+            "@rosen-bridge/json-bigint": "^1.1.0",
+            "@rosen-bridge/rosen-extractor": "^12.1.2",
+            "@rosen-bridge/tokens": "^6.0.2",
+            "@rosen-chains/abstract-chain": "^17.0.1",
+            "@rosen-chains/bitcoin": "^11.1.0",
+            "bitcoinjs-lib": "^6.1.5"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-chains/cardano",
+          "version": "17.0.1",
+          "dependencies": {
+            "@emurgo/cardano-serialization-lib-nodejs": "^13.2.0",
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/cardano-utxo-selection": "^3.0.3",
+            "@rosen-bridge/json-bigint": "^1.1.0",
+            "@rosen-bridge/rosen-extractor": "^12.1.2",
+            "@rosen-bridge/tokens": "^6.0.2",
+            "@rosen-chains/abstract-chain": "^17.0.1"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-chains/doge",
+          "version": "5.0.1",
+          "dependencies": {
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/bitcoin-utxo-selection": "^2.0.3",
+            "@rosen-bridge/json-bigint": "^1.1.0",
+            "@rosen-bridge/rosen-extractor": "^12.1.2",
+            "@rosen-bridge/tokens": "^6.0.2",
+            "@rosen-chains/abstract-chain": "^17.0.1",
+            "bitcoinjs-lib": "^6.1.5"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-chains/ergo",
+          "version": "15.0.1",
+          "dependencies": {
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/ergo-box-selection": "^2.1.1",
+            "@rosen-bridge/json-bigint": "^1.1.0",
+            "@rosen-bridge/rosen-extractor": "^12.1.2",
+            "@rosen-bridge/tokens": "^6.0.2",
+            "@rosen-chains/abstract-chain": "^17.0.1",
+            "ergo-lib-wasm-nodejs": "^0.24.1"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-chains/ethereum",
+          "version": "4.0.3",
+          "dependencies": {
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/tokens": "^6.0.2",
+            "@rosen-chains/evm": "^10.1.0"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-chains/evm",
+          "version": "10.1.0",
+          "dependencies": {
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/json-bigint": "^1.1.0",
+            "@rosen-bridge/rosen-extractor": "^12.1.2",
+            "@rosen-bridge/tokens": "^6.0.2",
+            "@rosen-chains/abstract-chain": "^17.0.1",
+            "ethers": "6.16.0"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-chains/firo",
+          "version": "1.0.1",
+          "dependencies": {
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/bitcoin-utxo-selection": "^2.0.3",
+            "@rosen-bridge/json-bigint": "^1.1.0",
+            "@rosen-bridge/rosen-extractor": "^12.1.2",
+            "@rosen-bridge/tokens": "^6.0.2",
+            "@rosen-chains/abstract-chain": "^17.0.1",
+            "bitcoinjs-lib": "^6.1.5"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-chains/handshake",
+          "version": "1.0.1",
+          "dependencies": {
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/bitcoin-utxo-selection": "^2.0.3",
+            "@rosen-bridge/json-bigint": "^1.1.0",
+            "@rosen-bridge/rosen-extractor": "^12.1.2",
+            "@rosen-bridge/tokens": "^6.0.2",
+            "@rosen-chains/abstract-chain": "^17.0.1",
+            "hsd": "^8.0.0"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-chains/bitcoin-esplora",
+          "version": "5.0.6",
+          "dependencies": {
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/json-bigint": "^1.1.0",
+            "@rosen-chains/abstract-chain": "^17.0.1",
+            "@rosen-chains/bitcoin": "^11.1.0",
+            "@rosen-clients/rate-limited-axios": "^2.0.1",
+            "bitcoinjs-lib": "^6.1.5"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-chains/bitcoin-runes-rpc",
+          "version": "2.0.8",
+          "dependencies": {
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/json-bigint": "^1.1.0",
+            "@rosen-chains/abstract-chain": "^17.0.1",
+            "@rosen-chains/bitcoin-runes": "^5.1.0",
+            "@rosen-clients/rate-limited-axios": "^2.0.1",
+            "bitcoinjs-lib": "^6.1.5"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-chains/cardano-blockfrost-network",
+          "version": "10.0.5",
+          "dependencies": {
+            "@blockfrost/blockfrost-js": "^6.0.0",
+            "@emurgo/cardano-serialization-lib-nodejs": "^13.2.0",
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/json-bigint": "^1.1.0",
+            "@rosen-chains/abstract-chain": "^17.0.1",
+            "@rosen-chains/cardano": "^17.0.1",
+            "@blockfrost/openapi": "0.1.73"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-chains/cardano-koios-network",
+          "version": "13.0.5",
+          "dependencies": {
+            "@emurgo/cardano-serialization-lib-nodejs": "^13.2.0",
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/json-bigint": "^1.1.0",
+            "@rosen-chains/abstract-chain": "^17.0.1",
+            "@rosen-chains/cardano": "^17.0.1",
+            "@rosen-clients/cardano-koios": "^3.2.0"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-chains/doge-blockcypher",
+          "version": "1.0.6",
+          "dependencies": {
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/json-bigint": "^1.1.0",
+            "@rosen-chains/abstract-chain": "^17.0.1",
+            "@rosen-chains/doge": "^5.0.1",
+            "@rosen-clients/rate-limited-axios": "^2.0.1",
+            "bitcoinjs-lib": "^6.1.5"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-chains/doge-esplora",
+          "version": "2.0.6",
+          "dependencies": {
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/json-bigint": "^1.1.0",
+            "@rosen-chains/abstract-chain": "^17.0.1",
+            "@rosen-chains/doge": "^5.0.1",
+            "@rosen-clients/rate-limited-axios": "^2.0.1",
+            "bitcoinjs-lib": "^6.1.5"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-chains/doge-rpc",
+          "version": "1.0.6",
+          "dependencies": {
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/json-bigint": "^1.1.0",
+            "@rosen-chains/abstract-chain": "^17.0.1",
+            "@rosen-chains/doge": "^5.0.1",
+            "@rosen-clients/rate-limited-axios": "^2.0.1",
+            "bitcoinjs-lib": "^6.1.5"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-chains/ergo-explorer-network",
+          "version": "10.0.6",
+          "dependencies": {
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/json-bigint": "^1.1.0",
+            "@rosen-chains/abstract-chain": "^17.0.1",
+            "@rosen-chains/ergo": "^15.0.1",
+            "@rosen-clients/ergo-explorer": "^2.1.3",
+            "ergo-lib-wasm-nodejs": "^0.24.1",
+            "it-all": "^3.0.1"
+          },
+          "devDependencies": {
+            "vite-plugin-top-level-await": "^1.3.0",
+            "vite-plugin-wasm": "^3.2.2"
+          }
+        },
+        {
+          "name": "@rosen-chains/ergo-node-network",
+          "version": "10.0.6",
+          "dependencies": {
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/json-bigint": "^1.1.0",
+            "@rosen-chains/abstract-chain": "^17.0.1",
+            "@rosen-chains/ergo": "^15.0.1",
+            "@rosen-clients/ergo-node": "^3.2.0",
+            "ergo-lib-wasm-nodejs": "^0.24.1",
+            "it-all": "^3.0.1"
+          },
+          "devDependencies": {
+            "vite-plugin-top-level-await": "^1.3.0",
+            "vite-plugin-wasm": "^3.2.2"
+          }
+        },
+        {
+          "name": "@rosen-chains/evm-op-stack-rpc",
+          "version": "0.0.2",
+          "dependencies": {
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/extended-typeorm": "^1.1.0",
+            "@rosen-bridge/json-bigint": "^1.1.0",
+            "@rosen-chains/abstract-chain": "^17.0.1",
+            "@rosen-chains/evm": "^10.1.0",
+            "@rosen-chains/evm-rpc": "^4.1.0",
+            "ethers": "6.16.0"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-chains/evm-rpc",
+          "version": "4.1.0",
+          "dependencies": {
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/evm-address-tx-extractor": "^4.0.0",
+            "@rosen-bridge/extended-typeorm": "^1.1.0",
+            "@rosen-bridge/json-bigint": "^1.1.0",
+            "@rosen-chains/abstract-chain": "^17.0.1",
+            "@rosen-chains/evm": "^10.1.0",
+            "ethers": "6.16.0"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-chains/firo-electrumx",
+          "version": "0.1.3",
+          "dependencies": {
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/firo-scanner": "^1.0.1",
+            "@rosen-chains/abstract-chain": "^17.0.1",
+            "@rosen-chains/firo": "^1.0.1",
+            "bitcoinjs-lib": "^6.1.5",
+            "bs58check": "^3.0.1"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-chains/handshake-rpc",
+          "version": "0.0.2",
+          "dependencies": {
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/json-bigint": "^1.1.0",
+            "@rosen-chains/abstract-chain": "^17.0.1",
+            "@rosen-chains/handshake": "^1.0.1",
+            "@rosen-clients/rate-limited-axios": "^2.0.1",
+            "hsd": "^8.0.0"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "guard-service",
+          "version": "12.0.0",
+          "dependencies": {
+            "@fastify/cors": "^11.2.0",
+            "@fastify/rate-limit": "^10.3.0",
+            "@rosen-bridge/abstract-extractor": "^4.0.0",
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/abstract-notification": "^1.0.0",
+            "@rosen-bridge/abstract-scanner": "^4.0.0",
+            "@rosen-bridge/address-codec": "^2.1.0",
+            "@rosen-bridge/address-manager": "^0.1.0",
+            "@rosen-bridge/asset-check": "^6.2.2",
+            "@rosen-bridge/callback-logger": "^2.0.0",
+            "@rosen-bridge/communication": "^3.0.1",
+            "@rosen-bridge/detection": "^3.0.1",
+            "@rosen-bridge/dialer": "^0.3.0",
+            "@rosen-bridge/discord-notification": "^1.0.0",
+            "@rosen-bridge/encryption": "^1.0.1",
+            "@rosen-bridge/ergo-multi-sig": "^3.0.1",
+            "@rosen-bridge/ergo-scanner": "^2.0.1",
+            "@rosen-bridge/event-progress-check": "^2.0.0",
+            "@rosen-bridge/evm-address-tx-extractor": "^4.0.0",
+            "@rosen-bridge/evm-scanner": "^2.0.1",
+            "@rosen-bridge/extended-typeorm": "^1.1.0",
+            "@rosen-bridge/fastify-enhanced": "^3.3.0",
+            "@rosen-bridge/health-check": "^8.0.0",
+            "@rosen-bridge/json-bigint": "^1.1.0",
+            "@rosen-bridge/log-level-check": "^4.0.0",
+            "@rosen-bridge/minimum-fee": "^4.0.1",
+            "@rosen-bridge/node-sync-check": "^3.0.3",
+            "@rosen-bridge/rosenet-utils": "^0.5.0",
+            "@rosen-bridge/scanner-interfaces": "^1.0.0",
+            "@rosen-bridge/scanner-sync-check": "^8.2.0",
+            "@rosen-bridge/semaphore": "^0.1.0",
+            "@rosen-bridge/tokens": "^6.0.2",
+            "@rosen-bridge/tss": "^6.0.1",
+            "@rosen-bridge/tx-progress-check": "^3.0.0",
+            "@rosen-bridge/watcher-data-extractor": "^16.0.0",
+            "@rosen-bridge/winston-logger": "^3.1.0",
+            "@rosen-chains/abstract-chain": "^17.0.1",
+            "@rosen-chains/binance": "^4.0.3",
+            "@rosen-chains/bitcoin": "^11.1.0",
+            "@rosen-chains/bitcoin-esplora": "^5.0.6",
+            "@rosen-chains/bitcoin-runes": "^5.1.0",
+            "@rosen-chains/bitcoin-runes-rpc": "^2.0.8",
+            "@rosen-chains/cardano": "^17.0.1",
+            "@rosen-chains/cardano-blockfrost-network": "^10.0.5",
+            "@rosen-chains/cardano-koios-network": "^13.0.5",
+            "@rosen-chains/doge": "^5.0.1",
+            "@rosen-chains/doge-blockcypher": "^1.0.6",
+            "@rosen-chains/doge-esplora": "^2.0.6",
+            "@rosen-chains/doge-rpc": "^1.0.6",
+            "@rosen-chains/ergo": "^15.0.1",
+            "@rosen-chains/ergo-explorer-network": "^10.0.6",
+            "@rosen-chains/ergo-node-network": "^10.0.6",
+            "@rosen-chains/ethereum": "^4.0.3",
+            "@rosen-chains/evm": "^10.1.0",
+            "@rosen-chains/evm-rpc": "^4.1.0",
+            "@rosen-chains/firo": "^1.0.1",
+            "@rosen-chains/firo-electrumx": "^0.1.3",
+            "@rosen-chains/handshake": "^1.0.1",
+            "@rosen-chains/handshake-rpc": "^0.0.2",
+            "@rosen-clients/rate-limited-axios": "^2.0.1",
+            "blakejs": "^1.2.1",
+            "config": "^3.3.7",
+            "ergo-lib-wasm-nodejs": "^0.24.1",
+            "lodash-es": "^4.17.21",
+            "pg": "^8.16.3",
+            "sqlite3": "^5.0.8",
+            "tsx": "^4.20.5",
+            "uint8arrays": "^3.1.0",
+            "zod": "^3.25.76"
+          },
+          "devDependencies": {
+            "@types/config": "^0.0.41",
+            "@types/lodash-es": "^4.17.6",
+            "@types/node": "^22.18.0",
+            "madge": "^5.0.2",
+            "prettier": "^3.6.2",
+            "typescript": "^5.9.3",
+            "vite-plugin-top-level-await": "^1.4.4",
+            "vite-plugin-wasm": "^3.3.0"
+          }
+        }
+      ]
+    },
+    {
+      "repo": "health-check",
+      "existingChangesets": [
+        "eighty-toys-draw",
+        "nasty-singers-give"
+      ],
+      "releases": [
+        {
+          "name": "@rosen-bridge/asset-check",
+          "type": "minor",
+          "oldVersion": "6.2.2",
+          "changesets": [
+            "avalanche-native-asset-health"
+          ],
+          "newVersion": "6.3.0"
+        }
+      ],
+      "packages": [
+        {
+          "name": "@rosen-bridge/asset-check",
+          "version": "6.3.0",
+          "dependencies": {
+            "@apollo/client": "^3.9.11",
+            "@blockfrost/blockfrost-js": "^6.0.0",
+            "@rosen-bridge/health-check": "^8.0.0",
+            "@rosen-clients/cardano-koios": "^3.1.3",
+            "@rosen-clients/ergo-explorer": "^2.1.3",
+            "@rosen-clients/ergo-node": "^3.1.3",
+            "@rosen-clients/rate-limited-axios": "^2.0.1",
+            "cross-fetch": "^4.0.0",
+            "ethers": "6.16.0"
+          },
+          "devDependencies": {
+            "@rosen-chains/avalanche-rpc": "^0.1.0"
+          }
+        },
+        {
+          "name": "@rosen-bridge/event-progress-check",
+          "version": "2.0.0",
+          "dependencies": {
+            "@rosen-bridge/health-check": "^8.0.0",
+            "lodash-es": "^4.17.21"
+          },
+          "devDependencies": {
+            "@types/lodash-es": "^4.17.12"
+          }
+        },
+        {
+          "name": "@rosen-bridge/health-check",
+          "version": "8.0.0",
+          "dependencies": {
+            "@rosen-bridge/abstract-notification": "^1.0.0"
+          },
+          "devDependencies": {
+            "@vitest/coverage-istanbul": "^3.1.4",
+            "tsx": "^4.20.6",
+            "vitest": "^3.1.4"
+          }
+        },
+        {
+          "name": "@rosen-bridge/log-level-check",
+          "version": "4.0.0",
+          "dependencies": {
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/callback-logger": "^2.0.0",
+            "@rosen-bridge/health-check": "^8.0.0",
+            "lodash-es": "^4.17.21"
+          },
+          "devDependencies": {
+            "@types/lodash-es": "^4.17.12"
+          }
+        },
+        {
+          "name": "@rosen-bridge/node-sync-check",
+          "version": "3.0.3",
+          "dependencies": {
+            "@rosen-bridge/health-check": "^8.0.0",
+            "@rosen-clients/ergo-node": "^3.1.3"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-bridge/p2p-network-check",
+          "version": "3.0.0",
+          "dependencies": {
+            "@rosen-bridge/health-check": "^8.0.0"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-bridge/permit-check",
+          "version": "3.0.4",
+          "dependencies": {
+            "@rosen-bridge/health-check": "^8.0.0",
+            "@rosen-clients/ergo-explorer": "^2.1.3",
+            "@rosen-clients/ergo-node": "^3.1.3",
+            "ergo-lib-wasm-nodejs": "^0.24.1"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-bridge/scanner-sync-check",
+          "version": "8.2.0",
+          "dependencies": {
+            "@rosen-bridge/health-check": "^8.0.0",
+            "date-fns": "^4.1.0",
+            "lodash-es": "^4.17.21"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-bridge/tx-progress-check",
+          "version": "3.0.0",
+          "dependencies": {
+            "@rosen-bridge/health-check": "^8.0.0",
+            "lodash-es": "^4.17.21"
+          },
+          "devDependencies": {
+            "@types/lodash-es": "^4.17.12"
+          }
+        },
+        {
+          "name": "@rosen-bridge/wid-check",
+          "version": "3.0.3",
+          "dependencies": {
+            "@rosen-bridge/health-check": "^8.0.0",
+            "@rosen-clients/ergo-explorer": "^2.1.3",
+            "@rosen-clients/ergo-node": "^3.1.3",
+            "ergo-lib-wasm-nodejs": "^0.24.1",
+            "lodash-es": "^4.17.21"
+          },
+          "devDependencies": {
+            "@types/lodash-es": "^4.17.12"
+          }
+        }
+      ]
+    }
+  ],
+  "floors": {
+    "@rosen-chains/evm": "10.1.0",
+    "@rosen-chains/evm-rpc": "4.1.0"
+  },
+  "consumerMetadataChanges": [
+    {
+      "path": "packages/chains/avalanche/package.json",
+      "changes": [
+        {
+          "producer": "@rosen-chains/evm",
+          "previous": "^10.0.2",
+          "proposed": "^10.1.0"
+        }
+      ]
+    },
+    {
+      "path": "packages/networks/avalanche-rpc/package.json",
+      "changes": [
+        {
+          "producer": "@rosen-chains/evm",
+          "previous": "^10.0.2",
+          "proposed": "^10.1.0"
+        },
+        {
+          "producer": "@rosen-chains/evm-rpc",
+          "previous": "^4.0.6",
+          "proposed": "^4.1.0"
+        }
+      ]
+    }
+  ],
+  "evidence": {
+    "bytes": 58532,
+    "sha256": "99c1dee45727907f61c5e7b8b35993c4717cd046de0d92ea642b44fcf4c99116"
+  },
+  "limits": "Complete Changesets plans include pending baseline notes. Version numbers are previews. Apply minimum dependency floors to the Avalanche consumers, recompute after accepted releases, verify published package exports/integrity and regenerate ordinary lockfiles before installed qualification."
+}

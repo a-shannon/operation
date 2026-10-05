@@ -1,0 +1,2789 @@
+diff --git a/.changeset/ergo-authorized-submission.md b/.changeset/ergo-authorized-submission.md
+new file mode 100644
+index 0000000..94aaa7f
+--- /dev/null
++++ b/.changeset/ergo-authorized-submission.md
+@@ -0,0 +1,8 @@
++---
++'@rosen-chains/ergo': minor
++'@rosen-chains/ergo-explorer-network': patch
++'@rosen-chains/ergo-node-network': patch
++---
++
++Add explicit Ergo transaction submission authorization at the final transport
++adapter boundary, preserving legacy submissions and refusing unsupported networks.
+diff --git a/packages/chains/ergo/lib/ergoChain.ts b/packages/chains/ergo/lib/ergoChain.ts
+index 407cb81..7040d34 100644
+--- a/packages/chains/ergo/lib/ergoChain.ts
++++ b/packages/chains/ergo/lib/ergoChain.ts
+@@ -28,6 +28,10 @@ import { ERG, ERGO_CHAIN, NUMBER_OF_BLOCKS_PER_YEAR } from './constants';
+ import ErgoTransaction from './ergoTransaction';
+ import ErgoUtils from './ergoUtils';
+ import AbstractErgoNetwork from './network/abstractErgoNetwork';
++import {
++  AuthorizedErgoSubmission,
++  AuthorizedSubmissionError,
++} from './network/authorizedSubmission';
+ import Serializer from './serializer';
+ import { ErgoConfigs, ErgoSignMediator, GuardsPkConfig } from './types';
+ 
+@@ -754,17 +758,63 @@ class ErgoChain extends AbstractUtxoChain<wasm.Transaction, wasm.ErgoBox> {
+    */
+   submitTransaction = async (
+     transaction: PaymentTransaction,
++    authorization?: Pick<
++      AuthorizedErgoSubmission,
++      'timeoutMs' | 'authorizeSubmit'
++    >,
++  ): Promise<void> =>
++    this.submitCapturedTransaction(transaction, authorization);
++
++  /** Explicit capability: never dispatch through the overridable legacy API. */
++  submitAuthorizedTransaction = async (
++    transaction: PaymentTransaction,
++    authorization: Pick<
++      AuthorizedErgoSubmission,
++      'timeoutMs' | 'authorizeSubmit'
++    >,
++  ): Promise<void> => {
++    const captured = Object.freeze({
++      timeoutMs: authorization?.timeoutMs,
++      authorizeSubmit: authorization?.authorizeSubmit,
++    });
++    if (
++      !Number.isSafeInteger(captured.timeoutMs) ||
++      captured.timeoutMs < 1 ||
++      captured.timeoutMs > 2147483647 ||
++      typeof captured.authorizeSubmit !== 'function'
++    )
++      throw new AuthorizedSubmissionError('invalid');
++    return this.submitCapturedTransaction(transaction, captured);
++  };
++
++  /** Submits captured signed bytes and preserves authorized failure handling. */
++private submitCapturedTransaction = async (
++    transaction: PaymentTransaction,
++    authorization?: Pick<
++      AuthorizedErgoSubmission,
++      'timeoutMs' | 'authorizeSubmit'
++    >,
+   ): Promise<void> => {
++    const captured =
++      authorization === undefined
++        ? undefined
++        : Object.freeze({
++            timeoutMs: authorization.timeoutMs,
++            authorizeSubmit: authorization.authorizeSubmit,
++          });
+     // deserialize transaction
+     const tx = Serializer.signedDeserialize(transaction.txBytes);
+ 
+     // send transaction
+     try {
+-      const response = await this.network.submitTransaction(tx);
++      const response = captured
++        ? await this.network.submitAuthorizedTransaction(tx, captured)
++        : await this.network.submitTransaction(tx);
+       this.logger.info(
+         `Ergo Transaction [${transaction.txId}] submitted. Response: ${response}`,
+       );
+     } catch (e) {
++      if (captured) throw e;
+       this.logger.warn(
+         `An error occurred while submitting Ergo transaction [${transaction.txId}]: ${e}`,
+       );
+diff --git a/packages/chains/ergo/lib/index.ts b/packages/chains/ergo/lib/index.ts
+index b225a40..fb1fbd7 100644
+--- a/packages/chains/ergo/lib/index.ts
++++ b/packages/chains/ergo/lib/index.ts
+@@ -5,3 +5,4 @@ export { default as ErgoTransaction } from './ergoTransaction';
+ export * from './constants';
+ export * from './types';
+ export { decodeRegister } from './ergoUtils';
++export * from './network/authorizedSubmission';
+diff --git a/packages/chains/ergo/lib/network/abstractErgoNetwork.ts b/packages/chains/ergo/lib/network/abstractErgoNetwork.ts
+index 85eff5b..9bc0027 100644
+--- a/packages/chains/ergo/lib/network/abstractErgoNetwork.ts
++++ b/packages/chains/ergo/lib/network/abstractErgoNetwork.ts
+@@ -2,6 +2,11 @@ import { ErgoBox, ErgoStateContext, Transaction } from 'ergo-lib-wasm-nodejs';
+ 
+ import { AbstractUtxoChainNetwork } from '@rosen-chains/abstract-chain';
+ 
++import {
++  AuthorizedErgoSubmission,
++  AuthorizedSubmissionError,
++} from './authorizedSubmission';
++
+ abstract class AbstractErgoNetwork extends AbstractUtxoChainNetwork<
+   Transaction,
+   ErgoBox
+@@ -12,6 +17,14 @@ abstract class AbstractErgoNetwork extends AbstractUtxoChainNetwork<
+    */
+   declare submitTransaction: (transaction: Transaction) => Promise<void>;
+ 
++  /** Older network implementations must never fall back to an unguarded send. */
++  submitAuthorizedTransaction: (
++    transaction: Transaction,
++    options: Pick<AuthorizedErgoSubmission, 'timeoutMs' | 'authorizeSubmit'>,
++  ) => Promise<void> = async () => {
++    throw new AuthorizedSubmissionError('invalid');
++  };
++
+   /**
+    * gets the context of blockchain using 10 last blocks
+    * @returns the state context object
+diff --git a/packages/chains/ergo/lib/network/authorizedSubmission.ts b/packages/chains/ergo/lib/network/authorizedSubmission.ts
+new file mode 100644
+index 0000000..3f2cc16
+--- /dev/null
++++ b/packages/chains/ergo/lib/network/authorizedSubmission.ts
+@@ -0,0 +1,208 @@
++import { performance } from 'node:perf_hooks';
++
++import { createAxiosInstanceWithHeaders } from '@rosen-clients/axios';
++import axios, {
++  AxiosAdapter,
++  InternalAxiosRequestConfig,
++  getAdapter,
++} from '@rosen-clients/rate-limited-axios';
++
++export class AuthorizedSubmissionError extends axios.AxiosError {
++  /** Creates a submission error with its authorization code and cause. */
++  constructor(
++    readonly reason: 'invalid' | 'denied' | 'expired' | 'reused',
++    config?: InternalAxiosRequestConfig,
++    cause?: unknown,
++  ) {
++    super(
++      `Ergo submission authorization ${reason}`,
++      'ERR_ERGO_SUBMISSION_AUTHORIZATION',
++      config,
++    );
++    this.name = 'AuthorizedSubmissionError';
++    this.cause = cause instanceof Error ? cause : undefined;
++  }
++}
++
++export interface AuthorizedErgoSubmission {
++  readonly baseUrl: string;
++  readonly target: 'node' | 'explorer';
++  /** Node: canonical signed transaction hex. Explorer: EIP-12 JSON object. */
++  readonly body: string | object;
++  readonly timeoutMs: number;
++  /** Invoke start synchronously under fresh authority; do not retain it. */
++  readonly authorizeSubmit: (start: () => void) => Promise<void>;
++}
++
++/**
++ * Authorize one adapter start after the shared rate-limit queue. The response
++ * is awaited outside authorization. This cannot revoke an accepted broadcast.
++ * The optional adapter is a trusted transport dependency, not request data.
++ */
++export const submitAuthorizedErgoTransaction = async (
++  request: AuthorizedErgoSubmission,
++  transport?: AxiosAdapter,
++): Promise<void> => {
++  const { baseUrl, target, body, timeoutMs, authorizeSubmit } = request;
++  if (
++    typeof baseUrl !== 'string' ||
++    typeof authorizeSubmit !== 'function' ||
++    !Number.isSafeInteger(timeoutMs) ||
++    timeoutMs < 1 ||
++    timeoutMs > 2147483647 ||
++    (target !== 'node' && target !== 'explorer')
++  )
++    throw new AuthorizedSubmissionError('invalid');
++  let parsed: URL;
++  try {
++    parsed = new URL(baseUrl);
++  } catch (error) {
++    throw new AuthorizedSubmissionError('invalid', undefined, error);
++  }
++  if (!['http:', 'https:'].includes(parsed.protocol) || parsed.hash)
++    throw new AuthorizedSubmissionError('invalid');
++  if (
++    target === 'node'
++      ? typeof body !== 'string' || !/^(?:[0-9a-f]{2})+$/.test(body)
++      : !body || typeof body !== 'object' || Array.isArray(body)
++  )
++    throw new AuthorizedSubmissionError('invalid');
++  // Capture JSON now, including every nested Explorer field, before any await.
++  let wireBody: string | undefined;
++  try {
++    wireBody = JSON.stringify(body);
++  } catch (error) {
++    throw new AuthorizedSubmissionError('invalid', undefined, error);
++  }
++  if (typeof wireBody !== 'string')
++    throw new AuthorizedSubmissionError('invalid');
++  const headers = new axios.AxiosHeaders();
++  for (const [name, value] of Object.entries({
++    ...axios.defaults.headers.common,
++    ...axios.defaults.headers.post,
++  }))
++    if (value !== undefined) headers.set(name, value);
++  headers.setContentType('application/json');
++  if (
++    ['Host', 'Content-Length', 'Transfer-Encoding'].some((name) =>
++      headers.has(name),
++    )
++  )
++    throw new AuthorizedSubmissionError('invalid');
++  /** Normalizes header names and ordering for request identity comparison. */
++  const headerIdentity = (value: typeof headers) =>
++    JSON.stringify(
++      Object.entries(value.toJSON())
++        .map(([name, value]) => [name.toLowerCase(), value])
++        .sort(([a], [b]) => String(a).localeCompare(String(b))),
++    );
++  const expectedHeaders = headerIdentity(headers);
++  const route =
++    target === 'node' ? '/transactions/bytes' : '/api/v0/transactions/send';
++  // Axios preserves a base URL path prefix even when route begins with '/'.
++  const fullUrl = axios.getUri({ baseURL: baseUrl, url: route });
++  const baseAdapter = transport ?? getAdapter(axios.defaults.adapter);
++  const controller = new AbortController();
++  const deadline = performance.now() + timeoutMs;
++  let closed = false;
++  let adapterEntered = false;
++  let started = false;
++  let activeConfig: InternalAxiosRequestConfig | undefined;
++  let rejectDeadline!: (error: AuthorizedSubmissionError) => void;
++  const expired = new Promise<never>((_, reject) => {
++    rejectDeadline = reject;
++  });
++  const timer = setTimeout(() => {
++    closed = true;
++    controller.abort();
++    rejectDeadline(new AuthorizedSubmissionError('expired', activeConfig));
++  }, timeoutMs);
++  /** Rejects requests after this authorization window closes or expires. */
++  const assertOpen = (config: InternalAxiosRequestConfig) => {
++    if (closed || controller.signal.aborted || performance.now() >= deadline)
++      throw new AuthorizedSubmissionError('expired', config);
++  };
++  /** Checks the captured request identity before entering its transport. */
++  const assertRequest = (config: InternalAxiosRequestConfig) => {
++    assertOpen(config);
++    if (
++      config.baseURL !== baseUrl ||
++      config.url !== route ||
++      config.method !== 'post' ||
++      axios.getUri(config) !== fullUrl ||
++      config.data !== wireBody ||
++      config.headers.get('Content-Type') !== 'application/json' ||
++      headerIdentity(config.headers) !== expectedHeaders ||
++      config.signal !== controller.signal ||
++      config.timeout !== timeoutMs ||
++      config.maxRedirects !== 0 ||
++      config.adapter !== adapter ||
++      config.params !== undefined ||
++      config.transport !== undefined ||
++      config.socketPath !== undefined ||
++      config.beforeRedirect !== undefined ||
++      config.proxy !== undefined ||
++      config.auth !== undefined ||
++      config.httpAgent !== undefined ||
++      config.httpsAgent !== undefined ||
++      config.lookup !== undefined ||
++      config.family !== undefined ||
++      config.httpVersion !== undefined
++    )
++      throw new AuthorizedSubmissionError('invalid', config);
++  };
++  /** Runs one guarded adapter invocation inside the captured authorization. */
++  const adapter: AxiosAdapter = async (config) => {
++    activeConfig = config;
++    if (adapterEntered) throw new AuthorizedSubmissionError('reused', config);
++    adapterEntered = true;
++    assertRequest(config);
++    let response: ReturnType<AxiosAdapter> | undefined;
++    let authorizing = true;
++    try {
++      await Promise.race([
++        Promise.resolve().then(() =>
++          authorizeSubmit(() => {
++            assertRequest(config);
++            if (!authorizing || started)
++              throw new AuthorizedSubmissionError('reused', config);
++            started = true;
++            response = baseAdapter(config);
++            // An authorizer may reject after starting. Own late transport rejection.
++            void response.catch(() => undefined);
++          }),
++        ),
++        expired,
++      ]);
++    } catch (error) {
++      if (error instanceof AuthorizedSubmissionError) throw error;
++      throw new AuthorizedSubmissionError('denied', config, error);
++    } finally {
++      authorizing = false;
++    }
++    if (!started || !response)
++      throw new AuthorizedSubmissionError('denied', config);
++    return await response;
++  };
++  try {
++    const client = createAxiosInstanceWithHeaders(baseUrl, {});
++    await Promise.race([
++      client({
++        url: route,
++        method: 'POST',
++        headers,
++        data: wireBody,
++        transformRequest: [(data) => data],
++        adapter,
++        signal: controller.signal,
++        timeout: timeoutMs,
++        maxRedirects: 0,
++      }),
++      expired,
++    ]);
++  } finally {
++    closed = true;
++    controller.abort();
++    clearTimeout(timer);
++  }
++};
+diff --git a/packages/chains/ergo/package.json b/packages/chains/ergo/package.json
+index 662ef42..3f8d0fd 100644
+--- a/packages/chains/ergo/package.json
++++ b/packages/chains/ergo/package.json
+@@ -38,6 +38,8 @@
+     "@rosen-bridge/rosen-extractor": "^12.1.2",
+     "@rosen-bridge/tokens": "^6.0.2",
+     "@rosen-chains/abstract-chain": "^17.0.0",
++    "@rosen-clients/axios": "1.1.3",
++    "@rosen-clients/rate-limited-axios": "2.0.1",
+     "ergo-lib-wasm-nodejs": "^0.24.1"
+   },
+   "engines": {
+diff --git a/packages/chains/ergo/tests/ergoChain.spec.ts b/packages/chains/ergo/tests/ergoChain.spec.ts
+index 8573b7f..88e1776 100644
+--- a/packages/chains/ergo/tests/ergoChain.spec.ts
++++ b/packages/chains/ergo/tests/ergoChain.spec.ts
+@@ -1,24 +1,34 @@
+ import * as wasm from 'ergo-lib-wasm-nodejs';
+-
++import { createServer } from 'node:http';
+ import { TokenMap } from '@rosen-bridge/tokens';
+-import {
+-  BlockInfo,
+-  BoxInfo,
+-  NotEnoughAssetsError,
+-  NotEnoughValidBoxesError,
+-  SigningStatus,
+-  TransactionType,
+-} from '@rosen-chains/abstract-chain';
+-
++import { BlockInfo } from '@rosen-chains/abstract-chain';
++import { BoxInfo } from '@rosen-chains/abstract-chain';
++import { NotEnoughAssetsError } from '@rosen-chains/abstract-chain';
++import { NotEnoughValidBoxesError } from '@rosen-chains/abstract-chain';
++import { SigningStatus } from '@rosen-chains/abstract-chain';
++import { TransactionType } from '@rosen-chains/abstract-chain';
++import ErgoNodeNetwork from '@rosen-chains/ergo-node-network';
+ import { ErgoChain } from '../lib';
+ import { ErgoConfigs } from '../lib';
+ import ErgoTransaction from '../lib/ergoTransaction';
++import AbstractErgoNetwork from '../lib/network/abstractErgoNetwork';
++import { AuthorizedSubmissionError } from '../lib/network/authorizedSubmission';
++
+ import * as boxTestData from './boxTestData';
+ import * as ergoTestUtils from './ergoTestUtils';
++import { generateChainObject } from './ergoTestUtils';
++
+ import TestErgoNetwork from './network/testErgoNetwork';
+-import * as transactionTestData from './transactionTestData';
++import { generateAuthorizedPayment } from './testUtils/authorizedSubmission';
++import { generateSubmissionOptions } from './testUtils/authorizedSubmission';
++
+ 
++import * as transactionTestData from './transactionTestData';
++import { transaction2SignedSerialized } from './transactionTestData';
++import { transaction2PartialUnsignedPaymentTransaction } from './transactionTestData';
++import { transaction5PaymentTransaction } from './transactionTestData';
+ describe('ErgoChain', () => {
++describe('baseline scenarios', () => {
+   describe('generateTransaction', () => {
+     /**
+      * @target ErgoChain.generateTransaction should throw error when
+@@ -2727,4 +2737,446 @@ describe('ErgoChain', () => {
+       expect(result).toEqual(false);
+     });
+   });
++
++});
++
++  describe('submitTransaction', () => {
++    describe('submitTransaction', () => {
++      describe('qualified chain authorization 1', () => {
++        const payment = generateAuthorizedPayment;
++        const options = generateSubmissionOptions;
++
++        const method = 'submitTransaction' as const;
++        /**
++         * @target ErgoChain.submitTransaction `${method} denies an unsupported network before invoking its legacy submit method`
++         * @dependencies
++         * - TestErgoNetwork and signed payment fixtures; explicit authorization
++         * callback.
++         * @scenario
++         * - Create the network/payment/callback fixtures. Apply the case-specific
++         * denial or mutation, invoke the selected chain method, and inspect
++         * captured bytes and downstream calls. - Prepare `network`, `legacy`.
++         * @expected
++         * - `expect( generateChainObject(network)[method](payment(), options()),
++         * ).rejects.toBeInstanceOf(AuthorizedSubmissionError)`. -
++         * `expect(legacy).not.toHaveBeenCalled()`.
++         */
++        it(`${method} denies an unsupported network before invoking its legacy submit method`, async () => {
++          const network = new TestErgoNetwork(),
++            legacy = vi.spyOn(network, 'submitTransaction');
++          await expect(
++            generateChainObject(network)[method](payment(), options()),
++          ).rejects.toBeInstanceOf(AuthorizedSubmissionError);
++          expect(legacy).not.toHaveBeenCalled();
++        });
++        /**
++         * @target ErgoChain.submitTransaction `${method} propagates qualified failure without reporting success: %s`
++         * @dependencies
++         * - TestErgoNetwork and signed payment fixtures; explicit authorization
++         * callback.
++         * @scenario
++         * - Create the network/payment/callback fixtures. Apply the case-specific
++         * denial or mutation, invoke the selected chain method, and inspect
++         * captured bytes and downstream calls. - Prepare `network`. - Apply
++         * `vi.spyOn(network, 'submitAuthorizedTransaction').mockRejectedValue(
++         * failure, )`. - Prepare `legacy`.
++         * @expected
++         * - `expect( generateChainObject(network)[method](payment(), options()),
++         * ).rejects.toBe(failure)`. - `expect(legacy).not.toHaveBeenCalled()`.
++         */
++        it.each([
++          new AuthorizedSubmissionError('denied'),
++          new AuthorizedSubmissionError('expired'),
++          new Error('HTTP failure'),
++        ])(
++          `${method} propagates qualified failure without reporting success: %s`,
++          async (failure) => {
++            const network = new TestErgoNetwork();
++            vi.spyOn(network, 'submitAuthorizedTransaction').mockRejectedValue(
++              failure,
++            );
++            const legacy = vi.spyOn(network, 'submitTransaction');
++            await expect(
++              generateChainObject(network)[method](payment(), options()),
++            ).rejects.toBe(failure);
++            expect(legacy).not.toHaveBeenCalled();
++          },
++        );
++        /**
++         * @target ErgoChain.submitTransaction `${method} captures immutable callback/timeout and exact signed bytes before waiting`
++         * @dependencies
++         * - TestErgoNetwork and signed payment fixtures; explicit authorization
++         * callback.
++         * @scenario
++         * - Create the network/payment/callback fixtures. Apply the case-specific
++         * denial or mutation, invoke the selected chain method, and inspect
++         * captured bytes and downstream calls. - Prepare `network`, `tx`, `input`.
++         * - Prepare `callback`. - Prepare `finish`. - Prepare `gate`. - Prepare
++         * `received`. - Prepare `pending`. - Apply `input.timeoutMs = 1`. - Apply
++         * `input.authorizeSubmit = async () => { throw Error('replacement'); }`. -
++         * Apply `tx.txBytes = Buffer.from('00', 'hex')`. - Apply `finish()`. -
++         * Apply `await pending`.
++         * @expected
++         * - `expect( Buffer.from(signed.sigma_serialize_bytes()).toString('hex'),
++         * ).toEqual(transaction2SignedSerialized)`. -
++         * `expect(authorization.authorizeSubmit).toBe(callback)`. -
++         * `expect(authorization.timeoutMs).toEqual(1000)`. -
++         * `expect(Object.isFrozen(authorization)).toEqual(true)`. -
++         * `expect(received).toBeDefined()`.
++         */
++        it(`${method} captures immutable callback/timeout and exact signed bytes before waiting`, async () => {
++          const network = new TestErgoNetwork(),
++            tx = payment(),
++            input = options();
++          const callback = input.authorizeSubmit;
++          let finish!: () => void;
++          const gate = new Promise<void>((resolve) => {
++            finish = resolve;
++          });
++          let received:
++            | Parameters<typeof network.submitAuthorizedTransaction>[1]
++            | undefined;
++          vi.spyOn(network, 'submitAuthorizedTransaction').mockImplementation(
++            async (signed, authorization) => {
++              received = authorization;
++              expect(
++                Buffer.from(signed.sigma_serialize_bytes()).toString('hex'),
++              ).toEqual(transaction2SignedSerialized);
++              await gate;
++              expect(authorization.authorizeSubmit).toBe(callback);
++              expect(authorization.timeoutMs).toEqual(1000);
++              expect(Object.isFrozen(authorization)).toEqual(true);
++            },
++          );
++          const pending = generateChainObject(network)[method](tx, input);
++          expect(received).toBeDefined();
++          input.timeoutMs = 1;
++          input.authorizeSubmit = async () => {
++            throw Error('replacement');
++          };
++          tx.txBytes = Buffer.from('00', 'hex');
++          finish();
++          await pending;
++        });
++      });
++      describe('qualified chain authorization 4', () => {
++        const payment = generateAuthorizedPayment;
++
++        /**
++         * @target ErgoChain.submitTransaction 'preserves legacy behavior when legacy network fails=%s'
++         * @dependencies
++         * - TestErgoNetwork legacy and qualified submit spies.
++         * @scenario
++         * - Configure the legacy network to succeed or fail. Submit without
++         * explicit authorization and inspect the legacy and qualified call paths.
++         * - Prepare `network`. - Prepare `legacy`. - Prepare `qualified`.
++         * @expected
++         * - `expect( generateChainObject(network).submitTransaction(payment()),
++         * ).resolves.toBeUndefined()`. - `expect(legacy).toHaveBeenCalledOnce()`.
++         * - `expect(qualified).not.toHaveBeenCalled()`.
++         */
++        it.each([false, true])(
++          'preserves legacy behavior when legacy network fails=%s',
++          async (fail) => {
++            const network = new TestErgoNetwork();
++            const legacy = vi
++              .spyOn(network as AbstractErgoNetwork, 'submitTransaction')
++              .mockImplementation(async () => {
++                if (fail) throw Error('legacy failure');
++              });
++            const qualified = vi.spyOn(network, 'submitAuthorizedTransaction');
++            await expect(
++              generateChainObject(network).submitTransaction(payment()),
++            ).resolves.toBeUndefined();
++            expect(legacy).toHaveBeenCalledOnce();
++            expect(qualified).not.toHaveBeenCalled();
++          },
++        );
++      });
++    });
++  });
++
++  describe('submitAuthorizedTransaction', () => {
++    describe('submitAuthorizedTransaction', () => {
++      describe('qualified chain authorization 2', () => {
++        const payment = generateAuthorizedPayment;
++        const options = generateSubmissionOptions;
++
++        const method = 'submitAuthorizedTransaction' as const;
++        /**
++         * @target ErgoChain.submitAuthorizedTransaction `${method} denies an unsupported network before invoking its legacy submit method`
++         * @dependencies
++         * - TestErgoNetwork and signed payment fixtures; explicit authorization
++         * callback.
++         * @scenario
++         * - Create the network/payment/callback fixtures. Apply the case-specific
++         * denial or mutation, invoke the selected chain method, and inspect
++         * captured bytes and downstream calls. - Prepare `network`, `legacy`.
++         * @expected
++         * - `expect( generateChainObject(network)[method](payment(), options()),
++         * ).rejects.toBeInstanceOf(AuthorizedSubmissionError)`. -
++         * `expect(legacy).not.toHaveBeenCalled()`.
++         */
++        it(`${method} denies an unsupported network before invoking its legacy submit method`, async () => {
++          const network = new TestErgoNetwork(),
++            legacy = vi.spyOn(network, 'submitTransaction');
++          await expect(
++            generateChainObject(network)[method](payment(), options()),
++          ).rejects.toBeInstanceOf(AuthorizedSubmissionError);
++          expect(legacy).not.toHaveBeenCalled();
++        });
++        /**
++         * @target ErgoChain.submitAuthorizedTransaction `${method} propagates qualified failure without reporting success: %s`
++         * @dependencies
++         * - TestErgoNetwork and signed payment fixtures; explicit authorization
++         * callback.
++         * @scenario
++         * - Create the network/payment/callback fixtures. Apply the case-specific
++         * denial or mutation, invoke the selected chain method, and inspect
++         * captured bytes and downstream calls. - Prepare `network`. - Apply
++         * `vi.spyOn(network, 'submitAuthorizedTransaction').mockRejectedValue(
++         * failure, )`. - Prepare `legacy`.
++         * @expected
++         * - `expect( generateChainObject(network)[method](payment(), options()),
++         * ).rejects.toBe(failure)`. - `expect(legacy).not.toHaveBeenCalled()`.
++         */
++        it.each([
++          new AuthorizedSubmissionError('denied'),
++          new AuthorizedSubmissionError('expired'),
++          new Error('HTTP failure'),
++        ])(
++          `${method} propagates qualified failure without reporting success: %s`,
++          async (failure) => {
++            const network = new TestErgoNetwork();
++            vi.spyOn(network, 'submitAuthorizedTransaction').mockRejectedValue(
++              failure,
++            );
++            const legacy = vi.spyOn(network, 'submitTransaction');
++            await expect(
++              generateChainObject(network)[method](payment(), options()),
++            ).rejects.toBe(failure);
++            expect(legacy).not.toHaveBeenCalled();
++          },
++        );
++        /**
++         * @target ErgoChain.submitAuthorizedTransaction `${method} captures immutable callback/timeout and exact signed bytes before waiting`
++         * @dependencies
++         * - TestErgoNetwork and signed payment fixtures; explicit authorization
++         * callback.
++         * @scenario
++         * - Create the network/payment/callback fixtures. Apply the case-specific
++         * denial or mutation, invoke the selected chain method, and inspect
++         * captured bytes and downstream calls. - Prepare `network`, `tx`, `input`.
++         * - Prepare `callback`. - Prepare `finish`. - Prepare `gate`. - Prepare
++         * `received`. - Prepare `pending`. - Apply `input.timeoutMs = 1`. - Apply
++         * `input.authorizeSubmit = async () => { throw Error('replacement'); }`. -
++         * Apply `tx.txBytes = Buffer.from('00', 'hex')`. - Apply `finish()`. -
++         * Apply `await pending`.
++         * @expected
++         * - `expect( Buffer.from(signed.sigma_serialize_bytes()).toString('hex'),
++         * ).toEqual(transaction2SignedSerialized)`. -
++         * `expect(authorization.authorizeSubmit).toBe(callback)`. -
++         * `expect(authorization.timeoutMs).toEqual(1000)`. -
++         * `expect(Object.isFrozen(authorization)).toEqual(true)`. -
++         * `expect(received).toBeDefined()`.
++         */
++        it(`${method} captures immutable callback/timeout and exact signed bytes before waiting`, async () => {
++          const network = new TestErgoNetwork(),
++            tx = payment(),
++            input = options();
++          const callback = input.authorizeSubmit;
++          let finish!: () => void;
++          const gate = new Promise<void>((resolve) => {
++            finish = resolve;
++          });
++          let received:
++            | Parameters<typeof network.submitAuthorizedTransaction>[1]
++            | undefined;
++          vi.spyOn(network, 'submitAuthorizedTransaction').mockImplementation(
++            async (signed, authorization) => {
++              received = authorization;
++              expect(
++                Buffer.from(signed.sigma_serialize_bytes()).toString('hex'),
++              ).toEqual(transaction2SignedSerialized);
++              await gate;
++              expect(authorization.authorizeSubmit).toBe(callback);
++              expect(authorization.timeoutMs).toEqual(1000);
++              expect(Object.isFrozen(authorization)).toEqual(true);
++            },
++          );
++          const pending = generateChainObject(network)[method](tx, input);
++          expect(received).toBeDefined();
++          input.timeoutMs = 1;
++          input.authorizeSubmit = async () => {
++            throw Error('replacement');
++          };
++          tx.txBytes = Buffer.from('00', 'hex');
++          finish();
++          await pending;
++        });
++      });
++      describe('qualified chain authorization 3', () => {
++        const payment = generateAuthorizedPayment;
++        const options = generateSubmissionOptions;
++
++        /**
++         * @target ErgoChain.submitAuthorizedTransaction 'rejects malformed explicit authorization before any submission: %s'
++         * @dependencies
++         * - TestErgoNetwork, real loopback ErgoNodeNetwork, signed transaction
++         * fixture and explicit authorization.
++         * @scenario
++         * - Prepare the signed payment and authorization input. Apply isolated
++         * malformed or overridden-legacy conditions, or hold the loopback dispatch
++         * gate. Invoke the explicit API and inspect authorization/transport calls.
++         * - Prepare `network`. - Prepare `chain`. - Prepare `legacy`. - Prepare
++         * `networkLegacy`. - Prepare `qualified`. - Prepare `malformed`. - Apply
++         * `malformed.txBytes = Uint8Array.of(255)`.
++         * @expected
++         * - `expect( chain.submitAuthorizedTransaction( malformed, authorization
++         * as Parameters< typeof chain.submitAuthorizedTransaction >[1], ),
++         * ).rejects.toMatchObject({ reason: 'invalid' })`. -
++         * `expect(legacy).not.toHaveBeenCalled()`. -
++         * `expect(networkLegacy).not.toHaveBeenCalled()`. -
++         * `expect(qualified).not.toHaveBeenCalled()`.
++         */
++        it.each([
++          undefined,
++          null,
++          {},
++          { timeoutMs: 1000 },
++          { authorizeSubmit: options().authorizeSubmit },
++          ...[0, -1, 0.5, NaN, Infinity, 2147483648, '1000'].map(
++            (timeoutMs) => ({
++              timeoutMs,
++              authorizeSubmit: options().authorizeSubmit,
++            }),
++          ),
++          ...[undefined, null, 1, 'callback', {}].map((authorizeSubmit) => ({
++            timeoutMs: 1000,
++            authorizeSubmit,
++          })),
++        ])(
++          'rejects malformed explicit authorization before any submission: %s',
++          async (authorization) => {
++            const network = new TestErgoNetwork();
++            const chain = generateChainObject(network);
++            const legacy = vi.spyOn(chain, 'submitTransaction');
++            const networkLegacy = vi.spyOn(network, 'submitTransaction');
++            const qualified = vi.spyOn(network, 'submitAuthorizedTransaction');
++            const malformed = payment();
++            malformed.txBytes = Uint8Array.of(255);
++            await expect(
++              chain.submitAuthorizedTransaction(
++                malformed,
++                authorization as Parameters<
++                  typeof chain.submitAuthorizedTransaction
++                >[1],
++              ),
++            ).rejects.toMatchObject({ reason: 'invalid' });
++            expect(legacy).not.toHaveBeenCalled();
++            expect(networkLegacy).not.toHaveBeenCalled();
++            expect(qualified).not.toHaveBeenCalled();
++          },
++        );
++        /**
++         * @target ErgoChain.submitAuthorizedTransaction 'never invokes an overridden legacy chain method from the explicit API'
++         * @dependencies
++         * - TestErgoNetwork, real loopback ErgoNodeNetwork, signed transaction
++         * fixture and explicit authorization.
++         * @scenario
++         * - Prepare the signed payment and authorization input. Apply isolated
++         * malformed or overridden-legacy conditions, or hold the loopback dispatch
++         * gate. Invoke the explicit API and inspect authorization/transport calls.
++         * - Prepare `network`. - Prepare `chain`. - Apply `chain.submitTransaction
++         * = vi.fn(async () => undefined)`. - Prepare `failure`. - Prepare
++         * `qualified`.
++         * @expected
++         * - `expect( chain.submitAuthorizedTransaction(payment(), options()),
++         * ).rejects.toBe(failure)`. - `expect(qualified).toHaveBeenCalledOnce()`.
++         * - `expect(chain.submitTransaction).not.toHaveBeenCalled()`.
++         */
++        it('never invokes an overridden legacy chain method from the explicit API', async () => {
++          const network = new TestErgoNetwork();
++          const chain = generateChainObject(network);
++          chain.submitTransaction = vi.fn(async () => undefined);
++          const failure = new AuthorizedSubmissionError('denied');
++          const qualified = vi
++            .spyOn(network, 'submitAuthorizedTransaction')
++            .mockRejectedValue(failure);
++          await expect(
++            chain.submitAuthorizedTransaction(payment(), options()),
++          ).rejects.toBe(failure);
++          expect(qualified).toHaveBeenCalledOnce();
++          expect(chain.submitTransaction).not.toHaveBeenCalled();
++        });
++        /**
++         * @target ErgoChain.submitAuthorizedTransaction 'dispatches exact bytes through the real Node network only after explicit admission'
++         * @dependencies
++         * - TestErgoNetwork, real loopback ErgoNodeNetwork, signed transaction
++         * fixture and explicit authorization.
++         * @scenario
++         * - Prepare the signed payment and authorization input. Apply isolated
++         * malformed or overridden-legacy conditions, or hold the loopback dispatch
++         * gate. Invoke the explicit API and inspect authorization/transport calls.
++         * - Prepare `bodies`. - Prepare `paths`. - Prepare `server`. - Apply
++         * `await new Promise<void>((resolve) => server.listen(0, '127.0.0.1',
++         * resolve))`. - Observe the transaction operation and reclaim the owned
++         * WASM or HTTP fixture in the finally branch.
++         * @expected
++         * - `expect(bodies).toEqual([])`. -
++         * `expect(authorization).toHaveBeenCalledOnce()`. -
++         * `expect(paths).toEqual(['/transactions/bytes'])`. -
++         * `expect(bodies).toEqual([JSON.stringify(transaction2SignedSerialized)])`.
++         * - `expect(legacy).not.toHaveBeenCalled()`.
++         */
++        it('dispatches exact bytes through the real Node network only after explicit admission', async () => {
++          const bodies: string[] = [];
++          const paths: string[] = [];
++          const server = createServer((request, response) => {
++            paths.push(request.url!);
++            let body = '';
++            request.on('data', (chunk) => {
++              body += chunk;
++            });
++            request.on('end', () => {
++              bodies.push(body);
++              response.writeHead(200, { 'Content-Type': 'application/json' });
++              response.end('"accepted"');
++            });
++          });
++          await new Promise<void>((resolve) =>
++            server.listen(0, '127.0.0.1', resolve),
++          );
++          try {
++            const address = server.address();
++            if (!address || typeof address === 'string')
++              throw Error('No listener');
++            const network = new ErgoNodeNetwork({
++              nodeBaseUrl: `http://127.0.0.1:${address.port}`,
++            });
++            const chain = generateChainObject(new TestErgoNetwork());
++            chain.network = network;
++            const legacy = vi.spyOn(network, 'submitTransaction');
++            const authorization = vi.fn(async (start: () => void) => {
++              expect(bodies).toEqual([]);
++              start();
++            });
++            await chain.submitAuthorizedTransaction(payment(), {
++              timeoutMs: 1000,
++              authorizeSubmit: authorization,
++            });
++            expect(authorization).toHaveBeenCalledOnce();
++            expect(paths).toEqual(['/transactions/bytes']);
++            expect(bodies).toEqual([
++              JSON.stringify(transaction2SignedSerialized),
++            ]);
++            expect(legacy).not.toHaveBeenCalled();
++          } finally {
++            server.closeAllConnections();
++            await new Promise<void>((resolve) => server.close(() => resolve()));
++          }
++        });
++      });
++    });
++  });
+ });
+diff --git a/packages/chains/ergo/tests/network/authorizedSubmission.spec.ts b/packages/chains/ergo/tests/network/authorizedSubmission.spec.ts
+new file mode 100644
+index 0000000..07d9203
+--- /dev/null
++++ b/packages/chains/ergo/tests/network/authorizedSubmission.spec.ts
+@@ -0,0 +1,716 @@
++import { createServer, Server } from 'node:http';
++
++import { createAxiosInstanceWithHeaders } from '@rosen-clients/axios';
++import axios, {
++  Axios,
++  AxiosAdapter,
++  InternalAxiosRequestConfig,
++  RateLimitedAxiosConfig,
++} from '@rosen-clients/rate-limited-axios';
++
++import {
++  AuthorizedErgoSubmission,
++  AuthorizedSubmissionError,
++  submitAuthorizedErgoTransaction,
++} from '../../lib/network/authorizedSubmission';
++import { delay, deferred, request } from '../testUtils/authorizedSubmission';
++import { success } from './mocked/axios.mock';
++
++const pattern = '^https://fixture.invalid/';
++let server: Server | undefined;
++describe('submitAuthorizedErgoTransaction', () => {
++  afterEach(async () => {
++    vi.restoreAllMocks();
++    RateLimitedAxiosConfig.removeRule(pattern);
++    if (server) {
++      server.closeAllConnections();
++      await new Promise<void>((resolve) => server!.close(() => resolve()));
++      server = undefined;
++    }
++  });
++  /**
++   * @target submitAuthorizedErgoTransaction 'matches generated %s JSON wire format and Axios path-prefix semantics'
++   * @dependencies
++   * - RateLimitedAxios shared queue/interceptor, Axios adapter, explicit
++   * authorizer, captured input and isolated loopback HTTP server.
++   * @scenario
++   * - Prepare the request, authorizer and transport fixture. Apply the
++   * case-specific queue, timing, callback, request mutation or HTTP response
++   * condition. Submit through the authorization boundary and inspect exact
++   * wire data, refusal and downstream-call counts. - Prepare `body`. -
++   * Prepare `captured`. - Prepare `urls`. - Prepare `adapter`. - Prepare
++   * `route`. - Apply `await submitAuthorizedErgoTransaction(request({
++   * target, body }), adapter)`.
++   * @expected
++   * - `expect(captured).toEqual([JSON.stringify(body),
++   * JSON.stringify(body)])`. - `expect(urls).toEqual([
++   * `https://fixture.invalid/prefix${route}`,
++   * `https://fixture.invalid/prefix${route}`, ])`.
++   */
++  it.each(['node', 'explorer'] as const)(
++    'matches generated %s JSON wire format and Axios path-prefix semantics',
++    async (target) => {
++      const body =
++        target === 'node'
++          ? 'abcd'
++          : {
++              id: 'test',
++              inputs: [{ boxId: 'box', spendingProof: { proofBytes: 'ab' } }],
++              outputs: [{ value: '9007199254740993', assets: [] }],
++            };
++      const captured: string[] = [];
++      const urls: string[] = [];
++      const adapter: AxiosAdapter = async (config) => {
++        captured.push(config.data);
++        urls.push(axios.getUri(config));
++        return success(config);
++      };
++      const route =
++        target === 'node' ? '/transactions/bytes' : '/api/v0/transactions/send';
++      await createAxiosInstanceWithHeaders(
++        'https://fixture.invalid/prefix',
++        {},
++      )({
++        url: route,
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        data: body,
++        adapter,
++      });
++      await submitAuthorizedErgoTransaction(request({ target, body }), adapter);
++      expect(captured).toEqual([JSON.stringify(body), JSON.stringify(body)]);
++      expect(urls).toEqual([
++        `https://fixture.invalid/prefix${route}`,
++        `https://fixture.invalid/prefix${route}`,
++      ]);
++    },
++  );
++  /**
++   * @target submitAuthorizedErgoTransaction 'captures nested Explorer input and authorizer before the shared queue'
++   * @dependencies
++   * - RateLimitedAxios shared queue/interceptor, Axios adapter, explicit
++   * authorizer, captured input and isolated loopback HTTP server.
++   * @scenario
++   * - Prepare the request, authorizer and transport fixture. Apply the
++   * case-specific queue, timing, callback, request mutation or HTTP response
++   * condition. Submit through the authorization boundary and inspect exact
++   * wire data, refusal and downstream-call counts. - Apply
++   * `RateLimitedAxiosConfig.addRule(pattern, 1, 0, 1)`. - Prepare `release`.
++   * - Prepare `body`, `start`. - Prepare `authorized`. - Prepare `options`.
++   * - Prepare `task`. - Apply `await delay(10)`. - Apply
++   * `body.outputs[0].value = '2'`. - Apply `Object.assign(options, {
++   * baseUrl: 'https://other.invalid', authorizeSubmit: () => { throw
++   * Error('changed'); }, })`. - Apply `release()`. - Apply `await task`.
++   * @expected
++   * - `expect(start).not.toHaveBeenCalled()`. -
++   * `expect(authorized).toEqual(1)`. -
++   * `expect(start.mock.calls[0][0].data).toEqual('{"outputs":[{"value":"1"}]}')`.
++   */
++  it('captures nested Explorer input and authorizer before the shared queue', async () => {
++    RateLimitedAxiosConfig.addRule(pattern, 1, 0, 1);
++    const release =
++      await RateLimitedAxiosConfig.getRules()[0].semaphore.acquire();
++    const body = { outputs: [{ value: '1' }] },
++      start = vi.fn(success);
++    let authorized = 0;
++    const options = request({
++      target: 'explorer',
++      body,
++      authorizeSubmit: async (dispatch) => {
++        authorized++;
++        dispatch();
++      },
++    });
++    const task = submitAuthorizedErgoTransaction(options, start);
++    await delay(10);
++    body.outputs[0].value = '2';
++    Object.assign(options, {
++      baseUrl: 'https://other.invalid',
++      authorizeSubmit: () => {
++        throw Error('changed');
++      },
++    });
++    expect(start).not.toHaveBeenCalled();
++    release();
++    await task;
++    expect(authorized).toEqual(1);
++    expect(start.mock.calls[0][0].data).toEqual('{"outputs":[{"value":"1"}]}');
++  });
++  /**
++   * @target submitAuthorizedErgoTransaction 'denies a request held in the real shared queue and releases its slot'
++   * @dependencies
++   * - RateLimitedAxios shared queue/interceptor, Axios adapter, explicit
++   * authorizer, captured input and isolated loopback HTTP server.
++   * @scenario
++   * - Prepare the request, authorizer and transport fixture. Apply the
++   * case-specific queue, timing, callback, request mutation or HTTP response
++   * condition. Submit through the authorization boundary and inspect exact
++   * wire data, refusal and downstream-call counts. - Apply
++   * `RateLimitedAxiosConfig.addRule(pattern, 1, 0, 10)`. - Prepare
++   * `release`. - Prepare `allowed`. - Prepare `start`. - Prepare `task`. -
++   * Prepare `rejected`. - Apply `await delay(10)`. - Apply `allowed =
++   * false`. - Apply `release()`. - Apply `await
++   * submitAuthorizedErgoTransaction(request(), start)`.
++   * @expected
++   * - `expect(start).not.toHaveBeenCalled()`. - `expect(await
++   * rejected).toBeInstanceOf(AuthorizedSubmissionError)`. -
++   * `expect(start).toHaveBeenCalledTimes(1)`.
++   */
++  it('denies a request held in the real shared queue and releases its slot', async () => {
++    RateLimitedAxiosConfig.addRule(pattern, 1, 0, 10);
++    const release =
++      await RateLimitedAxiosConfig.getRules()[0].semaphore.acquire();
++    let allowed = true;
++    const start = vi.fn(success);
++    const task = submitAuthorizedErgoTransaction(
++      request({
++        authorizeSubmit: async (dispatch) => {
++          if (!allowed) throw Error('held');
++          dispatch();
++        },
++      }),
++      start,
++    );
++    const rejected = task.then(
++      () => undefined,
++      (error) => error,
++    );
++    await delay(10);
++    allowed = false;
++    expect(start).not.toHaveBeenCalled();
++    release();
++    expect(await rejected).toBeInstanceOf(AuthorizedSubmissionError);
++    await submitAuthorizedErgoTransaction(request(), start);
++    expect(start).toHaveBeenCalledTimes(1);
++  });
++  /**
++   * @target submitAuthorizedErgoTransaction 'expires while queued; a fresh identical request never renews the old request'
++   * @dependencies
++   * - RateLimitedAxios shared queue/interceptor, Axios adapter, explicit
++   * authorizer, captured input and isolated loopback HTTP server.
++   * @scenario
++   * - Prepare the request, authorizer and transport fixture. Apply the
++   * case-specific queue, timing, callback, request mutation or HTTP response
++   * condition. Submit through the authorization boundary and inspect exact
++   * wire data, refusal and downstream-call counts. - Apply
++   * `RateLimitedAxiosConfig.addRule(pattern, 1, 0, 10)`. - Prepare
++   * `release`. - Prepare `start`. - Prepare `authorize`. - Prepare `fresh`.
++   * - Apply `release()`. - Apply `await fresh`.
++   * @expected
++   * - `expect( submitAuthorizedErgoTransaction( request({ timeoutMs: 20,
++   * authorizeSubmit: authorize }), start, ), ).rejects.toMatchObject({
++   * reason: 'expired' })`. - `expect(authorize).not.toHaveBeenCalled()`. -
++   * `expect(start).toHaveBeenCalledTimes(1)`.
++   */
++  it('expires while queued; a fresh identical request never renews the old request', async () => {
++    RateLimitedAxiosConfig.addRule(pattern, 1, 0, 10);
++    const release =
++      await RateLimitedAxiosConfig.getRules()[0].semaphore.acquire();
++    const start = vi.fn(success);
++    const authorize = vi.fn(async (dispatch: () => void) => dispatch());
++    await expect(
++      submitAuthorizedErgoTransaction(
++        request({ timeoutMs: 20, authorizeSubmit: authorize }),
++        start,
++      ),
++    ).rejects.toMatchObject({ reason: 'expired' });
++    const fresh = submitAuthorizedErgoTransaction(request(), start);
++    release();
++    await fresh;
++    expect(authorize).not.toHaveBeenCalled();
++    expect(start).toHaveBeenCalledTimes(1);
++  });
++  /**
++   * @target submitAuthorizedErgoTransaction 'expires during delayed authorization and permanently revokes its late callback'
++   * @dependencies
++   * - RateLimitedAxios shared queue/interceptor, Axios adapter, explicit
++   * authorizer, captured input and isolated loopback HTTP server.
++   * @scenario
++   * - Prepare the request, authorizer and transport fixture. Apply the
++   * case-specific queue, timing, callback, request mutation or HTTP response
++   * condition. Submit through the authorization boundary and inspect exact
++   * wire data, refusal and downstream-call counts. - Prepare `gate`,
++   * `entered`. - Prepare `late`. - Prepare `start`. - Apply `await
++   * entered.promise`. - Apply `gate.resolve()`. - Apply `await delay(5)`.
++   * @expected
++   * - `expect( submitAuthorizedErgoTransaction( request({ timeoutMs: 20,
++   * authorizeSubmit: async (dispatch) => { late = dispatch;
++   * entered.resolve(); await gate.promise; }, }), start, ),
++   * ).rejects.toMatchObject({ reason: 'expired' })`. - `expect(() =>
++   * late!()).toThrow(AuthorizedSubmissionError)`. -
++   * `expect(start).not.toHaveBeenCalled()`.
++   */
++  it('expires during delayed authorization and permanently revokes its late callback', async () => {
++    const gate = deferred<void>(),
++      entered = deferred<void>();
++    let late: (() => void) | undefined;
++    const start = vi.fn(success);
++    await expect(
++      submitAuthorizedErgoTransaction(
++        request({
++          timeoutMs: 20,
++          authorizeSubmit: async (dispatch) => {
++            late = dispatch;
++            entered.resolve();
++            await gate.promise;
++          },
++        }),
++        start,
++      ),
++    ).rejects.toMatchObject({ reason: 'expired' });
++    await entered.promise;
++    expect(() => late!()).toThrow(AuthorizedSubmissionError);
++    gate.resolve();
++    await delay(5);
++    expect(start).not.toHaveBeenCalled();
++  });
++  /**
++   * @target submitAuthorizedErgoTransaction 'awaits the transport response after the authority action has released'
++   * @dependencies
++   * - RateLimitedAxios shared queue/interceptor, Axios adapter, explicit
++   * authorizer, captured input and isolated loopback HTTP server.
++   * @scenario
++   * - Prepare the request, authorizer and transport fixture. Apply the
++   * case-specific queue, timing, callback, request mutation or HTTP response
++   * condition. Submit through the authorization boundary and inspect exact
++   * wire data, refusal and downstream-call counts. - Prepare `held`. -
++   * Prepare `sent`, `response`. - Prepare `pending`. - Apply `await
++   * sent.promise`. - Apply `await delay(0)`. - Apply `response.resolve()`. -
++   * Apply `await pending`.
++   * @expected
++   * - `expect(held).toEqual(true)`. - `expect(held).toEqual(false)`.
++   */
++  it('awaits the transport response after the authority action has released', async () => {
++    let held = false;
++    const sent = deferred<void>(),
++      response = deferred<void>();
++    const pending = submitAuthorizedErgoTransaction(
++      request({
++        authorizeSubmit: async (dispatch) => {
++          held = true;
++          try {
++            dispatch();
++          } finally {
++            held = false;
++          }
++        },
++      }),
++      async (config) => {
++        expect(held).toEqual(true);
++        sent.resolve();
++        await response.promise;
++        return success(config);
++      },
++    );
++    await sent.promise;
++    await delay(0);
++    expect(held).toEqual(false);
++    response.resolve();
++    await pending;
++  });
++  /**
++   * @target submitAuthorizedErgoTransaction 'rejects missing and repeated dispatch without a second transport invocation'
++   * @dependencies
++   * - RateLimitedAxios shared queue/interceptor, Axios adapter, explicit
++   * authorizer, captured input and isolated loopback HTTP server.
++   * @scenario
++   * - Prepare the request, authorizer and transport fixture. Apply the
++   * case-specific queue, timing, callback, request mutation or HTTP response
++   * condition. Submit through the authorization boundary and inspect exact
++   * wire data, refusal and downstream-call counts. - Prepare `start`.
++   * @expected
++   * - `expect( submitAuthorizedErgoTransaction( request({ authorizeSubmit:
++   * async () => undefined }), start, ), ).rejects.toMatchObject({ reason:
++   * 'denied' })`. - `expect( submitAuthorizedErgoTransaction( request({
++   * authorizeSubmit: async (dispatch) => { dispatch(); dispatch(); }, }),
++   * start, ), ).rejects.toMatchObject({ reason: 'reused' })`. -
++   * `expect(start).toHaveBeenCalledTimes(1)`.
++   */
++  it('rejects missing and repeated dispatch without a second transport invocation', async () => {
++    const start = vi.fn(success);
++    await expect(
++      submitAuthorizedErgoTransaction(
++        request({ authorizeSubmit: async () => undefined }),
++        start,
++      ),
++    ).rejects.toMatchObject({ reason: 'denied' });
++    await expect(
++      submitAuthorizedErgoTransaction(
++        request({
++          authorizeSubmit: async (dispatch) => {
++            dispatch();
++            dispatch();
++          },
++        }),
++        start,
++      ),
++    ).rejects.toMatchObject({ reason: 'reused' });
++    expect(start).toHaveBeenCalledTimes(1);
++  });
++  /**
++   * @target submitAuthorizedErgoTransaction 'contains late transport failure when authorization throws after start'
++   * @dependencies
++   * - RateLimitedAxios shared queue/interceptor, Axios adapter, explicit
++   * authorizer, captured input and isolated loopback HTTP server.
++   * @scenario
++   * - Prepare the request, authorizer and transport fixture. Apply the
++   * case-specific queue, timing, callback, request mutation or HTTP response
++   * condition. Submit through the authorization boundary and inspect exact
++   * wire data, refusal and downstream-call counts. - Prepare `response`. -
++   * Apply `response.reject(Error('late transport'))`. - Apply `await
++   * delay(5)`.
++   * @expected
++   * - `expect( submitAuthorizedErgoTransaction( request({ authorizeSubmit:
++   * async (dispatch) => { dispatch(); throw Error('later denial'); }, }), ()
++   * => response.promise, ), ).rejects.toMatchObject({ reason: 'denied' })`.
++   */
++  it('contains late transport failure when authorization throws after start', async () => {
++    const response = deferred<never>();
++    await expect(
++      submitAuthorizedErgoTransaction(
++        request({
++          authorizeSubmit: async (dispatch) => {
++            dispatch();
++            throw Error('later denial');
++          },
++        }),
++        () => response.promise,
++      ),
++    ).rejects.toMatchObject({ reason: 'denied' });
++    response.reject(Error('late transport'));
++    await delay(5);
++  });
++  /**
++   * @target submitAuthorizedErgoTransaction 'rejects isolated %s mutation after queue acquire'
++   * @dependencies
++   * - RateLimitedAxios shared queue/interceptor, Axios adapter, explicit
++   * authorizer, captured input and isolated loopback HTTP server.
++   * @scenario
++   * - Prepare the request, authorizer and transport fixture. Apply the
++   * case-specific queue, timing, callback, request mutation or HTTP response
++   * condition. Submit through the authorization boundary and inspect exact
++   * wire data, refusal and downstream-call counts. - Prepare `instrumented`.
++   * - Prepare `original`. - Prepare `start`.
++   * @expected
++   * - `expect( submitAuthorizedErgoTransaction(request(), start),
++   * ).rejects.toMatchObject({ reason: 'invalid', config: expect.any(Object)
++   * })`. - `expect(start).not.toHaveBeenCalled()`.
++   */
++  it.each([
++    'url',
++    'baseURL',
++    'method',
++    'data',
++    'headers',
++    'timeout',
++    'signal',
++    'redirects',
++    'params',
++    'transport',
++    'socket',
++    'redirectHook',
++    'proxy',
++    'auth',
++    'httpAgent',
++    'httpsAgent',
++    'lookup',
++    'family',
++    'httpVersion',
++    'host',
++    'length',
++    'authorization',
++  ])('rejects isolated %s mutation after queue acquire', async (field) => {
++    // Instrument the installed JS queue only in this negative test; production uses public APIs.
++    const instrumented = Axios as unknown as {
++      interceptorForRequest: (
++        config: InternalAxiosRequestConfig,
++      ) => Promise<InternalAxiosRequestConfig>;
++    };
++    const original = instrumented.interceptorForRequest;
++    vi.spyOn(instrumented, 'interceptorForRequest').mockImplementation(
++      async (config) => {
++        const result = await original(config);
++        if (field === 'url') result.url = '/other';
++        if (field === 'baseURL') result.baseURL = 'https://other.invalid';
++        if (field === 'method') result.method = 'get';
++        if (field === 'data') result.data = '"beef"';
++        if (field === 'headers') result.headers.setContentType('text/plain');
++        if (field === 'timeout') result.timeout = 0;
++        if (field === 'signal') result.signal = new AbortController().signal;
++        if (field === 'redirects') result.maxRedirects = 1;
++        if (field === 'params') result.params = { extra: 1 };
++        if (field === 'transport') result.transport = {};
++        if (field === 'socket') result.socketPath = 'other';
++        if (field === 'redirectHook') result.beforeRedirect = () => undefined;
++        if (field === 'proxy') result.proxy = false;
++        if (field === 'auth')
++          result.auth = { username: 'fixture', password: 'fixture' };
++        if (field === 'httpAgent') result.httpAgent = {};
++        if (field === 'httpsAgent') result.httpsAgent = {};
++        if (field === 'lookup') result.lookup = () => undefined;
++        if (field === 'family') result.family = 6;
++        if (field === 'httpVersion') result.httpVersion = 2;
++        if (field === 'host') result.headers.set('Host', 'other.invalid');
++        if (field === 'length') result.headers.set('Content-Length', '0');
++        if (field === 'authorization')
++          result.headers.set('Authorization', 'fixture');
++        return result;
++      },
++    );
++    const start = vi.fn(success);
++    await expect(
++      submitAuthorizedErgoTransaction(request(), start),
++    ).rejects.toMatchObject({ reason: 'invalid', config: expect.any(Object) });
++    expect(start).not.toHaveBeenCalled();
++  });
++  /**
++   * @target submitAuthorizedErgoTransaction 'rejects invalid timeout %s before queue or transport'
++   * @dependencies
++   * - RateLimitedAxios shared queue/interceptor, Axios adapter, explicit
++   * authorizer, captured input and isolated loopback HTTP server.
++   * @scenario
++   * - Prepare the request, authorizer and transport fixture. Apply the
++   * case-specific queue, timing, callback, request mutation or HTTP response
++   * condition. Submit through the authorization boundary and inspect exact
++   * wire data, refusal and downstream-call counts. - Prepare `authorize`,
++   * `start`.
++   * @expected
++   * - `expect( submitAuthorizedErgoTransaction( request({ timeoutMs: timeout
++   * as number, authorizeSubmit: authorize }), start, ),
++   * ).rejects.toMatchObject({ reason: 'invalid' })`. -
++   * `expect(authorize).not.toHaveBeenCalled()`. -
++   * `expect(start).not.toHaveBeenCalled()`.
++   */
++  it.each([0, -1, 1.5, NaN, Infinity, 2147483648, '20', undefined])(
++    'rejects invalid timeout %s before queue or transport',
++    async (timeout) => {
++      const authorize = vi.fn(),
++        start = vi.fn(success);
++      await expect(
++        submitAuthorizedErgoTransaction(
++          request({ timeoutMs: timeout as number, authorizeSubmit: authorize }),
++          start,
++        ),
++      ).rejects.toMatchObject({ reason: 'invalid' });
++      expect(authorize).not.toHaveBeenCalled();
++      expect(start).not.toHaveBeenCalled();
++    },
++  );
++  /**
++   * @target submitAuthorizedErgoTransaction 'rejects invalid input %j'
++   * @dependencies
++   * - RateLimitedAxios shared queue/interceptor, Axios adapter, explicit
++   * authorizer, captured input and isolated loopback HTTP server.
++   * @scenario
++   * - Prepare the request, authorizer and transport fixture. Apply the
++   * case-specific queue, timing, callback, request mutation or HTTP response
++   * condition. Submit through the authorization boundary and inspect exact
++   * wire data, refusal and downstream-call counts. - Prepare `start`.
++   * @expected
++   * - `expect( submitAuthorizedErgoTransaction( request(changes as
++   * Partial<AuthorizedErgoSubmission>), start, ), ).rejects.toMatchObject({
++   * reason: 'invalid' })`. - `expect(start).not.toHaveBeenCalled()`.
++   */
++  it.each([
++    { baseUrl: 'file:///tmp/test' },
++    { baseUrl: 'invalid' },
++    { target: 'bad' },
++    { body: 'ABCDEF' },
++    { body: 'abc' },
++    { target: 'explorer', body: [] },
++    { target: 'explorer', body: null },
++  ])('rejects invalid input %j', async (changes) => {
++    const start = vi.fn(success);
++    await expect(
++      submitAuthorizedErgoTransaction(
++        request(changes as Partial<AuthorizedErgoSubmission>),
++        start,
++      ),
++    ).rejects.toMatchObject({ reason: 'invalid' });
++    expect(start).not.toHaveBeenCalled();
++  });
++  /**
++   * @target submitAuthorizedErgoTransaction 'rejects an unserializable Explorer body before network reads'
++   * @dependencies
++   * - RateLimitedAxios shared queue/interceptor, Axios adapter, explicit
++   * authorizer, captured input and isolated loopback HTTP server.
++   * @scenario
++   * - Prepare the request, authorizer and transport fixture. Apply the
++   * case-specific queue, timing, callback, request mutation or HTTP response
++   * condition. Submit through the authorization boundary and inspect exact
++   * wire data, refusal and downstream-call counts. - Prepare `body`. - Apply
++   * `body.circular = body`. - Prepare `start`.
++   * @expected
++   * - `expect( submitAuthorizedErgoTransaction( request({ target:
++   * 'explorer', body }), start, ), ).rejects.toMatchObject({ reason:
++   * 'invalid' })`. - `expect(start).not.toHaveBeenCalled()`.
++   */
++  it('rejects an unserializable Explorer body before network reads', async () => {
++    const body: Record<string, unknown> = {};
++    body.circular = body;
++    const start = vi.fn(success);
++    await expect(
++      submitAuthorizedErgoTransaction(
++        request({ target: 'explorer', body }),
++        start,
++      ),
++    ).rejects.toMatchObject({ reason: 'invalid' });
++    expect(start).not.toHaveBeenCalled();
++  });
++  /**
++   * @target submitAuthorizedErgoTransaction 'revokes an authorizer-retained callback after successful completion'
++   * @dependencies
++   * - RateLimitedAxios shared queue/interceptor, Axios adapter, explicit
++   * authorizer, captured input and isolated loopback HTTP server.
++   * @scenario
++   * - Prepare the request, authorizer and transport fixture. Apply the
++   * case-specific queue, timing, callback, request mutation or HTTP response
++   * condition. Submit through the authorization boundary and inspect exact
++   * wire data, refusal and downstream-call counts. - Prepare `late`. -
++   * Prepare `start`.
++   * @expected
++   * - `expect(() => late!()).toThrow(AuthorizedSubmissionError)`. -
++   * `expect(start).toHaveBeenCalledTimes(1)`.
++   */
++  it('revokes an authorizer-retained callback after successful completion', async () => {
++    let late: (() => void) | undefined;
++    const start = vi.fn(success);
++    await submitAuthorizedErgoTransaction(
++      request({
++        authorizeSubmit: async (dispatch) => {
++          late = dispatch;
++          dispatch();
++        },
++      }),
++      start,
++    );
++    expect(() => late!()).toThrow(AuthorizedSubmissionError);
++    expect(start).toHaveBeenCalledTimes(1);
++  });
++  /**
++   * @target submitAuthorizedErgoTransaction 'rechecks the captured request after delayed authorization, immediately at dispatch'
++   * @dependencies
++   * - RateLimitedAxios shared queue/interceptor, Axios adapter, explicit
++   * authorizer, captured input and isolated loopback HTTP server.
++   * @scenario
++   * - Prepare the request, authorizer and transport fixture. Apply the
++   * case-specific queue, timing, callback, request mutation or HTTP response
++   * condition. Submit through the authorization boundary and inspect exact
++   * wire data, refusal and downstream-call counts. - Prepare `instrumented`.
++   * - Prepare `original`. - Prepare `queued`. - Prepare `start`.
++   * @expected
++   * - `expect( submitAuthorizedErgoTransaction( request({ authorizeSubmit:
++   * async (dispatch) => { await delay(0); queued.data = '"beef"';
++   * dispatch(); }, }), start, ), ).rejects.toMatchObject({ reason: 'invalid'
++   * })`. - `expect(start).not.toHaveBeenCalled()`.
++   */
++  it('rechecks the captured request after delayed authorization, immediately at dispatch', async () => {
++    const instrumented = Axios as unknown as {
++      interceptorForRequest: (
++        config: InternalAxiosRequestConfig,
++      ) => Promise<InternalAxiosRequestConfig>;
++    };
++    const original = instrumented.interceptorForRequest;
++    let queued: InternalAxiosRequestConfig;
++    vi.spyOn(instrumented, 'interceptorForRequest').mockImplementation(
++      async (config) => {
++        queued = await original(config);
++        return queued;
++      },
++    );
++    const start = vi.fn(success);
++    await expect(
++      submitAuthorizedErgoTransaction(
++        request({
++          authorizeSubmit: async (dispatch) => {
++            await delay(0);
++            queued.data = '"beef"';
++            dispatch();
++          },
++        }),
++        start,
++      ),
++    ).rejects.toMatchObject({ reason: 'invalid' });
++    expect(start).not.toHaveBeenCalled();
++  });
++  /**
++   * @target submitAuthorizedErgoTransaction 'bounds a real stalled loopback HTTP POST using the captured abort signal'
++   * @dependencies
++   * - RateLimitedAxios shared queue/interceptor, Axios adapter, explicit
++   * authorizer, captured input and isolated loopback HTTP server.
++   * @scenario
++   * - Prepare the request, authorizer and transport fixture. Apply the
++   * case-specific queue, timing, callback, request mutation or HTTP response
++   * condition. Submit through the authorization boundary and inspect exact
++   * wire data, refusal and downstream-call counts. - Prepare `requests`. -
++   * Prepare `received`. - Apply `server = createServer(() => { requests++;
++   * received.resolve(); })`. - Apply `await new Promise<void>((resolve) =>
++   * server!.listen(0, '127.0.0.1', resolve))`. - Prepare `address`. -
++   * Prepare `pending`. - Prepare `result`. - Apply `await received.promise`.
++   * @expected
++   * - `expect(await result).toMatchObject({ reason: 'expired' })`. -
++   * `expect(requests).toEqual(1)`.
++   */
++  it('bounds a real stalled loopback HTTP POST using the captured abort signal', async () => {
++    let requests = 0;
++    const received = deferred<void>();
++    server = createServer(() => {
++      requests++;
++      received.resolve();
++    });
++    await new Promise<void>((resolve) =>
++      server!.listen(0, '127.0.0.1', resolve),
++    );
++    const address = server.address();
++    if (!address || typeof address === 'string') throw Error('No listener');
++    const pending = submitAuthorizedErgoTransaction(
++      request({ baseUrl: `http://127.0.0.1:${address.port}`, timeoutMs: 100 }),
++    );
++    const result = pending.then(
++      () => undefined,
++      (error) => error,
++    );
++    await received.promise;
++    expect(await result).toMatchObject({ reason: 'expired' });
++    expect(requests).toEqual(1);
++  });
++  /**
++   * @target submitAuthorizedErgoTransaction 'does not follow a real HTTP redirect into another POST target'
++   * @dependencies
++   * - RateLimitedAxios shared queue/interceptor, Axios adapter, explicit
++   * authorizer, captured input and isolated loopback HTTP server.
++   * @scenario
++   * - Prepare the request, authorizer and transport fixture. Apply the
++   * case-specific queue, timing, callback, request mutation or HTTP response
++   * condition. Submit through the authorization boundary and inspect exact
++   * wire data, refusal and downstream-call counts. - Prepare `paths`. -
++   * Apply `server = createServer((req, res) => { paths.push(req.url!);
++   * res.writeHead(307, { Location: '/other' }); res.end(); })`. - Apply
++   * `await new Promise<void>((resolve) => server!.listen(0, '127.0.0.1',
++   * resolve))`. - Prepare `address`.
++   * @expected
++   * - `expect( submitAuthorizedErgoTransaction( request({ baseUrl:
++   * `http://127.0.0.1:${address.port}` }), ), ).rejects.toMatchObject({
++   * response: { status: 307 } })`. -
++   * `expect(paths).toEqual(['/transactions/bytes'])`.
++   */
++  it('does not follow a real HTTP redirect into another POST target', async () => {
++    const paths: string[] = [];
++    server = createServer((req, res) => {
++      paths.push(req.url!);
++      res.writeHead(307, { Location: '/other' });
++      res.end();
++    });
++    await new Promise<void>((resolve) =>
++      server!.listen(0, '127.0.0.1', resolve),
++    );
++    const address = server.address();
++    if (!address || typeof address === 'string') throw Error('No listener');
++    await expect(
++      submitAuthorizedErgoTransaction(
++        request({ baseUrl: `http://127.0.0.1:${address.port}` }),
++      ),
++    ).rejects.toMatchObject({ response: { status: 307 } });
++    expect(paths).toEqual(['/transactions/bytes']);
++  });
++});
+diff --git a/packages/chains/ergo/tests/network/mocked/axios.mock.ts b/packages/chains/ergo/tests/network/mocked/axios.mock.ts
+new file mode 100644
+index 0000000..9495e26
+--- /dev/null
++++ b/packages/chains/ergo/tests/network/mocked/axios.mock.ts
+@@ -0,0 +1,12 @@
++import { AxiosAdapter } from '@rosen-clients/rate-limited-axios';
++
++/**
++ * Return a successful synthetic node submission response.
++ */
++export const success: AxiosAdapter = async (config) => ({
++  config,
++  status: 200,
++  statusText: 'OK',
++  headers: {},
++  data: '"txid"',
++});
+diff --git a/packages/chains/ergo/tests/testUtils/authorizedSubmission.ts b/packages/chains/ergo/tests/testUtils/authorizedSubmission.ts
+new file mode 100644
+index 0000000..be9d6cc
+--- /dev/null
++++ b/packages/chains/ergo/tests/testUtils/authorizedSubmission.ts
+@@ -0,0 +1,68 @@
++import ErgoTransaction from '../../lib/ergoTransaction';
++import { AuthorizedErgoSubmission } from '../../lib/network/authorizedSubmission';
++import {
++  transaction2PartialUnsignedPaymentTransaction,
++  transaction2SignedSerialized,
++} from '../transactionTestData';
++
++/**
++ * Creates the pinned signed payment passed to chain authorization cases.
++ */
++export const generateAuthorizedPayment = () => {
++  const tx = ErgoTransaction.fromJson(
++    transaction2PartialUnsignedPaymentTransaction,
++  );
++  tx.txBytes = Buffer.from(transaction2SignedSerialized, 'hex');
++  return tx;
++};
++
++/**
++ * Authorize immediately within the configured one-second timeout.
++ */
++export const generateSubmissionOptions = () => ({
++  timeoutMs: 1000,
++  /**
++   * Start submission immediately when authorization is requested.
++   */
++  authorizeSubmit: async (start: () => void) => {
++    start();
++  },
++});
++
++/**
++ * Wait the requested interval for concurrent authorization tests.
++ */
++export const delay = (ms: number) =>
++  new Promise((resolve) => setTimeout(resolve, ms));
++
++/**
++ * Expose explicit resolve/reject controls for an in-flight promise.
++ */
++export const deferred = <T>() => {
++  let resolve!: (value: T) => void;
++  let reject!: (error: unknown) => void;
++  const promise = new Promise<T>((ok, no) => {
++    resolve = ok;
++    reject = no;
++  });
++  return { promise, resolve, reject };
++};
++
++/**
++ * Build a synthetic authorized node request with isolated overrides.
++ */
++export const request = (
++  changes: Partial<AuthorizedErgoSubmission> = {},
++): AuthorizedErgoSubmission => ({
++  baseUrl: 'https://fixture.invalid/prefix',
++  target: 'node',
++  body: 'abcd',
++  timeoutMs: 1000,
++  /**
++   * Start submission immediately when authorization is requested.
++   */
++  authorizeSubmit: async (start) => {
++    start();
++  },
++  ...changes,
++});
+diff --git a/packages/networks/ergo-explorer/lib/ergoExplorerNetwork.ts b/packages/networks/ergo-explorer/lib/ergoExplorerNetwork.ts
+index d4dc509..ac23cff 100644
+--- a/packages/networks/ergo-explorer/lib/ergoExplorerNetwork.ts
++++ b/packages/networks/ergo-explorer/lib/ergoExplorerNetwork.ts
+@@ -9,7 +9,11 @@ import {
+   UNKNOWN_TOKEN,
+   UnexpectedApiError,
+ } from '@rosen-chains/abstract-chain';
+-import { AbstractErgoNetwork } from '@rosen-chains/ergo';
++import {
++  AbstractErgoNetwork,
++  AuthorizedErgoSubmission,
++  submitAuthorizedErgoTransaction,
++} from '@rosen-chains/ergo';
+ import ergoExplorerClientFactory, {
+   V0,
+   V1,
+@@ -35,9 +39,11 @@ interface ErgoLibSerializableObject {
+ 
+ class ErgoExplorerNetwork extends AbstractErgoNetwork {
+   private client: ReturnType<typeof ergoExplorerClientFactory>;
++  private readonly submissionBaseUrl: string;
+ 
+   constructor({ logger, explorerBaseUrl }: ErgoExplorerNetworkOptions) {
+     super(logger);
++    this.submissionBaseUrl = explorerBaseUrl;
+     this.client = ergoExplorerClientFactory(explorerBaseUrl);
+   }
+ 
+@@ -272,6 +278,24 @@ class ErgoExplorerNetwork extends AbstractErgoNetwork {
+     }
+   };
+ 
++  /** Submits signed transaction bytes through the qualified Ergo transport. */
++  public submitAuthorizedTransaction = async (
++    tx: ergoLib.Transaction,
++    options: Pick<AuthorizedErgoSubmission, 'timeoutMs' | 'authorizeSubmit'>,
++  ): Promise<void> => {
++    const captured = Object.freeze({
++      timeoutMs: options.timeoutMs,
++      authorizeSubmit: options.authorizeSubmit,
++    });
++    const body = tx.to_js_eip12();
++    await submitAuthorizedErgoTransaction({
++      ...captured,
++      baseUrl: this.submissionBaseUrl,
++      target: 'explorer',
++      body,
++    });
++  };
++
+   /**
+    * Fix a possible malformed mempool tx (returned by
+    * `getApiV0TransactionsUnconfirmed` api), converting all `null` values for
+diff --git a/packages/networks/ergo-explorer/tests/ergoExplorerNetwork.spec.ts b/packages/networks/ergo-explorer/tests/ergoExplorerNetwork.spec.ts
+index dcf6eb2..ac5d3b4 100644
+--- a/packages/networks/ergo-explorer/tests/ergoExplorerNetwork.spec.ts
++++ b/packages/networks/ergo-explorer/tests/ergoExplorerNetwork.spec.ts
+@@ -1,5 +1,6 @@
+ import { ErgoStateContext } from 'ergo-lib-wasm-nodejs';
+ import * as ergoLib from 'ergo-lib-wasm-nodejs';
++import { Server } from 'node:http';
+ import { describe, expect, it, vi } from 'vitest';
+ 
+ import JsonBigInt from '@rosen-bridge/json-bigint';
+@@ -41,18 +42,23 @@ import {
+   testTransactionWithNullSpendingProofBytes,
+   tokenId,
+ } from './testData';
+-
++import {
++  createAuthorizedSubmissionFixtures,
++  getNetwork,
++} from './testUtils/authorizedSubmission';
++
++// Test-only source resolution: do not rebuild or overlay the installed package.
++vi.mock(
++  '@rosen-chains/ergo',
++  async () =>
++    await vi.importActual<Record<string, unknown>>('../../../chains/ergo/lib'),
++);
+ vi.mock('@rosen-clients/ergo-explorer');
+ 
+-const getNetwork = () =>
+-  new ErgoExplorerNetwork({
+-    explorerBaseUrl: 'https://test.explorer',
+-  });
+-
+ describe('ErgoExplorerNetwork', () => {
+   describe('getHeight', () => {
+     /**
+-     * @target `ErgoExplorerNetwork.getHeight` should return current height
++     * @target ErgoExplorerNetwork.getHeight 'should return current height'
+      * @dependencies
+      * @scenario
+      * - mock `getApiV1Networkstate` of ergo explorer client
+@@ -72,8 +78,7 @@ describe('ErgoExplorerNetwork', () => {
+ 
+   describe('getTxConfirmation', () => {
+     /**
+-     * @target `ErgoExplorerNetwork.getTxConfirmation` should return tx
+-     * confirmations
++     * @target ErgoExplorerNetwork.getTxConfirmation 'should return tx confirmations'
+      * @dependencies
+      * @scenario
+      * - mock `getApiV1TransactionsP1` of ergo explorer client
+@@ -93,8 +98,7 @@ describe('ErgoExplorerNetwork', () => {
+     });
+ 
+     /**
+-     * @target `ErgoExplorerNetwork.getTxConfirmation` should return `-1` if tx
+-     * is not found in the blockchain
++     * @target ErgoExplorerNetwork.getTxConfirmation 'should return `-1` if tx is not found in the blockchain'
+      * @dependencies
+      * @scenario
+      * - mock `getApiV1TransactionsP1` of ergo explorer client to reject with a
+@@ -121,8 +125,7 @@ describe('ErgoExplorerNetwork', () => {
+ 
+   describe('getAddressAssets', () => {
+     /**
+-     * @target `ErgoExplorerNetwork.getAddressAssets` should return address
+-     * assets
++     * @target ErgoExplorerNetwork.getAddressAssets 'should return address assets'
+      * @dependencies
+      * @scenario
+      * - mock `getApiV1AddressesP1BalanceConfirmed` of ergo explorer client
+@@ -146,8 +149,7 @@ describe('ErgoExplorerNetwork', () => {
+     });
+ 
+     /**
+-     * @target `ErgoExplorerNetwork.getAddressAssets` should return address
+-     * assets when no `tokens` field is in api result
++     * @target ErgoExplorerNetwork.getAddressAssets 'should return address assets when no `tokens` field is in api result'
+      * @dependencies
+      * @scenario
+      * - mock `getApiV1AddressesP1BalanceConfirmed` of ergo explorer client to
+@@ -171,8 +173,7 @@ describe('ErgoExplorerNetwork', () => {
+ 
+   describe('getBlockTransactionIds', () => {
+     /**
+-     * @target `ErgoExplorerNetwork.getBlockTransactionIds` should return block
+-     * transaction ids
++     * @target ErgoExplorerNetwork.getBlockTransactionIds 'should return block transaction ids'
+      * @dependencies
+      * @scenario
+      * - mock `getApiV1BlocksP1` of ergo explorer client
+@@ -190,8 +191,7 @@ describe('ErgoExplorerNetwork', () => {
+     });
+ 
+     /**
+-     * @target `ErgoExplorerNetwork.getBlockTransactionIds` should throw if no
+-     * `blockTransactions` is returned in api response
++     * @target ErgoExplorerNetwork.getBlockTransactionIds 'should throw if no `blockTransactions` is returned in api response'
+      * @dependencies
+      * @scenario
+      * - mock `getApiV1BlocksP1` of ergo explorer client with no
+@@ -209,8 +209,7 @@ describe('ErgoExplorerNetwork', () => {
+     });
+ 
+     /**
+-     * @target `ErgoExplorerNetwork.getBlockTransactionIds` should return an
+-     * empty array if block is not found in the blockchain
++     * @target ErgoExplorerNetwork.getBlockTransactionIds 'should return an empty array if block is not found in the blockchain'
+      * @dependencies
+      * @scenario
+      * - mock `getApiV1BlocksP1` of ergo explorer client to reject with a 404
+@@ -235,7 +234,7 @@ describe('ErgoExplorerNetwork', () => {
+ 
+   describe('getBlockInfo', () => {
+     /**
+-     * @target `ErgoExplorerNetwork.getBlockInfo` should return block info
++     * @target ErgoExplorerNetwork.getBlockInfo 'should return block info'
+      * @dependencies
+      * @scenario
+      * - mock `getApiV1BlocksP1` of ergo explorer client
+@@ -259,8 +258,7 @@ describe('ErgoExplorerNetwork', () => {
+ 
+   describe('getTransaction', () => {
+     /**
+-     * @target `ErgoExplorerNetwork.getTransaction` should return transaction
+-     * bytes hex representation
++     * @target ErgoExplorerNetwork.getTransaction 'should return transaction bytes hex representation'
+      * @dependencies
+      * @scenario
+      * - mock `getApiV1TransactionsP1` of ergo explorer client
+@@ -283,9 +281,7 @@ describe('ErgoExplorerNetwork', () => {
+     });
+ 
+     /**
+-     * @target `ErgoExplorerNetwork.getTransaction` should return transaction
+-     * bytes hex representation if some tx inputs have `null` value for
+-     * `spendingProof`
++     * @target ErgoExplorerNetwork.getTransaction 'should return transaction bytes hex representation if some tx inputs have `null` value for `spendingProof`'
+      * @dependencies
+      * @scenario
+      * - mock `getApiV1TransactionsP1` of ergo explorer client with a tx
+@@ -309,8 +305,7 @@ describe('ErgoExplorerNetwork', () => {
+     });
+ 
+     /**
+-     * @target `ErgoExplorerNetwork.getTransaction` should throw an error if
+-     * transaction doesn't belong to the block
++     * @target ErgoExplorerNetwork.getTransaction "should throw an error if transaction doesn't belong to the block"
+      * @dependencies
+      * @scenario
+      * - mock `getApiV1TransactionsP1` of ergo explorer client
+@@ -329,7 +324,7 @@ describe('ErgoExplorerNetwork', () => {
+ 
+   describe('submitTransaction', () => {
+     /**
+-     * @target `ErgoExplorerNetwork.submitTransaction` should submit transaction
++     * @target ErgoExplorerNetwork.submitTransaction 'should submit transaction'
+      * @dependencies
+      * @scenario
+      * - mock `postApiV0TransactionsSend` of ergo explorer client
+@@ -352,8 +347,7 @@ describe('ErgoExplorerNetwork', () => {
+ 
+   describe('getMempoolTransactions', () => {
+     /**
+-     * @target `ErgoExplorerNetwork.getMempoolTransactions` should return all
+-     * mempool transactions
++     * @target ErgoExplorerNetwork.getMempoolTransactions 'should return all mempool transactions'
+      * @dependencies
+      * @scenario
+      * - mock `getApiV0TransactionsUnconfirmed` of ergo explorer client
+@@ -379,7 +373,7 @@ describe('ErgoExplorerNetwork', () => {
+ 
+   describe('getAddressBoxes', () => {
+     /**
+-     * @target `ErgoExplorerNetwork.getAddressBoxes` should return address boxes
++     * @target ErgoExplorerNetwork.getAddressBoxes 'should return address boxes'
+      * @dependencies
+      * @scenario
+      * - mock `getApiV1BoxesUnspentByaddressP1` of ergo explorer client
+@@ -401,8 +395,7 @@ describe('ErgoExplorerNetwork', () => {
+     });
+ 
+     /**
+-     * @target `ErgoExplorerNetwork.getAddressBoxes` should return an empty
+-     * array if api response contains no `items` field
++     * @target ErgoExplorerNetwork.getAddressBoxes 'should return an empty array if api response contains no `items` field'
+      * @dependencies
+      * @scenario
+      * - mock `getApiV1BoxesUnspentByaddressP1` of ergo explorer client to
+@@ -427,8 +420,7 @@ describe('ErgoExplorerNetwork', () => {
+ 
+   describe('getBoxesByTokenId', () => {
+     /**
+-     * @target `ErgoExplorerNetwork.getBoxesByTokenId` should return boxes by
+-     * token id
++     * @target ErgoExplorerNetwork.getBoxesByTokenId 'should return boxes by token id'
+      * @dependencies
+      * @scenario
+      * - mock `getApiV1BoxesUnspentBytokenidP1` of ergo explorer client
+@@ -456,8 +448,7 @@ describe('ErgoExplorerNetwork', () => {
+     });
+ 
+     /**
+-     * @target `ErgoExplorerNetwork.getBoxesByTokenId` should return an empty
+-     * array if api response contains no `items` field
++     * @target ErgoExplorerNetwork.getBoxesByTokenId 'should return an empty array if api response contains no `items` field'
+      * @dependencies
+      * @scenario
+      * - mock `getApiV1BoxesUnspentBytokenidP1` of ergo explorer client to
+@@ -482,8 +473,7 @@ describe('ErgoExplorerNetwork', () => {
+     });
+ 
+     /**
+-     * @target `ErgoExplorerNetwork.getBoxesByTokenId` should apply offset and limit
+-     * to boxes with address
++     * @target ErgoExplorerNetwork.getBoxesByTokenId 'should should apply offset and limit to boxes with address'
+      * @dependencies
+      * @scenario
+      * - mock `getApiV1BoxesUnspentBytokenidP1` of ergo explorer client to
+@@ -514,7 +504,7 @@ describe('ErgoExplorerNetwork', () => {
+ 
+   describe('getStateContext', () => {
+     /**
+-     * @target `ErgoExplorerNetwork.getStateContext` should get state context
++     * @target ErgoExplorerNetwork.getStateContext 'should get state context'
+      * @dependencies
+      * @scenario
+      * - mock `getApiV1BlocksHeaders` of ergo explorer client
+@@ -531,8 +521,7 @@ describe('ErgoExplorerNetwork', () => {
+     });
+ 
+     /**
+-     * @target `ErgoExplorerNetwork.getStateContext` should throw an error if no
+-     * block headers is returned by the api
++     * @target ErgoExplorerNetwork.getStateContext 'should throw an error if no block headers is returned by the api'
+      * @dependencies
+      * @scenario
+      * - mock `getApiV1BlocksHeaders` of ergo explorer client
+@@ -549,8 +538,7 @@ describe('ErgoExplorerNetwork', () => {
+ 
+   describe('isBoxUnspentAndValid', () => {
+     /**
+-     * @target `ErgoExplorerNetwork.isBoxUnspentAndValid` should check if box is
+-     * unspent and valid
++     * @target ErgoExplorerNetwork.isBoxUnspentAndValid 'should check if box is unspent and valid'
+      * @dependencies
+      * @scenario
+      * - mock `getApiV1BoxesP1` of ergo explorer client
+@@ -569,8 +557,7 @@ describe('ErgoExplorerNetwork', () => {
+     });
+ 
+     /**
+-     * @target `ErgoExplorerNetwork.isBoxUnspentAndValid` should return `false`
+-     * if box is not found in the blockchain
++     * @target ErgoExplorerNetwork.isBoxUnspentAndValid 'should return `false` if box is not found in the blockchain'
+      * @dependencies
+      * @scenario
+      * - mock `getApiV1BoxesP1` of ergo explorer client to reject with a 404
+@@ -596,7 +583,7 @@ describe('ErgoExplorerNetwork', () => {
+ 
+   describe('getBox', () => {
+     /**
+-     * @target `ErgoExplorerNetwork.getBox` should return the box successfully
++     * @target ErgoExplorerNetwork.getBox 'should return the box successfully'
+      * @dependencies
+      * @scenario
+      * - mock `mockGetApiV1BoxesP1` of ergo explorer client
+@@ -622,7 +609,7 @@ describe('ErgoExplorerNetwork', () => {
+ 
+   describe('getTokenDetail', () => {
+     /**
+-     * @target `ErgoExplorerNetwork.getTokenDetail` should return token detail successfully
++     * @target ErgoExplorerNetwork.getTokenDetail 'should return token detail successfully'
+      * @dependencies
+      * @scenario
+      * - mock `getApiV1TokensP1` of ergo explorer client
+@@ -640,4 +627,172 @@ describe('ErgoExplorerNetwork', () => {
+       expect(result).toEqual(expectedTokenDetail);
+     });
+   });
++  describe('submitAuthorizedTransaction', () => {
++    let server: Server | undefined;
++    const { listen, tx } = createAuthorizedSubmissionFixtures((created) => {
++      server = created;
++    });
++
++    afterEach(async () => {
++      vi.restoreAllMocks();
++      if (server) {
++        server.closeAllConnections();
++        await new Promise<void>((resolve) => server!.close(() => resolve()));
++        server = undefined;
++      }
++    });
++    /**
++     * @target ErgoExplorerNetwork.submitAuthorizedTransaction 'forwards exact Explorer EIP12 bytes after the captured callback with URL credentials'
++     * @dependencies
++     * - Real loopback HTTP server, explicit authorizer, native WASM
++     * transaction fixture and legacy-submit spy.
++     * @scenario
++     * - Create the loopback server and network. Hold or deny explicit
++     * authorization, mutate inputs after capture, or return the selected HTTP
++     * failure. Submit and inspect exact body/path/authentication or the
++     * refusal without legacy dispatch. - Prepare `fixture`, `config`,
++     * `network`, `transaction`, `body`, `expected`. - Prepare `dispatch`,
++     * `release`. - Prepare `gate`. - Prepare `options`. - Apply
++     * `vi.spyOn(transaction, 'to_js_eip12').mockReturnValue(body)`. - Prepare
++     * `pending`. - Apply `options.timeoutMs = 1`. - Apply
++     * `options.authorizeSubmit = async () => { throw Error('replacement'); }`.
++     * - Apply `config.explorerBaseUrl = 'https://invalid.invalid'`. - Apply
++     * `body.outputs[0].value = '0'`. - Apply `release()`. - Apply `await
++     * pending`.
++     * @expected
++     * - `expect(dispatch).toBeDefined()`. -
++     * `expect(fixture.bodies).toEqual([])`. -
++     * `expect(fixture.bodies).toEqual([expected])`. -
++     * `expect(fixture.paths).toEqual(['/prefix/api/v0/transactions/send'])`. -
++     * `expect(fixture.auth).toEqual([ 'Basic ' +
++     * Buffer.from('fixture:password').toString('base64'), ])`.
++     */
++    it('forwards exact Explorer EIP12 bytes after the captured callback with URL credentials', async () => {
++      const fixture = await listen(),
++        config = { explorerBaseUrl: fixture.url },
++        network = new ErgoExplorerNetwork(config),
++        transaction = tx(),
++        body = transaction.to_js_eip12(),
++        expected = JSON.stringify(body);
++      let dispatch!: () => void, release!: () => void;
++      const gate = new Promise<void>((resolve) => {
++        release = resolve;
++      });
++      const options = {
++        timeoutMs: 1000,
++        authorizeSubmit: async (start: () => void) => {
++          dispatch = start;
++          await gate;
++          start();
++        },
++      };
++      vi.spyOn(transaction, 'to_js_eip12').mockReturnValue(body);
++      const pending = network.submitAuthorizedTransaction(transaction, options);
++      await vi.waitFor(() => expect(dispatch).toBeDefined());
++      expect(fixture.bodies).toEqual([]);
++      options.timeoutMs = 1;
++      options.authorizeSubmit = async () => {
++        throw Error('replacement');
++      };
++      config.explorerBaseUrl = 'https://invalid.invalid';
++      body.outputs[0].value = '0';
++      release();
++      await pending;
++      expect(fixture.bodies).toEqual([expected]);
++      expect(fixture.paths).toEqual(['/prefix/api/v0/transactions/send']);
++      expect(fixture.auth).toEqual([
++        'Basic ' + Buffer.from('fixture:password').toString('base64'),
++      ]);
++    });
++    /**
++     * @target ErgoExplorerNetwork.submitAuthorizedTransaction 'propagates authorization denial without invoking legacy send'
++     * @dependencies
++     * - Real loopback HTTP server, explicit authorizer, native WASM
++     * transaction fixture and legacy-submit spy.
++     * @scenario
++     * - Create the loopback server and network. Hold or deny explicit
++     * authorization, mutate inputs after capture, or return the selected HTTP
++     * failure. Submit and inspect exact body/path/authentication or the
++     * refusal without legacy dispatch. - Prepare `fixture`, `network`,
++     * `legacy`.
++     * @expected
++     * - `expect( network.submitAuthorizedTransaction(tx(), { timeoutMs: 1000,
++     * authorizeSubmit: async () => { throw Error('held'); }, }),
++     * ).rejects.toMatchObject({ reason: 'denied' })`. -
++     * `expect(fixture.bodies).toEqual([])`. -
++     * `expect(legacy).not.toHaveBeenCalled()`.
++     */
++    it('propagates authorization denial without invoking legacy send', async () => {
++      const fixture = await listen(),
++        network = new ErgoExplorerNetwork({ explorerBaseUrl: fixture.url }),
++        legacy = vi.spyOn(network, 'submitTransaction');
++      await expect(
++        network.submitAuthorizedTransaction(tx(), {
++          timeoutMs: 1000,
++          authorizeSubmit: async () => {
++            throw Error('held');
++          },
++        }),
++      ).rejects.toMatchObject({ reason: 'denied' });
++      expect(fixture.bodies).toEqual([]);
++      expect(legacy).not.toHaveBeenCalled();
++    });
++    /**
++     * @target ErgoExplorerNetwork.submitAuthorizedTransaction 'propagates HTTP failure rather than mapping it to success'
++     * @dependencies
++     * - Real loopback HTTP server, explicit authorizer, native WASM
++     * transaction fixture and legacy-submit spy.
++     * @scenario
++     * - Create the loopback server and network. Hold or deny explicit
++     * authorization, mutate inputs after capture, or return the selected HTTP
++     * failure. Submit and inspect exact body/path/authentication or the
++     * refusal without legacy dispatch. - Prepare `fixture`, `network`.
++     * @expected
++     * - `expect( network.submitAuthorizedTransaction(tx(), { timeoutMs: 1000,
++     * authorizeSubmit: async (start) => start(), }), ).rejects.toMatchObject({
++     * response: { status: 503 } })`. -
++     * `expect(fixture.bodies).toHaveLength(1)`.
++     */
++    it('propagates HTTP failure rather than mapping it to success', async () => {
++      const fixture = await listen(503),
++        network = new ErgoExplorerNetwork({ explorerBaseUrl: fixture.url });
++      await expect(
++        network.submitAuthorizedTransaction(tx(), {
++          timeoutMs: 1000,
++          authorizeSubmit: async (start) => start(),
++        }),
++      ).rejects.toMatchObject({ response: { status: 503 } });
++      expect(fixture.bodies).toHaveLength(1);
++    });
++    /**
++     * @target ErgoExplorerNetwork.submitAuthorizedTransaction 'requires an explicit valid timeout before invoking authorization'
++     * @dependencies
++     * - Real loopback HTTP server, explicit authorizer, native WASM
++     * transaction fixture and legacy-submit spy.
++     * @scenario
++     * - Create the loopback server and network. Hold or deny explicit
++     * authorization, mutate inputs after capture, or return the selected HTTP
++     * failure. Submit and inspect exact body/path/authentication or the
++     * refusal without legacy dispatch. - Prepare `fixture`, `network`,
++     * `authorize`.
++     * @expected
++     * - `expect( network.submitAuthorizedTransaction(tx(), { timeoutMs: 0,
++     * authorizeSubmit: authorize, }), ).rejects.toMatchObject({ reason:
++     * 'invalid' })`. - `expect(authorize).not.toHaveBeenCalled()`. -
++     * `expect(fixture.bodies).toEqual([])`.
++     */
++    it('requires an explicit valid timeout before invoking authorization', async () => {
++      const fixture = await listen(),
++        network = new ErgoExplorerNetwork({ explorerBaseUrl: fixture.url }),
++        authorize = vi.fn();
++      await expect(
++        network.submitAuthorizedTransaction(tx(), {
++          timeoutMs: 0,
++          authorizeSubmit: authorize,
++        }),
++      ).rejects.toMatchObject({ reason: 'invalid' });
++      expect(authorize).not.toHaveBeenCalled();
++      expect(fixture.bodies).toEqual([]);
++    });
++  });
+ });
+diff --git a/packages/networks/ergo-explorer/tests/testUtils/authorizedSubmission.ts b/packages/networks/ergo-explorer/tests/testUtils/authorizedSubmission.ts
+new file mode 100644
+index 0000000..abaec5c
+--- /dev/null
++++ b/packages/networks/ergo-explorer/tests/testUtils/authorizedSubmission.ts
+@@ -0,0 +1,61 @@
++import { Transaction } from 'ergo-lib-wasm-nodejs';
++import { createServer, Server } from 'node:http';
++
++import ErgoExplorerNetwork from '../../lib/ergoExplorerNetwork';
++import { testTransactionBytes } from '../testData';
++
++/**
++ * Creates an explorer network over the fixture endpoint.
++ */
++export const getNetwork = () =>
++  new ErgoExplorerNetwork({
++    explorerBaseUrl: 'https://test.explorer',
++  });
++
++/**
++ * Creates transaction and loopback-response builders for one describe fixture scope.
++ * The caller receives every server immediately and retains its afterEach custody.
++ */
++export const createAuthorizedSubmissionFixtures = (
++  onServer: (server: Server) => void,
++) => {
++  /**
++   * Capture loopback POST bodies, paths and authorization headers for one server.
++   */
++  const listen = async (status = 200) => {
++    const bodies: string[] = [],
++      paths: string[] = [],
++      auth: (string | undefined)[] = [];
++    const server = createServer((req, res) => {
++      paths.push(req.url!);
++      auth.push(req.headers.authorization);
++      let body = '';
++      req.on('data', (chunk) => {
++        body += chunk;
++      });
++      req.on('end', () => {
++        bodies.push(body);
++        res.writeHead(status, { 'Content-Type': 'application/json' });
++        res.end('{"id":"txid"}');
++      });
++    });
++    onServer(server);
++    await new Promise<void>((resolve) =>
++      server!.listen(0, '127.0.0.1', resolve),
++    );
++    const address = server.address();
++    if (!address || typeof address === 'string') throw Error('No listener');
++    return {
++      url: `http://fixture:password@127.0.0.1:${address.port}/prefix`,
++      bodies,
++      paths,
++      auth,
++    };
++  };
++  /**
++   * Decode a fresh signed transaction from the pinned explorer fixture bytes.
++   */
++  const tx = () =>
++    Transaction.sigma_parse_bytes(Buffer.from(testTransactionBytes, 'hex'));
++  return { listen, tx };
++};
+diff --git a/packages/networks/ergo-node/lib/ergoNodeNetwork.ts b/packages/networks/ergo-node/lib/ergoNodeNetwork.ts
+index e6ed368..4215c32 100644
+--- a/packages/networks/ergo-node/lib/ergoNodeNetwork.ts
++++ b/packages/networks/ergo-node/lib/ergoNodeNetwork.ts
+@@ -9,7 +9,11 @@ import {
+   TokenDetail,
+   UNKNOWN_TOKEN,
+ } from '@rosen-chains/abstract-chain';
+-import { AbstractErgoNetwork } from '@rosen-chains/ergo';
++import {
++  AbstractErgoNetwork,
++  AuthorizedErgoSubmission,
++  submitAuthorizedErgoTransaction,
++} from '@rosen-chains/ergo';
+ import ergoNodeClientFactory, {
+   IndexedErgoBox,
+ } from '@rosen-clients/ergo-node';
+@@ -30,9 +34,11 @@ interface ErgoLibSerializableObject {
+ 
+ class ErgoNodeNetwork extends AbstractErgoNetwork {
+   private client: ReturnType<typeof ergoNodeClientFactory>;
++  private readonly submissionBaseUrl: string;
+ 
+   constructor({ logger, nodeBaseUrl }: ErgoNodeNetworkOptions) {
+     super(logger);
++    this.submissionBaseUrl = nodeBaseUrl;
+     this.client = ergoNodeClientFactory(nodeBaseUrl);
+   }
+ 
+@@ -249,6 +255,24 @@ class ErgoNodeNetwork extends AbstractErgoNetwork {
+     }
+   };
+ 
++  /** Submits signed transaction bytes through the qualified Ergo transport. */
++  public submitAuthorizedTransaction = async (
++    tx: ergoLib.Transaction,
++    options: Pick<AuthorizedErgoSubmission, 'timeoutMs' | 'authorizeSubmit'>,
++  ): Promise<void> => {
++    const captured = Object.freeze({
++      timeoutMs: options.timeoutMs,
++      authorizeSubmit: options.authorizeSubmit,
++    });
++    const body = Buffer.from(tx.sigma_serialize_bytes()).toString('hex');
++    await submitAuthorizedErgoTransaction({
++      ...captured,
++      baseUrl: this.submissionBaseUrl,
++      target: 'node',
++      body,
++    });
++  };
++
+   /**
+    * get a mempool tx in each iteration until there are no more txs in it
+    */
+diff --git a/packages/networks/ergo-node/tests/ergoNodeNetwork.spec.ts b/packages/networks/ergo-node/tests/ergoNodeNetwork.spec.ts
+index de67460..287aba6 100644
+--- a/packages/networks/ergo-node/tests/ergoNodeNetwork.spec.ts
++++ b/packages/networks/ergo-node/tests/ergoNodeNetwork.spec.ts
+@@ -1,4 +1,5 @@
+ import { ErgoBox, ErgoStateContext, Transaction } from 'ergo-lib-wasm-nodejs';
++import { Server } from 'node:http';
+ import { describe, expect, it, vi } from 'vitest';
+ 
+ import JsonBigInt from '@rosen-bridge/json-bigint';
+@@ -36,18 +37,23 @@ import {
+   testTransactionBytes,
+   tokenId,
+ } from './testData';
+-
++import {
++  createAuthorizedSubmissionFixtures,
++  getNetwork,
++} from './testUtils/authorizedSubmission';
++
++// Test-only source resolution: do not rebuild or overlay the installed package.
++vi.mock(
++  '@rosen-chains/ergo',
++  async () =>
++    await vi.importActual<Record<string, unknown>>('../../../chains/ergo/lib'),
++);
+ vi.mock('@rosen-clients/ergo-node');
+ 
+-const getNetwork = () =>
+-  new ErgoNodeNetwork({
+-    nodeBaseUrl: 'https://test.node',
+-  });
+-
+ describe('ErgoNodeNetwork', () => {
+   describe('getHeight', () => {
+     /**
+-     * @target `ErgoNodeNetwork.getHeight` should return current height
++     * @target ErgoNodeNetwork.getHeight 'should return current height'
+      * @dependencies
+      * @scenario
+      * - mock `getNodeInfo` of ergo node client
+@@ -67,8 +73,7 @@ describe('ErgoNodeNetwork', () => {
+ 
+   describe('getTxConfirmation', () => {
+     /**
+-     * @target `ErgoNodeNetwork.getTxConfirmation` should return tx
+-     * confirmations
++     * @target ErgoNodeNetwork.getTxConfirmation 'should return tx confirmations'
+      * @dependencies
+      * @scenario
+      * - mock `getTxById` of ergo node client
+@@ -88,8 +93,7 @@ describe('ErgoNodeNetwork', () => {
+     });
+ 
+     /**
+-     * @target `ErgoNodeNetwork.getTxConfirmation` should return `-1` if tx is
+-     * not found in the blockchain
++     * @target ErgoNodeNetwork.getTxConfirmation 'should return `-1` if tx is not found in the blockchain'
+      * @dependencies
+      * @scenario
+      * - mock `getTxById` of ergo node client to reject with a 404 error
+@@ -115,7 +119,7 @@ describe('ErgoNodeNetwork', () => {
+ 
+   describe('getAddressAssets', () => {
+     /**
+-     * @target `ErgoNodeNetwork.getAddressAssets` should return address assets
++     * @target ErgoNodeNetwork.getAddressAssets 'should return address assets'
+      * @dependencies
+      * @scenario
+      * - mock `getAddressBalanceTotal` of ergo node client
+@@ -139,8 +143,7 @@ describe('ErgoNodeNetwork', () => {
+     });
+ 
+     /**
+-     * @target `ErgoNodeNetwork.getAddressAssets` should return zero assets if
+-     * no confirmed field is present in api result
++     * @target ErgoNodeNetwork.getAddressAssets 'should return zero assets if no confirmed field is present in api result'
+      * @dependencies
+      * @scenario
+      * - mock `getAddressBalanceTotal` of ergo node client to return an object
+@@ -162,8 +165,7 @@ describe('ErgoNodeNetwork', () => {
+     });
+ 
+     /**
+-     * @target `ErgoNodeNetwork.getAddressAssets` should throw when some tokens
+-     * don't have a `tokenId` or `amount` field
++     * @target ErgoNodeNetwork.getAddressAssets "should throw when some tokens don't have a `tokenId` or `amount` field"
+      * @dependencies
+      * @scenario
+      * - mock `getAddressBalanceTotal` of ergo node client to an object
+@@ -184,8 +186,7 @@ describe('ErgoNodeNetwork', () => {
+ 
+   describe('getBlockTransactionIds', () => {
+     /**
+-     * @target `ErgoNodeNetwork.getBlockTransactionIds` should return block
+-     * transaction ids
++     * @target ErgoNodeNetwork.getBlockTransactionIds 'should return block transaction ids'
+      * @dependencies
+      * @scenario
+      * - mock `getBlockTransactionsById` of ergo node client
+@@ -203,8 +204,7 @@ describe('ErgoNodeNetwork', () => {
+     });
+ 
+     /**
+-     * @target `ErgoNodeNetwork.getBlockTransactionIds` should throw an error if
+-     * some transaction ids are undefined
++     * @target ErgoNodeNetwork.getBlockTransactionIds 'should throw an error if some transaction ids are undefined'
+      * @dependencies
+      * @scenario
+      * - mock `getBlockTransactionsById` of ergo node client with some invalid
+@@ -223,8 +223,7 @@ describe('ErgoNodeNetwork', () => {
+     });
+ 
+     /**
+-     * @target `ErgoNodeNetwork.getBlockTransactionIds` should return an empty
+-     * array if block is not found in the blockchain
++     * @target ErgoNodeNetwork.getBlockTransactionIds 'should return an empty array if block is not found in the blockchain'
+      * @dependencies
+      * @scenario
+      * - mock `getBlockTransactionsById` of ergo node client to reject with a
+@@ -249,7 +248,7 @@ describe('ErgoNodeNetwork', () => {
+ 
+   describe('getBlockInfo', () => {
+     /**
+-     * @target `ErgoNodeNetwork.getBlockInfo` should return block info
++     * @target ErgoNodeNetwork.getBlockInfo 'should return block info'
+      * @dependencies
+      * @scenario
+      * - mock `getBlockHeaderById` of ergo node client
+@@ -273,8 +272,7 @@ describe('ErgoNodeNetwork', () => {
+ 
+   describe('getTransaction', () => {
+     /**
+-     * @target `ErgoNodeNetwork.getTransaction` should return transaction bytes
+-     * hex representation
++     * @target ErgoNodeNetwork.getTransaction 'should return transaction bytes hex representation'
+      * @dependencies
+      * @scenario
+      * - mock `getTxById` and `getBlockTransactionsById` of ergo node client
+@@ -299,7 +297,7 @@ describe('ErgoNodeNetwork', () => {
+ 
+   describe('submitTransaction', () => {
+     /**
+-     * @target `ErgoNodeNetwork.submitTransaction` should submit transaction
++     * @target ErgoNodeNetwork.submitTransaction 'should submit transaction'
+      * @dependencies
+      * @scenario
+      * - mock `sendTransactionAsBytes` of ergo node client
+@@ -323,8 +321,7 @@ describe('ErgoNodeNetwork', () => {
+ 
+   describe('getMempoolTransactions', () => {
+     /**
+-     * @target `ErgoNodeNetwork.getMempoolTransactions` should return all
+-     * mempool transactions
++     * @target ErgoNodeNetwork.getMempoolTransactions 'should return all mempool transactions'
+      * @dependencies
+      * @scenario
+      * - mock `getUnconfirmedTransactions` of ergo node client
+@@ -350,7 +347,7 @@ describe('ErgoNodeNetwork', () => {
+ 
+   describe('getAddressBoxes', () => {
+     /**
+-     * @target `ErgoNodeNetwork.getAddressBoxes` should return address boxes
++     * @target ErgoNodeNetwork.getAddressBoxes 'should return address boxes'
+      * @dependencies
+      * @scenario
+      * - mock `getBoxesByAddressUnspent` of ergo node client
+@@ -372,8 +369,7 @@ describe('ErgoNodeNetwork', () => {
+     });
+ 
+     /**
+-     * @target `ErgoNodeNetwork.getAddressBoxes` should return an empty array if
+-     * address is not found or is invalid
++     * @target ErgoNodeNetwork.getAddressBoxes 'should return an empty array if address is not found or is invalid'
+      * @dependencies
+      * @scenario
+      * - mock `getBoxesByAddressUnspent` of ergo node client to reject with a
+@@ -402,8 +398,7 @@ describe('ErgoNodeNetwork', () => {
+ 
+   describe('getBoxesByTokenId', () => {
+     /**
+-     * @target `ErgoNodeNetwork.getBoxesByTokenId` should return address boxes
+-     * by token id
++     * @target ErgoNodeNetwork.getBoxesByTokenId 'should return address boxes by token id'
+      * @dependencies
+      * @scenario
+      * - mock `getBoxesByAddressUnspent` of ergo node client
+@@ -440,8 +435,7 @@ describe('ErgoNodeNetwork', () => {
+     });
+ 
+     /**
+-     * @target `ErgoNodeNetwork.getBoxesByTokenId` should return an empty array
+-     * if address is not found or is invalid
++     * @target ErgoNodeNetwork.getBoxesByTokenId 'should return an empty array if address is not found or is invalid'
+      * @dependencies
+      * @scenario
+      * - mock `getBoxesByAddressUnspent` of ergo node client to reject with a
+@@ -474,8 +468,7 @@ describe('ErgoNodeNetwork', () => {
+     });
+ 
+     /**
+-     * @target `ErgoNodeNetwork.getBoxesByTokenId` should apply offset and limit
+-     * to boxes with tokens
++     * @target ErgoNodeNetwork.getBoxesByTokenId 'should apply offset and limit to boxes with tokens'
+      * @dependencies
+      * @scenario
+      * - mock `getBoxesByAddressUnspent` of ergo node client
+@@ -506,7 +499,7 @@ describe('ErgoNodeNetwork', () => {
+ 
+   describe('getStateContext', () => {
+     /**
+-     * @target `ErgoNodeNetwork.getStateContext` should get state context
++     * @target ErgoNodeNetwork.getStateContext 'should get state context'
+      * @dependencies
+      * @scenario
+      * - mock `getLastHeaders` of ergo node client
+@@ -525,8 +518,7 @@ describe('ErgoNodeNetwork', () => {
+ 
+   describe('isBoxUnspentAndValid', () => {
+     /**
+-     * @target `ErgoNodeNetwork.isBoxUnspentAndValid` should check if box is
+-     * unspent and valid
++     * @target ErgoNodeNetwork.isBoxUnspentAndValid 'should check if box is unspent and valid'
+      * @dependencies
+      * @scenario
+      * - mock `getIndexedBoxById` of ergo node client
+@@ -545,8 +537,7 @@ describe('ErgoNodeNetwork', () => {
+     });
+ 
+     /**
+-     * @target `ErgoNodeNetwork.isBoxUnspentAndValid` should return `false` if
+-     * box is not found in the blockchain
++     * @target ErgoNodeNetwork.isBoxUnspentAndValid 'should return `false` if box is not found in the blockchain'
+      * @dependencies
+      * @scenario
+      * - mock `getIndexedBoxById` of ergo node client to reject with a 404 error
+@@ -571,7 +562,7 @@ describe('ErgoNodeNetwork', () => {
+ 
+   describe('getBox', () => {
+     /**
+-     * @target `ErgoNodeNetwork.getBox` should return the box successfully
++     * @target ErgoNodeNetwork.getBox 'should return the box successfully'
+      * @dependencies
+      * @scenario
+      * - mock `getIndexedBoxById` of ergo node client
+@@ -597,7 +588,7 @@ describe('ErgoNodeNetwork', () => {
+ 
+   describe('getTokenDetail', () => {
+     /**
+-     * @target `ErgoNodeNetwork.getTokenDetail` should return token detail successfully
++     * @target ErgoNodeNetwork.getTokenDetail 'should return token detail successfully'
+      * @dependencies
+      * @scenario
+      * - mock `getApiV1TokensP1` of ergo explorer client
+@@ -615,4 +606,170 @@ describe('ErgoNodeNetwork', () => {
+       expect(result).toEqual(expectedTokenDetail);
+     });
+   });
++  describe('submitAuthorizedTransaction', () => {
++    let server: Server | undefined;
++    const { listen, tx } = createAuthorizedSubmissionFixtures((created) => {
++      server = created;
++    });
++
++    afterEach(async () => {
++      vi.restoreAllMocks();
++      if (server) {
++        server.closeAllConnections();
++        await new Promise<void>((resolve) => server!.close(() => resolve()));
++        server = undefined;
++      }
++    });
++    /**
++     * @target ErgoNodeNetwork.submitAuthorizedTransaction 'forwards exact Node wire bytes after the captured callback with URL credentials'
++     * @dependencies
++     * - Real loopback HTTP server, explicit authorizer, native WASM
++     * transaction fixture and legacy-submit spy.
++     * @scenario
++     * - Create the loopback server and network. Hold or deny explicit
++     * authorization, mutate inputs after capture, or return the selected HTTP
++     * failure. Submit and inspect exact body/path/authentication or the
++     * refusal without legacy dispatch. - Prepare `fixture`, `config`,
++     * `network`, `transaction`. - Prepare `dispatch`, `release`. - Prepare
++     * `gate`. - Prepare `options`. - Prepare `pending`. - Apply
++     * `options.timeoutMs = 1`. - Apply `options.authorizeSubmit = async () =>
++     * { throw Error('replacement'); }`. - Apply `config.nodeBaseUrl =
++     * 'https://invalid.invalid'`. - Apply `vi.spyOn(transaction,
++     * 'sigma_serialize_bytes').mockReturnValue( new Uint8Array([0]), )`. -
++     * Apply `release()`. - Apply `await pending`.
++     * @expected
++     * - `expect(dispatch).toBeDefined()`. -
++     * `expect(fixture.bodies).toEqual([])`. -
++     * `expect(fixture.bodies).toEqual([JSON.stringify(testTransactionBytes)])`.
++     * - `expect(fixture.paths).toEqual(['/prefix/transactions/bytes'])`. -
++     * `expect(fixture.auth).toEqual([ 'Basic ' +
++     * Buffer.from('fixture:password').toString('base64'), ])`.
++     */
++    it('forwards exact Node wire bytes after the captured callback with URL credentials', async () => {
++      const fixture = await listen(),
++        config = { nodeBaseUrl: fixture.url },
++        network = new ErgoNodeNetwork(config),
++        transaction = tx();
++      let dispatch!: () => void, release!: () => void;
++      const gate = new Promise<void>((resolve) => {
++        release = resolve;
++      });
++      const options = {
++        timeoutMs: 1000,
++        authorizeSubmit: async (start: () => void) => {
++          dispatch = start;
++          await gate;
++          start();
++        },
++      };
++      const pending = network.submitAuthorizedTransaction(transaction, options);
++      await vi.waitFor(() => expect(dispatch).toBeDefined());
++      expect(fixture.bodies).toEqual([]);
++      options.timeoutMs = 1;
++      options.authorizeSubmit = async () => {
++        throw Error('replacement');
++      };
++      config.nodeBaseUrl = 'https://invalid.invalid';
++      vi.spyOn(transaction, 'sigma_serialize_bytes').mockReturnValue(
++        new Uint8Array([0]),
++      );
++      release();
++      await pending;
++      expect(fixture.bodies).toEqual([JSON.stringify(testTransactionBytes)]);
++      expect(fixture.paths).toEqual(['/prefix/transactions/bytes']);
++      expect(fixture.auth).toEqual([
++        'Basic ' + Buffer.from('fixture:password').toString('base64'),
++      ]);
++    });
++    /**
++     * @target ErgoNodeNetwork.submitAuthorizedTransaction 'propagates authorization denial without invoking legacy send'
++     * @dependencies
++     * - Real loopback HTTP server, explicit authorizer, native WASM
++     * transaction fixture and legacy-submit spy.
++     * @scenario
++     * - Create the loopback server and network. Hold or deny explicit
++     * authorization, mutate inputs after capture, or return the selected HTTP
++     * failure. Submit and inspect exact body/path/authentication or the
++     * refusal without legacy dispatch. - Prepare `fixture`, `network`,
++     * `legacy`.
++     * @expected
++     * - `expect( network.submitAuthorizedTransaction(tx(), { timeoutMs: 1000,
++     * authorizeSubmit: async () => { throw Error('held'); }, }),
++     * ).rejects.toMatchObject({ reason: 'denied' })`. -
++     * `expect(fixture.bodies).toEqual([])`. -
++     * `expect(legacy).not.toHaveBeenCalled()`.
++     */
++    it('propagates authorization denial without invoking legacy send', async () => {
++      const fixture = await listen(),
++        network = new ErgoNodeNetwork({ nodeBaseUrl: fixture.url }),
++        legacy = vi.spyOn(network, 'submitTransaction');
++      await expect(
++        network.submitAuthorizedTransaction(tx(), {
++          timeoutMs: 1000,
++          authorizeSubmit: async () => {
++            throw Error('held');
++          },
++        }),
++      ).rejects.toMatchObject({ reason: 'denied' });
++      expect(fixture.bodies).toEqual([]);
++      expect(legacy).not.toHaveBeenCalled();
++    });
++    /**
++     * @target ErgoNodeNetwork.submitAuthorizedTransaction 'propagates HTTP failure rather than mapping it to success'
++     * @dependencies
++     * - Real loopback HTTP server, explicit authorizer, native WASM
++     * transaction fixture and legacy-submit spy.
++     * @scenario
++     * - Create the loopback server and network. Hold or deny explicit
++     * authorization, mutate inputs after capture, or return the selected HTTP
++     * failure. Submit and inspect exact body/path/authentication or the
++     * refusal without legacy dispatch. - Prepare `fixture`, `network`.
++     * @expected
++     * - `expect( network.submitAuthorizedTransaction(tx(), { timeoutMs: 1000,
++     * authorizeSubmit: async (start) => start(), }), ).rejects.toMatchObject({
++     * response: { status: 503 } })`. -
++     * `expect(fixture.bodies).toHaveLength(1)`.
++     */
++    it('propagates HTTP failure rather than mapping it to success', async () => {
++      const fixture = await listen(503),
++        network = new ErgoNodeNetwork({ nodeBaseUrl: fixture.url });
++      await expect(
++        network.submitAuthorizedTransaction(tx(), {
++          timeoutMs: 1000,
++          authorizeSubmit: async (start) => start(),
++        }),
++      ).rejects.toMatchObject({ response: { status: 503 } });
++      expect(fixture.bodies).toHaveLength(1);
++    });
++    /**
++     * @target ErgoNodeNetwork.submitAuthorizedTransaction 'requires an explicit valid timeout before invoking authorization'
++     * @dependencies
++     * - Real loopback HTTP server, explicit authorizer, native WASM
++     * transaction fixture and legacy-submit spy.
++     * @scenario
++     * - Create the loopback server and network. Hold or deny explicit
++     * authorization, mutate inputs after capture, or return the selected HTTP
++     * failure. Submit and inspect exact body/path/authentication or the
++     * refusal without legacy dispatch. - Prepare `fixture`, `network`,
++     * `authorize`.
++     * @expected
++     * - `expect( network.submitAuthorizedTransaction(tx(), { timeoutMs: 0,
++     * authorizeSubmit: authorize, }), ).rejects.toMatchObject({ reason:
++     * 'invalid' })`. - `expect(authorize).not.toHaveBeenCalled()`. -
++     * `expect(fixture.bodies).toEqual([])`.
++     */
++    it('requires an explicit valid timeout before invoking authorization', async () => {
++      const fixture = await listen(),
++        network = new ErgoNodeNetwork({ nodeBaseUrl: fixture.url }),
++        authorize = vi.fn();
++      await expect(
++        network.submitAuthorizedTransaction(tx(), {
++          timeoutMs: 0,
++          authorizeSubmit: authorize,
++        }),
++      ).rejects.toMatchObject({ reason: 'invalid' });
++      expect(authorize).not.toHaveBeenCalled();
++      expect(fixture.bodies).toEqual([]);
++    });
++  });
+ });
+diff --git a/packages/networks/ergo-node/tests/testUtils/authorizedSubmission.ts b/packages/networks/ergo-node/tests/testUtils/authorizedSubmission.ts
+new file mode 100644
+index 0000000..8bd4509
+--- /dev/null
++++ b/packages/networks/ergo-node/tests/testUtils/authorizedSubmission.ts
+@@ -0,0 +1,61 @@
++import { Transaction } from 'ergo-lib-wasm-nodejs';
++import { createServer, Server } from 'node:http';
++
++import ErgoNodeNetwork from '../../lib/ergoNodeNetwork';
++import { testTransactionBytes } from '../testData';
++
++/**
++ * Creates a node network over the fixture endpoint.
++ */
++export const getNetwork = () =>
++  new ErgoNodeNetwork({
++    nodeBaseUrl: 'https://test.node',
++  });
++
++/**
++ * Creates transaction and loopback-response builders for one describe fixture scope.
++ * The caller receives every server immediately and retains its afterEach custody.
++ */
++export const createAuthorizedSubmissionFixtures = (
++  onServer: (server: Server) => void,
++) => {
++  /**
++   * Capture loopback POST bodies, paths and authorization headers for one server.
++   */
++  const listen = async (status = 200) => {
++    const bodies: string[] = [],
++      paths: string[] = [],
++      auth: (string | undefined)[] = [];
++    const server = createServer((req, res) => {
++      paths.push(req.url!);
++      auth.push(req.headers.authorization);
++      let body = '';
++      req.on('data', (chunk) => {
++        body += chunk;
++      });
++      req.on('end', () => {
++        bodies.push(body);
++        res.writeHead(status, { 'Content-Type': 'application/json' });
++        res.end('"txid"');
++      });
++    });
++    onServer(server);
++    await new Promise<void>((resolve) =>
++      server!.listen(0, '127.0.0.1', resolve),
++    );
++    const address = server.address();
++    if (!address || typeof address === 'string') throw Error('No listener');
++    return {
++      url: `http://fixture:password@127.0.0.1:${address.port}/prefix`,
++      bodies,
++      paths,
++      auth,
++    };
++  };
++  /**
++   * Decode a fresh signed transaction from the pinned node fixture bytes.
++   */
++  const tx = () =>
++    Transaction.sigma_parse_bytes(Buffer.from(testTransactionBytes, 'hex'));
++  return { listen, tx };
++};

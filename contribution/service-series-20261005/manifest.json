@@ -1,0 +1,91 @@
+{
+  "schema": "rosen-producer-contribution-series.v1",
+  "author": "A. Shannon",
+  "rcs": "7b9784dae9d8d5b66b80de7a6043d1ba36a3a4bf",
+  "repositories": [
+    {
+      "repo": "operation",
+      "head": "f0634e155bc83db7477a0a54a42cf70bc9b83b63"
+    }
+  ],
+  "groups": [
+    {
+      "id": "C-SERVICE-REPLAY",
+      "repo": "operation",
+      "purpose": "Portable mainnet AVAX/JOE Rosen Service PostgreSQL process replay",
+      "dependencies": [],
+      "beforeTree": "cad6009de21877535010eda59cf496250fbc8fb2",
+      "tree": "fcec80f7be5bc25372686dbc616cf1dfcb046b22",
+      "patch": {
+        "path": "patches/C-SERVICE-REPLAY.patch",
+        "bytes": 72292,
+        "sha256": "f4bff14f7a6ffdc62a58e428f492a7e51e94c12098fa131f119aeffcf08cb13e"
+      },
+      "files": [
+        {
+          "path": "contribution/service-mainnet-replay-20261005/README.md",
+          "sha256": "a3c3f203b9b7d57e9370ea90d983a9095a9140efff3d9cc59a8f07977620a031",
+          "bytes": 3007
+        },
+        {
+          "path": "contribution/service-mainnet-replay-20261005/bootstrap.mjs",
+          "sha256": "80ef952e463fa5bf7eb9bf1b0a11dcbe5fe32e3a86391c2d596f6f41a8de7b56",
+          "bytes": 83
+        },
+        {
+          "path": "contribution/service-mainnet-replay-20261005/contracts.json",
+          "sha256": "600d53949f9625e6cd8789db4ce6342c929cb3073ee2e8e897d90ae844e72f64",
+          "bytes": 7030
+        },
+        {
+          "path": "contribution/service-mainnet-replay-20261005/legacy.mjs",
+          "sha256": "b4350ea4ab79331d431cf18a036949e879f481aba1c29d749a5dd9d51407d3c5",
+          "bytes": 447
+        },
+        {
+          "path": "contribution/service-mainnet-replay-20261005/loader.mjs",
+          "sha256": "316b345af0c8b280fd059d1576cf28ac39b95d91f85dbe0de464239136e0502b",
+          "bytes": 1633
+        },
+        {
+          "path": "contribution/service-mainnet-replay-20261005/manifest.json",
+          "sha256": "3b77f368154460e55a48949898a178c6c11bfe46f31a289412498b6ed4d6e597",
+          "bytes": 4368
+        },
+        {
+          "path": "contribution/service-mainnet-replay-20261005/network-guard.mjs",
+          "sha256": "06359a1d03a8829cb5f341d15ada5c70d93dd9564298c43802f2cc3495813fbe",
+          "bytes": 4068
+        },
+        {
+          "path": "contribution/service-mainnet-replay-20261005/observer.mjs",
+          "sha256": "027681b193cf7972fb50db2c1ca69f769be4bab7cb1147585d10a6e2d94d49a3",
+          "bytes": 6312
+        },
+        {
+          "path": "contribution/service-mainnet-replay-20261005/owned-processes.spec.cjs",
+          "sha256": "68c4c6c748ed60c671bf3fdded54870069c44bdf626b2fc5fadf09961d1510c6",
+          "bytes": 2786
+        },
+        {
+          "path": "contribution/service-mainnet-replay-20261005/replay.cjs",
+          "sha256": "fb765f8c6908227b513f97e7bb4d62c4a54ad824bd515d55d953be66c89818c2",
+          "bytes": 36428
+        },
+        {
+          "path": "contribution/service-mainnet-replay-20261005/tokens.json",
+          "sha256": "ed56f721228bb5a1e5c87db128b071d9168b61294d39683165651d22cc8cbec8",
+          "bytes": 1217
+        }
+      ]
+    }
+  ],
+  "externalPrerequisites": [
+    "Prepared Avalanche scanner/extractor/calculator and Service dependency graph",
+    "Windows Node22.18.0/npm11.6.2/PostgreSQL17 toolchains"
+  ],
+  "verifier": {
+    "bytes": 5483,
+    "sha256": "d49aefa6167f6e425160c8ea3f4abb368562a30c9667d350714240424f54ecc6"
+  }
+}

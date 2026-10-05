@@ -1,0 +1,12 @@
+{
+  "enabled": false,
+  "chainId": null,
+  "sourceId": null,
+  "url": null,
+  "requestTimeoutMs": 10000,
+  "initialHeight": null,
+  "knownTransactionHash": null,
+  "lockAddress": null,
+  "expectedLockCodeSha256": null,
+  "payment": null
+}

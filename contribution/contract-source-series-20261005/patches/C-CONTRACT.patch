@@ -1,0 +1,603 @@
+diff --git a/src/main/scala/rosen/bridge/AvalancheOverlayMerge.scala b/src/main/scala/rosen/bridge/AvalancheOverlayMerge.scala
+new file mode 100644
+index 0000000..c7b5b4f
+--- /dev/null
++++ b/src/main/scala/rosen/bridge/AvalancheOverlayMerge.scala
+@@ -0,0 +1,120 @@
++package rosen.bridge
++
++import io.circe.Json
++import info.BuildInfo
++
++import java.nio.charset.StandardCharsets
++import java.nio.file.{Files, Paths}
++import java.security.MessageDigest
++
++/** Add freshly compiled Avalanche configuration without replacing existing Rosen chains or assets. */
++object AvalancheOverlayMerge {
++  /** Require an object while retaining its unrelated fields. */
++  private def fields(value: Json, label: String) =
++    value.asObject.getOrElse(throw new IllegalArgumentException(s"$label must be an object"))
++
++  /** Require an explicit configuration version without assigning a release number. */
++  private def version(value: Json, label: String): Unit =
++    require(value.hcursor.downField("version").as[String].toOption.exists(_.trim.nonEmpty), s"$label requires a version")
++
++  /** Normalize EVM addresses and Ergo token bytes for cross-deployment collision checks. */
++  private def identity(value: String): String =
++    if (value.matches("0x[0-9a-fA-F]{40}") || value.matches("[0-9a-fA-F]{64}")) value.toLowerCase else value
++
++  /** Read the flat token identities emitted by the existing contract generator. */
++  private def contractTokenIds(value: Json, label: String): Vector[String] =
++    fields(value, label).toVector.map { case (key, token) =>
++      token.asString.filter(_.trim.nonEmpty).map(identity)
++        .getOrElse(throw new IllegalArgumentException(s"$label.$key requires an identity"))
++    }
++
++  /** Merge only a newly prepared chain; existing configuration and release versions stay intact. */
++  def merge(contractsBase: Json, tokensBase: Json, contractsOverlay: Json, tokensOverlay: Json): (Json, Json) = {
++    val contracts = fields(contractsBase, "contracts base")
++    val tokens = fields(tokensBase, "tokens base")
++    version(contractsBase, "contracts base")
++    version(tokensBase, "tokens base")
++    require(!contracts.contains("avalanche"), "Contracts base already contains Avalanche")
++    require(contracts("ergo").exists(_.isObject), "Contracts base requires its existing Ergo configuration")
++    require(contracts("tokens") == contractsOverlay.hcursor.downField("tokens").focus, "Assigned global tokens differ from the existing Rosen deployment")
++    require(tokens.keys.toSet == Set("version", "tokens"), "Tokens base requires version and tokens")
++    val existing = tokens("tokens").flatMap(_.asArray).getOrElse(throw new IllegalArgumentException("Tokens base requires an array"))
++    val added = tokensOverlay.hcursor.downField("tokens").as[Vector[Json]].toOption.getOrElse(throw new IllegalArgumentException("Prepared tokens require an array"))
++    require(added.size == 2, "Preparation requires AVAX and JOE counterparts")
++    val existingContractIds = contractTokenIds(contracts("tokens").get, "existing global tokens") ++
++      contracts.toVector.filterNot { case (key, _) => key == "version" || key == "tokens" }.flatMap { case (key, profile) =>
++        profile.asObject.flatMap(_("tokens")).toVector.flatMap(value => contractTokenIds(value, s"existing $key tokens"))
++      }
++    val existingIds = existing.flatMap { set =>
++      val members = fields(set, "existing token set")
++      require(!members.contains("avalanche"), "Tokens base already contains Avalanche")
++      members.values.map { member =>
++        member.hcursor.downField("tokenId").as[String].toOption.filter(_.nonEmpty)
++          .map(identity).getOrElse(throw new IllegalArgumentException("Existing token member requires an identity"))
++      }
++    }
++    val addedIds = added.flatMap(set => fields(set, "prepared token set").values.map { member =>
++      identity(member.hcursor.downField("tokenId").as[String].toOption.getOrElse(throw new IllegalArgumentException("Prepared token requires an identity")))
++    })
++    val chain = contractsOverlay.hcursor.downField("avalanche").focus.getOrElse(throw new IllegalArgumentException("Prepared contracts require Avalanche"))
++    val chainTokens = fields(chain, "prepared Avalanche contracts")("tokens")
++      .getOrElse(throw new IllegalArgumentException("Prepared Avalanche contracts require tokens"))
++    // Global deployment tokens are intentionally reused; only chain and asset IDs are newly allocated.
++    val allocatedIds = contractTokenIds(chainTokens, "prepared Avalanche tokens") ++ addedIds
++    require(allocatedIds.distinct.size == allocatedIds.size, "Prepared chain and asset identities collide")
++    require(!allocatedIds.exists((existingContractIds ++ existingIds).contains), "Prepared identity collides with an existing Rosen contract or asset")
++    val mergedContracts = Json.fromJsonObject(contracts.add("avalanche", chain))
++    val mergedTokens = Json.fromJsonObject(tokens.add("tokens", Json.arr((existing ++ added): _*)))
++    (mergedContracts, mergedTokens)
++  }
++
++  /** Pin exact source/configuration bytes for the generated deployment candidate. */
++  private def digest(bytes: Array[Byte]): String =
++    MessageDigest.getInstance("SHA-256").digest(bytes).map(b => f"${b & 0xff}%02x").mkString
++
++  /** Collect compilation inputs without recording machine paths. */
++  private def sourcePins(): Vector[Json] = {
++    import scala.collection.JavaConverters._
++    val stream = Files.walk(Paths.get("src/main/scala"))
++    try {
++      val source = stream.iterator().asScala.filter(path => Files.isRegularFile(path) && (path.toString.endsWith(".scala") || path.toString.endsWith(".es"))).toVector
++      (source ++ Vector(Paths.get("build.sbt"), Paths.get("project/plugins.sbt"), Paths.get("project/build.properties")))
++        .sortBy(_.toString).map(path => Json.obj("path" -> Json.fromString(path.toString.replace('\\', '/')), "sha256" -> Json.fromString(digest(Files.readAllBytes(path)))))
++    } finally stream.close()
++  }
++
++  /** Regenerate from assigned values and write a fresh, disabled deployment candidate without network access. */
++  def main(args: Array[String]): Unit = {
++    require(args.length == 8 && args(0) == "--input" && args(2) == "--contracts-base" && args(4) == "--tokens-base" && args(6) == "--output",
++      "Usage: --input <assigned-values.json> --contracts-base <contracts.json> --tokens-base <tokens.json> --output <new-directory>")
++    val inputFiles = Vector("assigned-values" -> Paths.get(args(1)), "contracts-base" -> Paths.get(args(3)), "tokens-base" -> Paths.get(args(5)))
++    val bytes = inputFiles.map { case (_, path) => Files.readAllBytes(path) }
++    val inputs = bytes.map(value => AvalanchePreparation.parseInput(new String(value, StandardCharsets.UTF_8)))
++    val sources = sourcePins()
++    val prepared = AvalanchePreparation.prepare(inputs(0))
++    val merged = merge(inputs(1), inputs(2), prepared._1, prepared._2)
++    require(sourcePins() == sources, "Contract compilation sources changed during preparation")
++    inputFiles.zip(bytes).foreach { case ((_, path), captured) =>
++      require(java.util.Arrays.equals(captured, Files.readAllBytes(path)), "Deployment input changed during preparation")
++    }
++    val output = Paths.get(args(7))
++    require(!Files.exists(output) && Files.isDirectory(output.toAbsolutePath.getParent), "Output must be a new directory under an existing parent")
++    Files.createDirectory(output)
++    val payloads = Vector("contracts.json" -> merged._1, "tokens.json" -> merged._2)
++    val members = payloads.map { case (name, value) =>
++      val payload = (value.spaces2 + "\n").getBytes(StandardCharsets.UTF_8)
++      Files.write(output.resolve(name), payload)
++      Json.obj("path" -> Json.fromString(name), "bytes" -> Json.fromInt(payload.length), "sha256" -> Json.fromString(digest(payload)))
++    }
++    val inputPins = inputFiles.zip(bytes).map { case ((role, _), captured) => Json.obj("role" -> Json.fromString(role), "sha256" -> Json.fromString(digest(captured))) }
++    val receipt = Json.obj(
++      "schema" -> Json.fromString("rosen-avalanche-deployment-candidate/v1"), "chainId" -> Json.fromInt(43114),
++      "activated" -> Json.False, "minted" -> Json.False, "broadcast" -> Json.False,
++      "generatorVersion" -> Json.fromString(BuildInfo.version), "javaVersion" -> Json.fromString(System.getProperty("java.version")),
++      "scalaVersion" -> Json.fromString(scala.util.Properties.versionNumberString),
++      "inputs" -> Json.arr(inputPins: _*), "sources" -> Json.arr(sources: _*), "files" -> Json.arr(members: _*)
++    )
++    Files.write(output.resolve("manifest.json"), (receipt.spaces2 + "\n").getBytes(StandardCharsets.UTF_8))
++    println("Avalanche deployment configuration candidate prepared: contracts.json, tokens.json")
++  }
++}
+diff --git a/src/main/scala/rosen/bridge/AvalanchePreparation.scala b/src/main/scala/rosen/bridge/AvalanchePreparation.scala
+new file mode 100644
+index 0000000..ba1c5f3
+--- /dev/null
++++ b/src/main/scala/rosen/bridge/AvalanchePreparation.scala
+@@ -0,0 +1,149 @@
++package rosen.bridge
++
++import helpers.{ErgoNetwork, MainTokens, Network, NetworkGeneral, Tokens}
++import info.BuildInfo
++import io.circe.Json
++import io.circe.jawn.JawnParser
++import org.ergoplatform.ErgoAddressEncoder
++import org.ergoplatform.appkit.{ColdErgoClient, NetworkType}
++
++import java.nio.charset.StandardCharsets
++import java.nio.file.{Files, Paths}
++import java.security.MessageDigest
++
++/** Compile the existing Rosen scripts offline and prepare AVAX/JOE token-map overlays. */
++object AvalanchePreparation {
++  val JoeAddress = "0x6e84a6216ea6dacc71ee8e6b0a5b7322eebc0fdd"
++  private val globalKeys = Set("RWTRepoNFT", "GuardNFT", "RSN", "MinFeeNFT", "EmissionNFT", "ERSN")
++  private val chainKeys = Set("RWTId", "CleanupNFT", "AwcNFT", "RepoConfigNFT")
++
++  /** Reject duplicate decoded field names at every object depth before assigning deployment values. */
++  def parseInput(text: String): Json = JawnParser(false).parse(text).fold(error => throw error, identity)
++
++  /** Reject missing and unexpected fields before compiling any script or writing outputs. */
++  private def objectFields(json: Json, expected: Set[String], label: String): Map[String, Json] = {
++    val fields = json.asObject.getOrElse(throw new IllegalArgumentException(s"$label must be an object"))
++    require(fields.keys.toSet == expected, s"$label requires exactly ${expected.toSeq.sorted.mkString(", ")}")
++    fields.toMap
++  }
++
++  /** Require an assigned nonzero canonical Ergo token identity. */
++  private def tokenId(json: Json, label: String): String = {
++    val value = json.asString.getOrElse(throw new IllegalArgumentException(s"$label requires an assigned token ID"))
++    require(value.matches("[0-9a-f]{64}") && value.exists(_ != '0'), s"Invalid $label token ID")
++    value
++  }
++
++  /** Require a canonical nonzero EVM custody address without network inference. */
++  private def custody(json: Json, label: String): String = {
++    val value = json.asString.getOrElse(throw new IllegalArgumentException(s"$label requires an assigned address"))
++    require(value.matches("0x[0-9a-f]{40}") && value.drop(2).exists(_ != '0'), s"Invalid $label address")
++    value
++  }
++
++  /** Read a bounded integer without accepting numeric strings, fractions or overflow. */
++  private def integer(json: Json, minimum: Int, maximum: Int, label: String): Int = {
++    val value = json.asNumber.flatMap(_.toInt).getOrElse(throw new IllegalArgumentException(s"Invalid $label integer"))
++    require(value >= minimum && value <= maximum, s"$label must be in [$minimum, $maximum]")
++    value
++  }
++
++  /** Preserve Rosen's source token types and require every bridge asset's Ergo counterpart. */
++  private def tokenSet(id: String, name: String, native: Boolean, counterpart: (String, Int)): Json = {
++    val source = Json.obj(
++      "tokenId" -> Json.fromString(id), "name" -> Json.fromString(name),
++      "decimals" -> Json.fromInt(18), "type" -> Json.fromString(if (native) "native" else "ERC-20"),
++      "residency" -> Json.fromString("native"), "extra" -> Json.obj()
++    )
++    val ergo = Json.obj(
++      "tokenId" -> Json.fromString(counterpart._1), "name" -> Json.fromString(s"rs$name"),
++      "decimals" -> Json.fromInt(counterpart._2), "type" -> Json.fromString("EIP-004"),
++      "residency" -> Json.fromString("wrapped"), "extra" -> Json.obj()
++    )
++    Json.obj("avalanche" -> source, "ergo" -> ergo)
++  }
++
++  /** Bind supplied identities to the upstream contract generator using a network-free context. */
++  def prepare(input: Json): (Json, Json) = {
++    val root = objectFields(input, Set("schema", "chainId", "cleanupConfirm", "globalTokens", "chainTokens", "custody", "counterparts"), "input")
++    require(root("schema").asString.contains("rosen-avalanche-contract-preparation/v1"), "Unknown preparation schema")
++    require(integer(root("chainId"), 43114, 43114, "chainId") == 43114, "Preparation targets mainnet")
++    val cleanup = integer(root("cleanupConfirm"), 1, Int.MaxValue, "cleanupConfirm")
++    val globals = objectFields(root("globalTokens"), globalKeys, "globalTokens").map { case (key, value) => key -> tokenId(value, key) }
++    val chain = objectFields(root("chainTokens"), chainKeys, "chainTokens").map { case (key, value) => key -> tokenId(value, key) }
++    val addresses = objectFields(root("custody"), Set("lock", "cold"), "custody")
++    val lock = custody(addresses("lock"), "lock")
++    val cold = custody(addresses("cold"), "cold")
++    require(lock != cold, "Lock and cold custody must be distinct")
++    val counterparts = objectFields(root("counterparts"), Set("avax", "joe"), "counterparts").map { case (asset, value) =>
++      val fields = objectFields(value, Set("tokenId", "decimals"), s"counterparts.$asset")
++      asset -> (tokenId(fields("tokenId"), s"counterparts.$asset"), integer(fields("decimals"), 0, 18, s"counterparts.$asset.decimals"))
++    }
++    val ids = globals.values.toSeq ++ chain.values.toSeq ++ counterparts.values.map(_._1)
++    require(ids.distinct.size == ids.size, "Token identities must not collide")
++    val sources = scriptPins()
++
++    // ColdErgoClient has no node transport; only the unchanged Rosen scripts are compiled.
++    val client = new ColdErgoClient(NetworkType.MAINNET, 1000000, 2.toByte)
++    val network = ErgoNetwork(client, new ErgoAddressEncoder(NetworkType.MAINNET.networkPrefix))
++    val main = MainTokens(globals("RWTRepoNFT"), globals("GuardNFT"), globals("RSN"), globals("MinFeeNFT"), globals("EmissionNFT"), globals("ERSN"))
++    val tokens = Tokens(chain("CleanupNFT"), chain("RWTId"), chain("AwcNFT"), chain("RepoConfigNFT"))
++    val config = Network(tokens, lock, cold, cleanup)
++    val contracts = new Contracts(NetworkGeneral(network, main), config)
++    val contractOverlay = Json.obj(
++      "version" -> Json.fromString(BuildInfo.version), "tokens" -> main.toJson(),
++      "avalanche" -> contracts.buildContractsJson("avalanche")
++    )
++    // The generic Lock also compiles for the Ergo counterparty; Avalanche uses TSS custody.
++    require(contracts.Lock._2.nonEmpty, "Ergo lock compilation failed")
++    require(scriptPins() == sources, "Contract scripts changed during compilation")
++    val tokenOverlay = Json.obj(
++      "version" -> Json.fromString(BuildInfo.version),
++      "tokens" -> Json.arr(tokenSet("avax", "AVAX", true, counterparts("avax")), tokenSet(JoeAddress, "JOE", false, counterparts("joe")))
++    )
++    (contractOverlay, tokenOverlay)
++  }
++
++  /** Hash the exact input, compiled-script sources and generated bytes for a deployment handoff. */
++  private def digest(bytes: Array[Byte]): String = MessageDigest.getInstance("SHA-256").digest(bytes).map(b => f"${b & 0xff}%02x").mkString
++
++  /** Capture the exact upstream script sources without persisting host paths. */
++  private def scriptPins(): Seq[Json] = {
++    val stream = Files.list(Paths.get("src/main/scala/rosen/bridge/scripts"))
++    try {
++      import scala.collection.JavaConverters._
++      stream.iterator().asScala.filter(_.toString.endsWith(".es")).toSeq.sortBy(_.getFileName.toString).map { path =>
++        Json.obj("path" -> Json.fromString(path.toString.replace('\\', '/')), "sha256" -> Json.fromString(digest(Files.readAllBytes(path))))
++      }
++    } finally stream.close()
++  }
++
++  /** Write a fresh preparation directory; this entry point has no minting or broadcast operation. */
++  def main(args: Array[String]): Unit = {
++    require(args.length == 4 && args(0) == "--input" && args(2) == "--output", "Usage: --input <assigned-values.json> --output <new-directory>")
++    val inputBytes = Files.readAllBytes(Paths.get(args(1)))
++    val input = parseInput(new String(inputBytes, StandardCharsets.UTF_8))
++    val sourcePins = scriptPins()
++    val (contracts, tokens) = prepare(input)
++    require(scriptPins() == sourcePins, "Contract scripts changed before output preparation")
++    val output = Paths.get(args(3))
++    require(!Files.exists(output), "Output directory must be new")
++    val parent = output.toAbsolutePath.getParent
++    require(Files.isDirectory(parent), "Output parent must exist")
++    val payloads = Seq("contracts-overlay.json" -> contracts, "tokens-overlay.json" -> tokens)
++    Files.createDirectory(output)
++    val members = payloads.map { case (name, value) =>
++      val bytes = (value.spaces2 + "\n").getBytes(StandardCharsets.UTF_8)
++      Files.write(output.resolve(name), bytes)
++      Json.obj("path" -> Json.fromString(name), "bytes" -> Json.fromInt(bytes.length), "sha256" -> Json.fromString(digest(bytes)))
++    }
++    val manifest = Json.obj(
++      "schema" -> Json.fromString("rosen-avalanche-contract-preparation-receipt/v1"),
++      "chainId" -> Json.fromInt(43114), "mode" -> Json.fromString("offline-preparation"),
++      "minted" -> Json.False, "broadcast" -> Json.False, "inputSha256" -> Json.fromString(digest(inputBytes)),
++      "scripts" -> Json.arr(sourcePins: _*), "files" -> Json.arr(members: _*)
++    )
++    Files.write(output.resolve("manifest.json"), (manifest.spaces2 + "\n").getBytes(StandardCharsets.UTF_8))
++    println(s"Avalanche contract and token overlays prepared: ${members.size} files")
++  }
++}
+diff --git a/src/test/resources/avalanche/assigned-values.example.json b/src/test/resources/avalanche/assigned-values.example.json
+new file mode 100644
+index 0000000..1b1782b
+--- /dev/null
++++ b/src/test/resources/avalanche/assigned-values.example.json
+@@ -0,0 +1,33 @@
++{
++  "schema": "rosen-avalanche-contract-preparation/v1",
++  "chainId": 43114,
++  "cleanupConfirm": 21600,
++  "globalTokens": {
++    "RWTRepoNFT": "0101010101010101010101010101010101010101010101010101010101010101",
++    "GuardNFT": "0202020202020202020202020202020202020202020202020202020202020202",
++    "RSN": "0303030303030303030303030303030303030303030303030303030303030303",
++    "MinFeeNFT": "0404040404040404040404040404040404040404040404040404040404040404",
++    "EmissionNFT": "0505050505050505050505050505050505050505050505050505050505050505",
++    "ERSN": "0606060606060606060606060606060606060606060606060606060606060606"
++  },
++  "chainTokens": {
++    "RWTId": "0707070707070707070707070707070707070707070707070707070707070707",
++    "CleanupNFT": "0808080808080808080808080808080808080808080808080808080808080808",
++    "AwcNFT": "0909090909090909090909090909090909090909090909090909090909090909",
++    "RepoConfigNFT": "0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a"
++  },
++  "custody": {
++    "lock": "0x1111111111111111111111111111111111111111",
++    "cold": "0x2222222222222222222222222222222222222222"
++  },
++  "counterparts": {
++    "avax": {
++      "tokenId": "0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b",
++      "decimals": 9
++    },
++    "joe": {
++      "tokenId": "0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c",
++      "decimals": 9
++    }
++  }
++}
+diff --git a/src/test/scala/contracts/AvalancheOverlayMergeSpec.scala b/src/test/scala/contracts/AvalancheOverlayMergeSpec.scala
+new file mode 100644
+index 0000000..80cb35f
+--- /dev/null
++++ b/src/test/scala/contracts/AvalancheOverlayMergeSpec.scala
+@@ -0,0 +1,156 @@
++package contracts
++
++import io.circe.Json
++import org.scalatest.funsuite.AnyFunSuite
++import rosen.bridge.{AvalancheOverlayMerge, AvalanchePreparation}
++
++import java.nio.charset.StandardCharsets
++import java.nio.file.{Files, Paths}
++import java.util.UUID
++
++/** Preserve the real configuration consumer shape and isolate every merge refusal. */
++class AvalancheOverlayMergeSpec extends AnyFunSuite {
++  private val example = Paths.get("src/test/resources/avalanche/assigned-values.example.json")
++  private val input = AvalanchePreparation.parseInput(new String(Files.readAllBytes(example), StandardCharsets.UTF_8))
++  private lazy val overlays = AvalanchePreparation.prepare(input)
++  private def contracts = Json.obj(
++    "version" -> Json.fromString("existing-contract-release"), "tokens" -> input.hcursor.downField("globalTokens").focus.get,
++    "ergo" -> Json.obj("addresses" -> Json.obj("lock" -> Json.fromString("existing-ergo-lock"))),
++    "ethereum" -> Json.obj("addresses" -> Json.obj("lock" -> Json.fromString("existing-ethereum-lock")))
++  )
++  private def member(id: String) = Json.obj("tokenId" -> Json.fromString(id), "type" -> Json.fromString("EIP-004"), "name" -> Json.fromString("existing"), "decimals" -> Json.fromInt(9), "residency" -> Json.fromString("native"), "extra" -> Json.obj())
++  private def tokens = Json.obj("version" -> Json.fromString("existing-token-release"), "tokens" -> Json.arr(Json.obj("ergo" -> member("77" * 32))))
++  private def replaceTokenSet(set: Json) = tokens.mapObject(_.add("tokens", Json.arr(set)))
++  private def withContractTokens(chain: String, value: Json) = contracts.mapObject(_.add(chain,
++    contracts.hcursor.downField(chain).focus.get.mapObject(_.add("tokens", value))))
++
++  test("merge appends Avalanche and both counterparts while preserving all existing fields, assets and versions") {
++    val merged = AvalancheOverlayMerge.merge(contracts, tokens, overlays._1, overlays._2)
++    assert(merged._1.mapObject(_.remove("avalanche")) == contracts)
++    assert(merged._1.hcursor.downField("avalanche").focus == overlays._1.hcursor.downField("avalanche").focus)
++    val mergedSets = merged._2.hcursor.downField("tokens").as[Vector[Json]].right.get
++    assert(mergedSets.take(1) == tokens.hcursor.downField("tokens").as[Vector[Json]].right.get)
++    assert(mergedSets.drop(1) == overlays._2.hcursor.downField("tokens").as[Vector[Json]].right.get)
++    assert(merged._2.hcursor.downField("version").focus == tokens.hcursor.downField("version").focus)
++  }
++
++  input.hcursor.downField("chainTokens").focus.get.asObject.get.toVector.foreach { case (key, id) =>
++    test(s"merge refuses new $key colliding with an existing chain contract token") {
++      val base = withContractTokens("ethereum", Json.obj("CleanupNFT" -> id))
++      intercept[IllegalArgumentException](AvalancheOverlayMerge.merge(base, tokens, overlays._1, overlays._2))
++    }
++    test(s"merge refuses new $key colliding with an existing Ergo asset counterpart") {
++      val base = replaceTokenSet(Json.obj("ergo" -> member(id.asString.get)))
++      intercept[IllegalArgumentException](AvalancheOverlayMerge.merge(contracts, base, overlays._1, overlays._2))
++    }
++  }
++
++  Seq("avax", "joe").foreach { asset =>
++    test(s"merge refuses new $asset counterpart colliding with an existing chain contract token") {
++      val id = input.hcursor.downField("counterparts").downField(asset).downField("tokenId").focus.get
++      val base = withContractTokens("ethereum", Json.obj("CleanupNFT" -> id))
++      intercept[IllegalArgumentException](AvalancheOverlayMerge.merge(base, tokens, overlays._1, overlays._2))
++    }
++  }
++
++  test("merge preserves existing chain tokens, shared global identities and unrelated nested fields") {
++    val shared = input.hcursor.downField("globalTokens").downField("RSN").focus.get
++    val base = withContractTokens("ergo", Json.obj("ExistingNFT" -> Json.fromString("66" * 32), "SharedRSN" -> shared))
++      .mapObject(_.add("metadata", Json.obj("tokensElsewhere" -> Json.obj("unchanged" -> shared))))
++    val baseTokens = replaceTokenSet(Json.obj("ergo" -> member(shared.asString.get)))
++    val merged = AvalancheOverlayMerge.merge(base, baseTokens, overlays._1, overlays._2)
++    assert(merged._1.mapObject(_.remove("avalanche")) == base)
++    assert(merged._2.hcursor.downField("tokens").as[Vector[Json]].right.get.head == baseTokens.hcursor.downField("tokens").as[Vector[Json]].right.get.head)
++  }
++
++  val existingContractTokenFaults = Seq(
++    "nonobject token map" -> Json.arr(),
++    "nested token identity" -> Json.obj("CleanupNFT" -> Json.obj("tokenId" -> Json.fromString("66" * 32))),
++    "array token identity" -> Json.obj("CleanupNFT" -> Json.arr(Json.fromString("66" * 32))),
++    "numeric token identity" -> Json.obj("CleanupNFT" -> Json.fromInt(1)),
++    "null token identity" -> Json.obj("CleanupNFT" -> Json.Null),
++    "empty token identity" -> Json.obj("CleanupNFT" -> Json.fromString("")),
++    "blank token identity" -> Json.obj("CleanupNFT" -> Json.fromString(" "))
++  )
++  existingContractTokenFaults.foreach { case (label, faulty) =>
++    test(s"merge refuses existing chain $label") {
++      intercept[IllegalArgumentException](AvalancheOverlayMerge.merge(withContractTokens("ethereum", faulty), tokens, overlays._1, overlays._2))
++    }
++  }
++
++  test("merge refuses a case alias of JOE in existing contract tokens") {
++    val base = withContractTokens("ethereum", Json.obj("ExistingToken" -> Json.fromString("0x" + AvalanchePreparation.JoeAddress.drop(2).toUpperCase)))
++    intercept[IllegalArgumentException](AvalancheOverlayMerge.merge(base, tokens, overlays._1, overlays._2))
++  }
++
++  test("merge refuses an uppercase Ergo alias of a newly allocated chain NFT") {
++    val id = input.hcursor.downField("chainTokens").downField("RepoConfigNFT").as[String].right.get
++    val base = withContractTokens("ethereum", Json.obj("CleanupNFT" -> Json.fromString(id.toUpperCase)))
++    intercept[IllegalArgumentException](AvalancheOverlayMerge.merge(base, tokens, overlays._1, overlays._2))
++  }
++
++  test("merge refuses an uppercase Ergo alias of a newly allocated asset counterpart") {
++    val id = input.hcursor.downField("counterparts").downField("joe").downField("tokenId").as[String].right.get
++    val base = replaceTokenSet(Json.obj("ergo" -> member(id.toUpperCase)))
++    intercept[IllegalArgumentException](AvalancheOverlayMerge.merge(contracts, base, overlays._1, overlays._2))
++  }
++
++  val contractFaults = Seq(
++    "nonobject base" -> Json.arr(),
++    "missing version" -> contracts.mapObject(_.remove("version")),
++    "empty version" -> contracts.mapObject(_.add("version", Json.fromString(" "))),
++    "existing Avalanche" -> contracts.mapObject(_.add("avalanche", Json.obj())),
++    "missing Ergo" -> contracts.mapObject(_.remove("ergo")),
++    "different global deployment tokens" -> contracts.mapObject(_.add("tokens", Json.obj()))
++  )
++  contractFaults.foreach { case (label, faulty) =>
++    test(s"merge refuses $label") {
++      intercept[IllegalArgumentException](AvalancheOverlayMerge.merge(faulty, tokens, overlays._1, overlays._2))
++    }
++  }
++  val tokenFaults = Seq(
++    "nonobject token base" -> Json.arr(),
++    "missing token version" -> tokens.mapObject(_.remove("version")),
++    "extra token root field" -> tokens.mapObject(_.add("network", Json.fromString("other"))),
++    "nonarray tokens" -> tokens.mapObject(_.add("tokens", Json.obj())),
++    "nonobject token set" -> tokens.mapObject(_.add("tokens", Json.arr(Json.fromString("other")))),
++    "member without identity" -> replaceTokenSet(Json.obj("ergo" -> Json.obj())),
++    "empty member identity" -> replaceTokenSet(Json.obj("ergo" -> member(""))),
++    "existing Avalanche asset" -> replaceTokenSet(Json.obj("avalanche" -> member("other"))),
++    "existing AVAX identity" -> replaceTokenSet(Json.obj("ergo" -> member("avax"))),
++    "existing counterpart identity" -> replaceTokenSet(Json.obj("ergo" -> member("0b" * 32))),
++    "case alias of existing JOE address" -> replaceTokenSet(Json.obj("ethereum" -> member("0x" + AvalanchePreparation.JoeAddress.drop(2).toUpperCase)))
++  )
++  tokenFaults.foreach { case (label, faulty) =>
++    test(s"merge refuses $label") {
++      intercept[IllegalArgumentException](AvalancheOverlayMerge.merge(contracts, faulty, overlays._1, overlays._2))
++    }
++  }
++
++  test("CLI regenerates the overlays, seals merged files and leaves all three input files untouched") {
++    val directory = Paths.get("target", "avalanche-merge-tests", UUID.randomUUID().toString)
++    Files.createDirectories(directory)
++    val baseContracts = directory.resolve("base-contracts.json")
++    val baseTokens = directory.resolve("base-tokens.json")
++    val contractsBytes = contracts.noSpaces.getBytes(StandardCharsets.UTF_8)
++    val tokensBytes = tokens.noSpaces.getBytes(StandardCharsets.UTF_8)
++    val assignedBytes = Files.readAllBytes(example)
++    Files.write(baseContracts, contractsBytes)
++    Files.write(baseTokens, tokensBytes)
++    val output = directory.resolve("output")
++    AvalancheOverlayMerge.main(Array("--input", example.toString, "--contracts-base", baseContracts.toString, "--tokens-base", baseTokens.toString, "--output", output.toString))
++    val resultContracts = AvalanchePreparation.parseInput(new String(Files.readAllBytes(output.resolve("contracts.json")), StandardCharsets.UTF_8))
++    val resultTokens = AvalanchePreparation.parseInput(new String(Files.readAllBytes(output.resolve("tokens.json")), StandardCharsets.UTF_8))
++    val receipt = AvalanchePreparation.parseInput(new String(Files.readAllBytes(output.resolve("manifest.json")), StandardCharsets.UTF_8))
++    assert((resultContracts, resultTokens) == AvalancheOverlayMerge.merge(contracts, tokens, overlays._1, overlays._2))
++    assert(receipt.hcursor.downField("chainId").as[Int].right.get == 43114)
++    assert(receipt.hcursor.downField("activated").as[Boolean].right.get == false)
++    assert(receipt.hcursor.downField("inputs").as[Vector[Json]].right.get.size == 3)
++    assert(receipt.hcursor.downField("files").as[Vector[Json]].right.get.size == 2)
++    assert(java.util.Arrays.equals(Files.readAllBytes(example), assignedBytes))
++    assert(java.util.Arrays.equals(Files.readAllBytes(baseContracts), contractsBytes))
++    assert(java.util.Arrays.equals(Files.readAllBytes(baseTokens), tokensBytes))
++    intercept[IllegalArgumentException](AvalancheOverlayMerge.main(Array("--input", example.toString, "--contracts-base", baseContracts.toString, "--tokens-base", baseTokens.toString, "--output", output.toString)))
++    assert(Files.readAllBytes(output.resolve("contracts.json")).sameElements((resultContracts.spaces2 + "\n").getBytes(StandardCharsets.UTF_8)))
++  }
++}
+diff --git a/src/test/scala/contracts/AvalanchePreparationSpec.scala b/src/test/scala/contracts/AvalanchePreparationSpec.scala
+new file mode 100644
+index 0000000..3110403
+--- /dev/null
++++ b/src/test/scala/contracts/AvalanchePreparationSpec.scala
+@@ -0,0 +1,115 @@
++package contracts
++
++import io.circe.Json
++import org.scalatest.funsuite.AnyFunSuite
++import rosen.bridge.AvalanchePreparation
++
++import java.nio.charset.StandardCharsets
++import java.nio.file.{Files, Paths}
++import java.util.UUID
++
++/** Offline compilation and isolated input refusals for the contributor contract overlay. */
++class AvalanchePreparationSpec extends AnyFunSuite {
++  /** Use distinct synthetic identities; none denotes a minted deployment token. */
++  private def id(value: Int): Json = Json.fromString(f"$value%02x" * 32)
++
++  /** Supply a complete mainnet fixture without obtaining keys or node data. */
++  private def fixture: Json = Json.obj(
++    "schema" -> Json.fromString("rosen-avalanche-contract-preparation/v1"),
++    "chainId" -> Json.fromInt(43114), "cleanupConfirm" -> Json.fromInt(21600),
++    "globalTokens" -> Json.obj("RWTRepoNFT" -> id(1), "GuardNFT" -> id(2), "RSN" -> id(3), "MinFeeNFT" -> id(4), "EmissionNFT" -> id(5), "ERSN" -> id(6)),
++    "chainTokens" -> Json.obj("RWTId" -> id(7), "CleanupNFT" -> id(8), "AwcNFT" -> id(9), "RepoConfigNFT" -> id(10)),
++    "custody" -> Json.obj("lock" -> Json.fromString("0x" + "11" * 20), "cold" -> Json.fromString("0x" + "22" * 20)),
++    "counterparts" -> Json.obj(
++      "avax" -> Json.obj("tokenId" -> id(11), "decimals" -> Json.fromInt(9)),
++      "joe" -> Json.obj("tokenId" -> id(12), "decimals" -> Json.fromInt(9))
++    )
++  )
++
++  /** Replace one field while retaining every other valid input. */
++  private def replace(input: Json, path: List[String], value: Json): Json = path match {
++    case head :: Nil => input.mapObject(_.add(head, value))
++    case head :: rest => input.mapObject(fields => fields.add(head, replace(fields(head).get, rest, value)))
++    case Nil => value
++  }
++
++  test("offline mainnet preparation compiles all upstream contract addresses and AVAX/JOE counterpart overlays") {
++    val (contracts, tokens) = AvalanchePreparation.prepare(fixture)
++    val chain = contracts.hcursor.downField("avalanche")
++    val addresses = chain.downField("addresses").focus.get.asObject.get
++    assert(addresses.size == 11)
++    assert(addresses("lock").get.asString.contains("0x" + "11" * 20))
++    assert(addresses("cold").get.asString.contains("0x" + "22" * 20))
++    assert(addresses.values.forall(_.asString.exists(_.nonEmpty)))
++    assert(chain.downField("tokens").downField("RWTId").as[String].right.get == ("07" * 32))
++    val sets = tokens.hcursor.downField("tokens").as[Vector[Json]].right.get
++    assert(sets.size == 2)
++    assert(sets(0).hcursor.downField("avalanche").downField("type").as[String].right.get == "native")
++    assert(sets(1).hcursor.downField("avalanche").downField("tokenId").as[String].right.get == AvalanchePreparation.JoeAddress)
++    assert(sets(1).hcursor.downField("avalanche").downField("type").as[String].right.get == "ERC-20")
++    assert(sets.forall(_.hcursor.downField("ergo").downField("residency").as[String].right.get == "wrapped"))
++    assert(AvalanchePreparation.prepare(fixture) == ((contracts, tokens)))
++  }
++
++  test("changing GuardNFT changes bound contract addresses without changing TSS custody or source asset") {
++    val initial = AvalanchePreparation.prepare(fixture)
++    val changed = AvalanchePreparation.prepare(replace(fixture, List("globalTokens", "GuardNFT"), id(13)))
++    val before = initial._1.hcursor.downField("avalanche").downField("addresses")
++    val after = changed._1.hcursor.downField("avalanche").downField("addresses")
++    assert(before.downField("RepoConfig").focus != after.downField("RepoConfig").focus)
++    assert(before.downField("Emission").focus != after.downField("Emission").focus)
++    assert(before.downField("lock").focus == after.downField("lock").focus)
++    assert(initial._2 == changed._2)
++  }
++
++  val faults = Seq(
++    ("wrong network", List("chainId"), Json.fromInt(43113)),
++    ("unassigned chain NFT", List("chainTokens", "AwcNFT"), Json.Null),
++    ("malformed chain NFT", List("chainTokens", "AwcNFT"), Json.fromString("ff" * 31)),
++    ("zero global identity", List("globalTokens", "GuardNFT"), Json.fromString("00" * 32)),
++    ("colliding global identity", List("globalTokens", "RSN"), id(2)),
++    ("zero custody", List("custody", "lock"), Json.fromString("0x" + "00" * 20)),
++    ("same lock and cold", List("custody", "cold"), Json.fromString("0x" + "11" * 20)),
++    ("unassigned counterpart", List("counterparts", "joe", "tokenId"), Json.Null),
++    ("counterpart collision", List("counterparts", "joe", "tokenId"), id(11)),
++    ("invalid counterpart decimals", List("counterparts", "joe", "decimals"), Json.fromInt(19)),
++    ("fractional cleanup", List("cleanupConfirm"), Json.fromDoubleOrNull(1.5)),
++    ("zero cleanup", List("cleanupConfirm"), Json.fromInt(0)),
++    ("unknown schema", List("schema"), Json.fromString("another-schema"))
++  )
++  faults.foreach { case (label, path, value) =>
++    test(s"preparation refuses $label before contract compilation") {
++      intercept[IllegalArgumentException](AvalanchePreparation.prepare(replace(fixture, path, value)))
++    }
++  }
++
++  test("preparation refuses an unexpected field instead of silently accepting a different deployment input") {
++    intercept[IllegalArgumentException](AvalanchePreparation.prepare(fixture.mapObject(_.add("network", Json.fromString("fuji")))))
++  }
++
++  test("strict parsing preserves distinct objects that use the same field name") {
++    assert(AvalanchePreparation.parseInput(fixture.noSpaces) == fixture)
++  }
++
++  val duplicateFaults = Seq(
++    ("root network", "\"chainId\":43114", "\"chainId\":43113,\"chainId\":43114"),
++    ("nested custody", "\"lock\":\"0x" + "11" * 20 + "\"", "\"lock\":\"0x" + "33" * 20 + "\",\"lock\":\"0x" + "11" * 20 + "\""),
++    ("nested counterpart", "\"tokenId\":\"" + "0c" * 32 + "\"", "\"tokenId\":\"" + "0d" * 32 + "\",\"tokenId\":\"" + "0c" * 32 + "\""),
++    ("escaped decoded name", "\"chainId\":43114", "\"chainId\":43113,\"chain" + "\\" + "u0049d\":43114"),
++    ("null followed by assigned value", "\"chainId\":43114", "\"chainId\":null,\"chainId\":43114")
++  )
++  duplicateFaults.foreach { case (label, original, duplicate) =>
++    test(s"CLI refuses duplicate $label without creating deployment outputs") {
++      val text = fixture.noSpaces.replace(original, duplicate)
++      assert(text != fixture.noSpaces)
++      val directory = Paths.get("target", "avalanche-input-tests", UUID.randomUUID().toString)
++      Files.createDirectories(directory)
++      val input = directory.resolve("input.json")
++      val output = directory.resolve("output")
++      Files.write(input, text.getBytes(StandardCharsets.UTF_8))
++      val error = intercept[io.circe.ParsingFailure](AvalanchePreparation.main(Array("--input", input.toString, "--output", output.toString)))
++      assert(error.getMessage.contains("duplicate key name"))
++      assert(!Files.exists(output))
++    }
++  }
++}

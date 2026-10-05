@@ -1,0 +1,604 @@
+{
+  "schema": "rosen-producer-contribution-series.v1",
+  "author": "A. Shannon",
+  "rcs": "7b9784dae9d8d5b66b80de7a6043d1ba36a3a4bf",
+  "repositories": [
+    {
+      "repo": "sign-protocols",
+      "head": "243f5882e6c589f8e1fc16b5887d0a1162fbf89c"
+    },
+    {
+      "repo": "utils",
+      "head": "28e3bd960d10b662eef3c05c29e11e0acb9372ae"
+    },
+    {
+      "repo": "scanner",
+      "head": "8f3a4e35c0dab5763a0f89a9903357261e5e55a5"
+    }
+  ],
+  "groups": [
+    {
+      "id": "S01",
+      "repo": "sign-protocols",
+      "purpose": "Final communication dispatch authorization",
+      "dependencies": [],
+      "beforeTree": "be2cf16cf5e97769581bcc8cabe8f174ac199c69",
+      "tree": "b2154f397d225af0f1a4e8a2c3dd96762d7a7d56",
+      "patch": {
+        "path": "patches/S01.patch",
+        "bytes": 47664,
+        "sha256": "57d524e2645749e1aeb6cfae6634594c703670b1fa4520f02f64600b261d56ad"
+      },
+      "files": [
+        {
+          "path": ".changeset/authorized-payment-dispatch.md",
+          "bytes": 173,
+          "sha256": "28d167ea5527573b05ca8acf9d50649b17558ab21cc5cb79e1e4fb41029688d3"
+        },
+        {
+          "path": "packages/communication/lib/communicator.ts",
+          "bytes": 7868,
+          "sha256": "0992bd2cf649b328fd73e0927506e92908b0fd92e71b057423b7826307855ebb"
+        },
+        {
+          "path": "packages/communication/package.json",
+          "bytes": 1279,
+          "sha256": "7e303fd55136bf123b320a9a3e4fe335570cd355561934ba70ddbb7d777cd6b7"
+        },
+        {
+          "path": "packages/communication/tests/communicator.spec.ts",
+          "bytes": 23008,
+          "sha256": "919cd8f18ed4e8df16dbd3d5bf3b7a78b45ed0df7ec0cfae15c1e9b02db6469c"
+        },
+        {
+          "path": "packages/communication/tests/comunicator.spec.ts",
+          "deleted": true
+        },
+        {
+          "path": "packages/communication/tests/mocked/encryption.mock.ts",
+          "bytes": 434,
+          "sha256": "d8fa63fb3880152d0cf270dc57cbd9ac0a445ccd683f1cdae652776eba641384"
+        },
+        {
+          "path": "packages/communication/tests/testCommunicator.ts",
+          "deleted": true
+        },
+        {
+          "path": "packages/communication/tests/testData.ts",
+          "bytes": 234,
+          "sha256": "446625e96866c39295c5ddaf19628f2700e442b0f553f10fef895c66f53aaef6"
+        },
+        {
+          "path": "packages/communication/tests/testUtils/communication.ts",
+          "bytes": 472,
+          "sha256": "0e35e0435e566c23f1e8b2f23c86568189a64fc9e6bb551ad3ab6413249fb708"
+        },
+        {
+          "path": "packages/communication/tests/testUtils/dispatch.ts",
+          "bytes": 708,
+          "sha256": "d1684e11385e5c01ca9064e8c7d4300beba0310bf75a6042fe94c764a5de95d9"
+        },
+        {
+          "path": "packages/communication/tests/testUtils/testCommunicator.ts",
+          "bytes": 2031,
+          "sha256": "996028664afe8e4beb66b9290912e0e967e5f2ed23a134968db2b0cf91d6a108"
+        }
+      ]
+    },
+    {
+      "id": "S02",
+      "repo": "sign-protocols",
+      "purpose": "Ergo multisignature authorization",
+      "dependencies": [
+        "S01"
+      ],
+      "beforeTree": "b2154f397d225af0f1a4e8a2c3dd96762d7a7d56",
+      "tree": "1658a9e4b648bea9c26d80cf3420b08ade514f01",
+      "patch": {
+        "path": "patches/S02.patch",
+        "bytes": 64791,
+        "sha256": "70bf8c5be06b7e278788f88cc002e62e9f57e3e170cd294f338ffeff559c33df"
+      },
+      "files": [
+        {
+          "path": ".changeset/ergo-multisig-signing-authorization.md",
+          "bytes": 167,
+          "sha256": "3be382d94c48203d7a0b88af6dfa012fcbebd83fcc97fdea1a73d240762c9eea"
+        },
+        {
+          "path": "packages/ergo-multi-sig/lib/multiSigHandler.ts",
+          "bytes": 37514,
+          "sha256": "8a2472fa664bc3e4ccb3493458505e5908ba4fc5343456a41fcdb8f75e3314fb"
+        },
+        {
+          "path": "packages/ergo-multi-sig/lib/signingAuthorization.ts",
+          "bytes": 3796,
+          "sha256": "3d0851a0a0f6b7fb950a6af964a6e30d1a0b3fa692edffccec6b66ed810d184e"
+        },
+        {
+          "path": "packages/ergo-multi-sig/lib/types.ts",
+          "bytes": 3703,
+          "sha256": "62dd2654059a58fa21e5a44f4e87785c6d6de386713b56ad243d7840413939d3"
+        },
+        {
+          "path": "packages/ergo-multi-sig/package.json",
+          "bytes": 1438,
+          "sha256": "5365c3879faa2edd1e7927ace64defead6888b17ab73c1fbf959c301c236e642"
+        },
+        {
+          "path": "packages/ergo-multi-sig/tests/mocked/signingAuthorization.mock.ts",
+          "bytes": 766,
+          "sha256": "80abc0ddf2614b4bc1ae189717a5c0e73bda0f5d512fb423a05e271bd9b44890"
+        },
+        {
+          "path": "packages/ergo-multi-sig/tests/signingAuthorization.spec.ts",
+          "bytes": 34592,
+          "sha256": "c46ebfdf242b8973ab72ebd1ba8690a203802d0c61985fbcd6e9c5f2bbd8f013"
+        },
+        {
+          "path": "packages/ergo-multi-sig/tests/testData/signingAuthorization.ts",
+          "bytes": 1368,
+          "sha256": "535620297319abee079c9bace7ffd3630ceaa90af83e11538266d6a757fca8f4"
+        },
+        {
+          "path": "packages/ergo-multi-sig/tests/testUtils/signingAuthorization.ts",
+          "bytes": 1245,
+          "sha256": "3f76a3f0403dea169a9513ac97d7a57adf5b7e7c38fd7e9be344a38a586017b4"
+        }
+      ]
+    },
+    {
+      "id": "U01",
+      "repo": "utils",
+      "purpose": "SQLite transaction ownership",
+      "dependencies": [],
+      "beforeTree": "4adddf1d517718b6e8b83c1a31205da21726ea9c",
+      "tree": "306c6436257ba11ad21c592cdc652eeb8149122e",
+      "patch": {
+        "path": "patches/U01.patch",
+        "bytes": 68425,
+        "sha256": "f93b5ba49a24323f7b3c4c86928294ee338b4df89383b6cd33dd148b623b5e1c"
+      },
+      "files": [
+        {
+          "path": ".changeset/sqlite-transaction-ownership.md",
+          "bytes": 210,
+          "sha256": "3d010ad6dff9d2d50b53d95cc45def51b70d332605275781a751de0b30cdc959"
+        },
+        {
+          "path": "packages/extended-typeorm/lib/customQueryRunner.ts",
+          "bytes": 8157,
+          "sha256": "ff9f92a9b96334d3daab5aaa65ab378b5b96c916e2265f3248936987e2e169cf"
+        },
+        {
+          "path": "packages/extended-typeorm/lib/dataSource.ts",
+          "bytes": 436,
+          "sha256": "7c4915888c39ea788f20a4d0d001654fcc5667f3f671aa3b0ddfb4ce69c1ea0c"
+        },
+        {
+          "path": "packages/extended-typeorm/lib/sqliteDriver.ts",
+          "bytes": 785,
+          "sha256": "ff8e2ed73262c4c37fcd0ca077f470130a79cb8aa3482389495a584edc9d66ec"
+        },
+        {
+          "path": "packages/extended-typeorm/package.json",
+          "bytes": 1592,
+          "sha256": "6bcae3af19701308b6cd924377e8ea735931d4834f91f3e30218e942d98a73ae"
+        },
+        {
+          "path": "packages/extended-typeorm/tests/customQueryRunner.spec.ts",
+          "bytes": 48247,
+          "sha256": "06228ba2494afb9276c3c2ab66dd64ffc7ef34672bfbe2da27513278ae5a1226"
+        },
+        {
+          "path": "packages/extended-typeorm/tests/mocked/sqliteQueryRunner.mock.ts",
+          "bytes": 666,
+          "sha256": "a36cf20e3b5ceeacfde140da6dbc906baa89f66dd3c6dd21b7dcf8ac7ab411f6"
+        },
+        {
+          "path": "packages/extended-typeorm/tests/sqliteDriver.spec.ts",
+          "bytes": 927,
+          "sha256": "4596ad109b5a573e0184c9d636d9b263fc7b0a692cac3c8b2944b41fe03b6161"
+        },
+        {
+          "path": "packages/extended-typeorm/tests/testData.ts",
+          "bytes": 1031,
+          "sha256": "6efa38848b4dbbc1b449b273df3eaed597851cd7f991a77a3a7080d35136d069"
+        },
+        {
+          "path": "packages/extended-typeorm/tests/testUtils.ts",
+          "bytes": 2698,
+          "sha256": "415dfabac070ca0b619573dee0042f89159f530d7938d627eb9fd54340a79c7c"
+        }
+      ]
+    },
+    {
+      "id": "C-UTILS",
+      "repo": "utils",
+      "purpose": "Avalanche address and extractor registration",
+      "dependencies": [],
+      "beforeTree": "306c6436257ba11ad21c592cdc652eeb8149122e",
+      "tree": "0b8395cd457768879a48681e3213f2dc1fb04742",
+      "patch": {
+        "path": "patches/C-UTILS.patch",
+        "bytes": 15009,
+        "sha256": "6e6194640563936418cd82af5ac295fc74f12953c87ee90d8c979511c2893d1a"
+      },
+      "files": [
+        {
+          "path": ".changeset/avalanche-codec-and-state-ownership.md",
+          "bytes": 121,
+          "sha256": "655d0262f98761e34023bcebc9b1279bbb8c684705054a1e0fa2d310b30fc2e9"
+        },
+        {
+          "path": ".changeset/avalanche-extractor-identity.md",
+          "bytes": 140,
+          "sha256": "72a6aca3dbe01c905417571a99363a914ff7735da62b4ba89439ac12692f6ac0"
+        },
+        {
+          "path": "packages/address-codec/lib/const.ts",
+          "bytes": 160,
+          "sha256": "27bd2c17c14bd0573750b287bcc42149bbfb8385960b793195e27310e0b60fca"
+        },
+        {
+          "path": "packages/address-codec/lib/decoder.ts",
+          "bytes": 1799,
+          "sha256": "ee215dd0c1d1a86c85c12ff6bf34333bd09c8cb7970df19de32864385e57463f"
+        },
+        {
+          "path": "packages/address-codec/lib/encoder.ts",
+          "bytes": 1785,
+          "sha256": "3759abc19ee9946f1c1924545b7d6d0025e70a75027b0924427168f375821a1a"
+        },
+        {
+          "path": "packages/address-codec/lib/validator.ts",
+          "bytes": 1817,
+          "sha256": "a47bba388cb53aec69397fd31f8e2ca486eeb28c24c65b9e1d5306e009f2c505"
+        },
+        {
+          "path": "packages/address-codec/tests/decoder.spec.ts",
+          "bytes": 1586,
+          "sha256": "4ef41cf93e7342bd3f277922f47b73b7202d3f29ab7d6d545564dc012b329cbb"
+        },
+        {
+          "path": "packages/address-codec/tests/encoder.spec.ts",
+          "bytes": 1787,
+          "sha256": "6d111f7f4dd82a44335106738849098e90b1e6f01cf44bdbbeb17a482afcc784"
+        },
+        {
+          "path": "packages/address-codec/tests/validator.spec.ts",
+          "bytes": 1733,
+          "sha256": "aeae77d594b60653ad1c1bc49f71145a9b4c40708d915e48336e7f34bc6145ef"
+        },
+        {
+          "path": "packages/rosen-extractor/lib/getRosenData/const.ts",
+          "bytes": 1334,
+          "sha256": "911492de3626c781497ec517907e747126197847ebd81aed6e1bc39fd02478a9"
+        },
+        {
+          "path": "packages/rosen-extractor/tests/getRosenData/const.spec.ts",
+          "bytes": 2432,
+          "sha256": "99c7afb1b7db0d7670c5b5948cdba922be2298fc371626027042beaa96a8f379"
+        },
+        {
+          "path": "packages/rosen-extractor/tests/utils.spec.ts",
+          "bytes": 1671,
+          "sha256": "e51fe3a7cade31ef789cc9dbfdfc6dc4b8517855cb28b84de6a9f13e4470b19b"
+        }
+      ]
+    },
+    {
+      "id": "SC01",
+      "repo": "scanner",
+      "purpose": "Optional scanner cleanup configuration",
+      "dependencies": [],
+      "beforeTree": "ff3f885f5ed6be1c19d2778b7f6a33ebd7f78ba3",
+      "tree": "be5d069694b9f32ed8b5bd2be84f2df86d5778f3",
+      "patch": {
+        "path": "patches/SC01.patch",
+        "bytes": 1939,
+        "sha256": "f7451e52200a6500aee5d91f2b93ac2cc651441a755bf142817a9c1f6fdc5285"
+      },
+      "files": [
+        {
+          "path": ".changeset/optional-scanner-cleanup-config.md",
+          "bytes": 163,
+          "sha256": "427f7760e70352cecbe66667b4e246ac00a0a0429e85174c247c46b905a263d2"
+        },
+        {
+          "path": "packages/abstract-scanner/lib/scanner/abstract/generalScanner.ts",
+          "bytes": 8341,
+          "sha256": "524774ae3915c1c211a18977ceac4cb04cf2440ee0ee6c004439379b5f983573"
+        },
+        {
+          "path": "packages/abstract-scanner/lib/scanner/interfaces.ts",
+          "bytes": 680,
+          "sha256": "e474441ab5d8692d6d3cdb2781cd940e81c598ac8f12075f4e0a8bbe3626df1b"
+        }
+      ]
+    },
+    {
+      "id": "SC02",
+      "repo": "scanner",
+      "purpose": "Exact raw-data observation replay",
+      "dependencies": [
+        "U01"
+      ],
+      "beforeTree": "be5d069694b9f32ed8b5bd2be84f2df86d5778f3",
+      "tree": "3c4990497aadd50f3ed7ff5036b4348afac15752",
+      "patch": {
+        "path": "patches/SC02.patch",
+        "bytes": 75374,
+        "sha256": "661e278291981b688b522672cf8b33e423b4c54d7067eb3df538e9ddb00f5cb2"
+      },
+      "files": [
+        {
+          "path": ".changeset/evm-observation-derivation.md",
+          "bytes": 172,
+          "sha256": "e85de15d83fdb2591cc3e54fcb3235d75078c190a054bfd611532b691b6a0651"
+        },
+        {
+          "path": ".changeset/raw-data-state-ownership.md",
+          "bytes": 125,
+          "sha256": "b24b230830942deb60e5ceea8f39dc01c44cd5fb2ff233aab17820c898cec503"
+        },
+        {
+          "path": "packages/observation-extractors/evm-observation-extractor/lib/evmRpcObservationExtractor.ts",
+          "bytes": 2705,
+          "sha256": "2954a7d7145856a642b82203e768423defea65cdeefdeb4f93e8b85073fb81e8"
+        },
+        {
+          "path": "packages/observation-extractors/evm-observation-extractor/package.json",
+          "bytes": 1561,
+          "sha256": "70f4c030f2a1739443d8aa8a4b95a657f85753027e4bc31c443524406a1ba9d4"
+        },
+        {
+          "path": "packages/raw-data-provider/lib/abstractRawDataProvider.ts",
+          "bytes": 7333,
+          "sha256": "ee70f1b17e157630f66fb3f0c307acf6738e5aae640df50e9dd6273b42004b83"
+        },
+        {
+          "path": "packages/raw-data-provider/lib/actions/rawDataProviderStateEntityAction.ts",
+          "bytes": 4453,
+          "sha256": "54f9a9e96bf3af14700c15949b344b3a17ae822bcf6c8da6726cd490bf30aad5"
+        },
+        {
+          "path": "packages/raw-data-provider/lib/providers/evm/evmRawDataProvider.ts",
+          "bytes": 4800,
+          "sha256": "c6a65eb127eb2e7564d80023203071715a25b3c74b9e0de3d6ad363a174c3694"
+        },
+        {
+          "path": "packages/raw-data-provider/package.json",
+          "bytes": 2315,
+          "sha256": "db3e6170036267ec235fd4d12335a5d690183b82fb1fc52a7355e3eda99d46a0"
+        },
+        {
+          "path": "packages/raw-data-provider/tests/abstractRawDataProvider.spec.ts",
+          "bytes": 13077,
+          "sha256": "0c429969eae7be97142ae1eb9f514abbf5550b5b7def22253a85b584d0b52c7f"
+        },
+        {
+          "path": "packages/raw-data-provider/tests/abstractRawDataProviderTestUtils.ts",
+          "bytes": 610,
+          "sha256": "7b7ad49f863717cabe2038b2975d8394c0b4a6c1c3b5fc0c32679c00318d60d8"
+        },
+        {
+          "path": "packages/raw-data-provider/tests/mocked/abstractObservationExtractor.mock.ts",
+          "bytes": 724,
+          "sha256": "a283d10eadb153af1106c89f65abbc2be433bb2d72a39e313626c907cdc61c7f"
+        },
+        {
+          "path": "packages/raw-data-provider/tests/providers/evm/evmRawDataProvider.spec.ts",
+          "bytes": 28180,
+          "sha256": "ee1c4e44b54b6c9bfc46991c23e07e741d0d8b0bdc8bfbdc3eeb148dbb47e754"
+        },
+        {
+          "path": "packages/raw-data-provider/tests/providers/evm/evmRawDataProviderTestData.ts",
+          "bytes": 733,
+          "sha256": "a9c53f79fae9a0b91e8548037a7a92673b5701edbef5bfa2fe94700a1189dca9"
+        },
+        {
+          "path": "packages/raw-data-provider/tests/providers/evm/evmRawDataProviderTestUtils.ts",
+          "bytes": 1434,
+          "sha256": "8d15ca52fed0991f4dce544f50456e4e9c5a3b86e2172f2857fb542cdad1dee6"
+        },
+        {
+          "path": "packages/raw-data-provider/tests/providers/evm/mocked/evmRawDataProvider.mock.ts",
+          "bytes": 300,
+          "sha256": "26622cb8260446bc67bb96d44fb676464df986f2c2bf77895323dd3fad3bbea1"
+        },
+        {
+          "path": "packages/raw-data-provider/tests/testRawDataProvider.ts",
+          "bytes": 530,
+          "sha256": "8192c2b9e336d230b4ffdd42b824e7b103b3b6f682340af52e8aa3647ff9a9d1"
+        }
+      ]
+    },
+    {
+      "id": "SC03",
+      "repo": "scanner",
+      "purpose": "EVM RPC timeout transport",
+      "dependencies": [],
+      "beforeTree": "3c4990497aadd50f3ed7ff5036b4348afac15752",
+      "tree": "850d37fdfbd879cc6bee6c1005479e85fbfbc28f",
+      "patch": {
+        "path": "patches/SC03.patch",
+        "bytes": 8321,
+        "sha256": "dc47c8d4a44a6a87d05c53630a91d74c2d98a02466bcd945a4f70e3262b1103f"
+      },
+      "files": [
+        {
+          "path": ".changeset/evm-rpc-request-timeout.md",
+          "bytes": 123,
+          "sha256": "d9a87ab39aaa65b1325e7b991d8de639984b9fd5dcc636c2099785582494ca86"
+        },
+        {
+          "path": "packages/scanners/evm-scanner/lib/evmRpcNetwork.ts",
+          "bytes": 1838,
+          "sha256": "c3dac3b888c21bb0ac1552a709417524ab3a63bb152a731e617b85659b80259b"
+        },
+        {
+          "path": "packages/scanners/evm-scanner/tests/evmRpcNetwork.spec.ts",
+          "bytes": 6573,
+          "sha256": "d8e0e24eb4bed5dd6992e01002b2f875a9885282cb2450db693c825a3a92e107"
+        },
+        {
+          "path": "packages/scanners/evm-scanner/tests/mocked/realJsonRpcProvider.mock.ts",
+          "bytes": 742,
+          "sha256": "d8d058f40936712812b8495c65ad9dbb89066f203c1ef4a9797541c69c7df58a"
+        }
+      ]
+    },
+    {
+      "id": "C-SCANNER",
+      "repo": "scanner",
+      "purpose": "Avalanche finalized scanner and ERC20 observation",
+      "dependencies": [
+        "U01",
+        "SC01",
+        "SC02",
+        "SC03",
+        "C-UTILS"
+      ],
+      "beforeTree": "850d37fdfbd879cc6bee6c1005479e85fbfbc28f",
+      "tree": "bd4f7837a5c5c480019a5c0c4b0295153f8738db",
+      "patch": {
+        "path": "patches/C-SCANNER.patch",
+        "bytes": 192870,
+        "sha256": "5fc8976a706c1b8985df1f4e8ef3d9c748847de928c0cbd71a2872160f5fb537"
+      },
+      "files": [
+        {
+          "path": ".changeset/avalanche-observation-extraction.md",
+          "bytes": 139,
+          "sha256": "6029fda244d45a9888acb8cd75afd2c9c6fe453d9d5dbc65067575bdde326ac1"
+        },
+        {
+          "path": ".changeset/avalanche-raw-data-provider.md",
+          "bytes": 191,
+          "sha256": "379a74538fcbc392364af7c0fdc38917452f03fdf330f60f587fd3a0cfd65979"
+        },
+        {
+          "path": ".changeset/avalanche-settled-scanning.md",
+          "bytes": 265,
+          "sha256": "d482f1f819c99053cf16dfaa4dd220b106169b6b18c3080c6e9a8d2e90d8807e"
+        },
+        {
+          "path": "package-lock.json",
+          "bytes": 310674,
+          "sha256": "761fc030aacd867b5535d2872966598543d4ce3f9a0f53a995c9b969cc75e702"
+        },
+        {
+          "path": "packages/observation-extractors/evm-observation-extractor/lib/avalancheRpcObservationExtractor.ts",
+          "bytes": 3721,
+          "sha256": "d9f733d4c588635534e00e5bc352a48ee3f004dc66c950bb6fe788c5d01999c9"
+        },
+        {
+          "path": "packages/observation-extractors/evm-observation-extractor/lib/avalancheTransferProof.ts",
+          "bytes": 3082,
+          "sha256": "c519e70bf7c3fa8f19651cf100830ea2fe5dafeba6852de1d5b7e993379b58e1"
+        },
+        {
+          "path": "packages/observation-extractors/evm-observation-extractor/lib/index.ts",
+          "bytes": 199,
+          "sha256": "84a34bd862d96fc117473965b3a06ee5761bb24ea2d3bfaafb3c2a9ce3272b2b"
+        },
+        {
+          "path": "packages/observation-extractors/evm-observation-extractor/package.json",
+          "bytes": 1651,
+          "sha256": "8d16d7eb92bf5dd881d5f3a797d7b2dcd0d0ff221ab9a560b753363bf09fcdad"
+        },
+        {
+          "path": "packages/observation-extractors/evm-observation-extractor/tests/avalancheRpcObservationExtractor.spec.ts",
+          "bytes": 20945,
+          "sha256": "ae93e059bedece0c51c06d1689afd21761a952e9e1dad526f38f28759ece252f"
+        },
+        {
+          "path": "packages/observation-extractors/evm-observation-extractor/tests/avalancheTestData.ts",
+          "bytes": 4294,
+          "sha256": "671131f35953396d42a212727612bf5a0fb43f0afcdd62e62ed16becb724bf3f"
+        },
+        {
+          "path": "packages/observation-extractors/evm-observation-extractor/tests/avalancheTestUtils.ts",
+          "bytes": 4206,
+          "sha256": "f60339b9e254d586f6064d4df902d7ed46493786474c3062dd1518dda85f2a2a"
+        },
+        {
+          "path": "packages/raw-data-provider/lib/providers/evm/evmRawDataProvider.ts",
+          "bytes": 5011,
+          "sha256": "2fe2a7ac801afffb58748256cd6dde5ac1cef2682e55ba99a5b6a17957220f9c"
+        },
+        {
+          "path": "packages/raw-data-provider/tests/providers/evm/evmRawDataProvider.spec.ts",
+          "bytes": 28441,
+          "sha256": "9d56e0affeaa8003256d9b6b87ad39411970574ac27898d8061e59dc901e0c07"
+        },
+        {
+          "path": "packages/scanners/evm-scanner/lib/avalancheRpcNetwork.ts",
+          "bytes": 12921,
+          "sha256": "5d0dfe72bc48eee99c76f903a4e5721663fe2ae9a094786c6af5a6b4f85d8633"
+        },
+        {
+          "path": "packages/scanners/evm-scanner/lib/avalancheRpcScanner.ts",
+          "bytes": 12099,
+          "sha256": "4dbf507f516c7b132077b5a198dae209754b8ac50e08e3be44ffeb86c62ea16a"
+        },
+        {
+          "path": "packages/scanners/evm-scanner/lib/avalancheSafetyState.ts",
+          "bytes": 2031,
+          "sha256": "0179c2903caf0f862de4ac3b804c66b37a63498180efbe7dcda1d1489211cc5d"
+        },
+        {
+          "path": "packages/scanners/evm-scanner/lib/index.ts",
+          "bytes": 386,
+          "sha256": "a9ef951da0f2e0b13a5e1460cf7bc0a9e5c0d4f7dd8b5cee267d8daaf07b70f0"
+        },
+        {
+          "path": "packages/scanners/evm-scanner/package.json",
+          "bytes": 1316,
+          "sha256": "e14440110ca7735079ddd38ed56c5075aaf69936a3c619fd9db6d5ba9ab43538"
+        },
+        {
+          "path": "packages/scanners/evm-scanner/tests/avalancheRpcNetwork.spec.ts",
+          "bytes": 50715,
+          "sha256": "ada3417f56e72a60b6d02d09a7d43b195ad93a11134e871a06c4122c3d463825"
+        },
+        {
+          "path": "packages/scanners/evm-scanner/tests/avalancheRpcScanner.spec.ts",
+          "bytes": 48912,
+          "sha256": "1e36e60131c04a9a8cb6f9e083b82e3304bac0283dd942285ef5ab8be4e9a7d9"
+        },
+        {
+          "path": "packages/scanners/evm-scanner/tests/avalancheRpcTestUtils.ts",
+          "bytes": 3459,
+          "sha256": "0f26a76e9d073d225b720df217d4baf590967a1ff3e103f5157a8c8933f47370"
+        },
+        {
+          "path": "packages/scanners/evm-scanner/tests/avalancheSafetyState.spec.ts",
+          "bytes": 2643,
+          "sha256": "ed941918653aa04546d1b85bff9237732f978a1a77135b67e2ce304288793cf4"
+        },
+        {
+          "path": "packages/scanners/evm-scanner/tests/avalancheScannerTestUtils.ts",
+          "bytes": 1200,
+          "sha256": "e8563c19669d1a5a106b23db69c585b82aab478aa6879383b3f1d5743dfad262"
+        },
+        {
+          "path": "packages/scanners/evm-scanner/tests/avalancheTestData.ts",
+          "bytes": 94,
+          "sha256": "9798cab637bb56d1588aec309b3e2af9f67473e62cf4b31ee62830b81a14120e"
+        },
+        {
+          "path": "packages/scanners/evm-scanner/tests/mocked/avalancheRpc.mock.ts",
+          "bytes": 284,
+          "sha256": "3036d01bb2367e8183688d57e4e2168094faf6eaef6694effe63c7f54349ab40"
+        },
+        {
+          "path": "packages/scanners/evm-scanner/tests/mocked/avalancheScannerNetwork.mock.ts",
+          "bytes": 530,
+          "sha256": "0a280cd5ca7cc388d19d130b726ca67b73f8118669d9ac6d433b70d766a7ec21"
+        }
+      ]
+    }
+  ]
+}

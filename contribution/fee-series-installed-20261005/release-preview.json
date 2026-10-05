@@ -1,0 +1,108 @@
+{
+  "changesets": [
+    {
+      "releases": [
+        {
+          "name": "minimum-fee-job",
+          "type": "minor"
+        }
+      ],
+      "summary": "Calculate native AVAX and mapped ERC20 fee proposals with explicit C-Chain identity and exact units. Bind generation and atomic publication to current transaction, configuration and economic authority.",
+      "id": "avalanche-fee-proposals"
+    },
+    {
+      "releases": [
+        {
+          "name": "minfee-app",
+          "type": "minor"
+        }
+      ],
+      "summary": "Review Avalanche fee publications through the existing validation table and QR flow. Read one atomic snapshot, compare exact transaction and economic authority, and refuse stale publication refreshes before displaying the QR.",
+      "id": "avalanche-fee-review"
+    },
+    {
+      "releases": [
+        {
+          "name": "minimum-fee-job",
+          "type": "patch"
+        },
+        {
+          "name": "minfee-app",
+          "type": "patch"
+        }
+      ],
+      "summary": "Add a portable Avalanche test command with validated local producer and decoder\nfixtures, complete service selections and per-case JSON reports.",
+      "id": "avalanche-test-entry"
+    },
+    {
+      "releases": [
+        {
+          "name": "minimum-fee-job",
+          "type": "patch"
+        }
+      ],
+      "summary": "Build the backend Docker image without invoking a missing backend build script and use npm 11.6.2 in the runtime stage.",
+      "id": "backend-docker-runtime"
+    },
+    {
+      "releases": [
+        {
+          "name": "minimum-fee-job",
+          "type": "minor"
+        }
+      ],
+      "summary": "Add Coingecko API key config under `auth.coingecko`",
+      "id": "cool-webs-hide"
+    },
+    {
+      "releases": [],
+      "summary": "",
+      "id": "great-cases-open"
+    },
+    {
+      "releases": [
+        {
+          "name": "minimum-fee-job",
+          "type": "minor"
+        }
+      ],
+      "summary": "Integrate Handshake",
+      "id": "quick-owls-hns"
+    },
+    {
+      "releases": [],
+      "summary": "",
+      "id": "slimy-kings-film"
+    },
+    {
+      "releases": [],
+      "summary": "",
+      "id": "yellow-chicken-itch"
+    }
+  ],
+  "releases": [
+    {
+      "name": "minimum-fee-job",
+      "type": "minor",
+      "oldVersion": "1.3.2",
+      "changesets": [
+        "avalanche-fee-proposals",
+        "avalanche-test-entry",
+        "backend-docker-runtime",
+        "cool-webs-hide",
+        "quick-owls-hns"
+      ],
+      "newVersion": "1.4.0"
+    },
+    {
+      "name": "minfee-app",
+      "type": "minor",
+      "oldVersion": "1.0.2",
+      "changesets": [
+        "avalanche-fee-review",
+        "avalanche-test-entry"
+      ],
+      "newVersion": "1.1.0"
+    }
+  ]
+}

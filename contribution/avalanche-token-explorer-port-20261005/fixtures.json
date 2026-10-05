@@ -1,0 +1,16 @@
+{
+  "schema": "rosen-token-explorer-port-fixtures.v1",
+  "classification": "Contributor proposal; synthetic identifiers; explorer hosts copied from the prepared source, not checked over the network",
+  "cases": [
+    { "id": "mainnet-mapped", "chain": "avalanche", "chainId": 43114, "tokenId": "0x1111111111111111111111111111111111111111", "isNativeToken": false, "expectedHref": "https://snowtrace.io/token/0x1111111111111111111111111111111111111111", "producerOutcome": "decoded" },
+    { "id": "fuji-mapped", "chain": "avalanche", "chainId": 43113, "tokenId": "0x1111111111111111111111111111111111111111", "isNativeToken": false, "expectedHref": "https://testnet.snowtrace.io/token/0x1111111111111111111111111111111111111111", "producerOutcome": "decoded" },
+    { "id": "missing-deployment", "chain": "avalanche", "tokenId": "0x1111111111111111111111111111111111111111", "isNativeToken": false, "expectedHref": null, "producerOutcome": "rejected" },
+    { "id": "unsupported-deployment", "chain": "avalanche", "chainId": 1, "tokenId": "0x1111111111111111111111111111111111111111", "isNativeToken": false, "expectedHref": null, "producerOutcome": "rejected" },
+    { "id": "mainnet-native", "chain": "avalanche", "chainId": 43114, "tokenId": "avax", "isNativeToken": true, "expectedHref": null, "producerOutcome": "decoded" },
+    { "id": "fuji-native", "chain": "avalanche", "chainId": 43113, "tokenId": "avax", "isNativeToken": true, "expectedHref": null, "producerOutcome": "decoded" },
+    { "id": "missing-token", "chain": "avalanche", "chainId": 43114, "tokenId": "", "isNativeToken": false, "expectedHref": null, "producerOutcome": "rejected" },
+    { "id": "malformed-token", "chain": "avalanche", "chainId": 43114, "tokenId": "token/invalid", "isNativeToken": false, "expectedHref": null, "producerOutcome": "rejected" },
+    { "id": "legacy-ethereum", "chain": "ethereum", "tokenId": "0x1111111111111111111111111111111111111111", "isNativeToken": false, "expectedHref": "https://etherscan.io/token/0x1111111111111111111111111111111111111111", "producerOutcome": "existing-helper" },
+    { "id": "native-explicit-href", "chain": "avalanche", "chainId": 43114, "tokenId": "avax", "isNativeToken": true, "suppliedHref": "https://snowtrace.io/token/avax", "expectedHref": null, "producerOutcome": "proposed-native-precedence" }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "schema": "rosen-ui-token-explorer-proposal.v1",
+  "author": "A. Shannon",
+  "rcs": "7b9784dae9d8d5b66b80de7a6043d1ba36a3a4bf",
+  "classification": "Proposed shared input contract; Rosen acceptance and component implementation/release pending",
+  "package": "@rosen-bridge/ui-kit",
+  "inspectedVersion": "6.1.0",
+  "outputs": [
+    {
+      "path": "README.md",
+      "bytes": 814,
+      "sha256": "59e541284cce4d9e48147379435c01492d57a98bc25f85c32817beef2266ba64"
+    },
+    {
+      "path": "fixtures.json",
+      "bytes": 2343,
+      "sha256": "2f1ae088253d96de603b67b950577cedb806913b06907aa5aa7584bc59f3c9db"
+    },
+    {
+      "path": "input-pins.json",
+      "bytes": 2540,
+      "sha256": "c8383eaaa3a3b84e1aa06f2ab07c2966903275f1fe5974bbf43f663bdfb2fd95"
+    },
+    {
+      "path": "installed-signature-probe.ts",
+      "bytes": 1538,
+      "sha256": "e48e1a73dd5c2319358fcce5afa42630d5f1e8ce9cc18aa14d41bac215f00b30"
+    },
+    {
+      "path": "proposal.md",
+      "bytes": 6521,
+      "sha256": "3152f38c90f5f94afe48c3ec245086544518c80c899a52f77a34315833a232ec"
+    },
+    {
+      "path": "replay.ps1",
+      "bytes": 373,
+      "sha256": "41276504af58504e727a2e35bf274da07a272bacb7abadc7bc72b8ef7237bf9e"
+    },
+    {
+      "path": "verify.mjs",
+      "bytes": 7421,
+      "sha256": "518126c4afafff027b2117a235e6db270df5ba34bc117070f282a8455bc13c96"
+    }
+  ],
+  "aggregateRecipe": "SHA256 of ordinal POSIX-path sorted path + NUL + SHA256(file bytes) + LF",
+  "aggregateSha256": "f527a7f7ad814d3f34c4ce0038962e41e66e6b11c00f6ee7216fcd6532f63b82"
+}

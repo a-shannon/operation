@@ -1,0 +1,39 @@
+diff --git a/.changeset/optional-scanner-cleanup-config.md b/.changeset/optional-scanner-cleanup-config.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..02a62401165c885a47872d223b337a044842a17f
+--- /dev/null
++++ b/.changeset/optional-scanner-cleanup-config.md
+@@ -0,0 +1,6 @@
++---
++'@rosen-bridge/abstract-scanner': patch
++---
++
++Make block cleanup configuration optional in the public constructor types to match
++the existing runtime defaults.
+diff --git a/packages/abstract-scanner/lib/scanner/abstract/generalScanner.ts b/packages/abstract-scanner/lib/scanner/abstract/generalScanner.ts
+index a5131087338fc56d26f20e747539041ee6d6ff31..a4b97ff39b4fe4e96956b8e09af2a2d34df5ef15 100644
+--- a/packages/abstract-scanner/lib/scanner/abstract/generalScanner.ts
++++ b/packages/abstract-scanner/lib/scanner/abstract/generalScanner.ts
+@@ -25,7 +25,7 @@ abstract class GeneralScanner<
+     initialHeight: number,
+     private network: AbstractNetworkConnector<TransactionType>,
+     private blockRetrieveGap = 0,
+-    blockCleanupConfig: BlockCleanupConfig,
++    blockCleanupConfig?: BlockCleanupConfig,
+     logger?: AbstractLogger,
+     private suffix?: string,
+     private heightGap = 1,
+diff --git a/packages/abstract-scanner/lib/scanner/interfaces.ts b/packages/abstract-scanner/lib/scanner/interfaces.ts
+index f57b3f8501e319977da8a6f9618428ab92c1b23f..dd84bd7b3a0266c0dcde99855d0f6b56c95863e7 100644
+--- a/packages/abstract-scanner/lib/scanner/interfaces.ts
++++ b/packages/abstract-scanner/lib/scanner/interfaces.ts
+@@ -7,7 +7,8 @@ export interface ScannerConfig<TransactionType> {
+   initialHeight: number;
+   network: AbstractNetworkConnector<TransactionType>;
+   blockRetrieveGap?: number;
+-  blockCleanupConfig: BlockCleanupConfig;
++  /** Omit to retain the defaults applied by AbstractScanner. */
++  blockCleanupConfig?: BlockCleanupConfig;
+   suffix?: string;
+   heightGap?: number;
+   logger?: AbstractLogger;

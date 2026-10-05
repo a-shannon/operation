@@ -1,0 +1,1892 @@
+{
+  "aggregate": [
+    {
+      "repo": "sign-protocols",
+      "existingChangesets": [
+        "popular-chairs-cheat",
+        "silly-rivers-drum",
+        "tss-signer-no-throw-on-duplicate-sign"
+      ],
+      "releases": [
+        {
+          "name": "@rosen-bridge/communication",
+          "oldVersion": "3.0.1",
+          "newVersion": "3.1.0",
+          "type": "minor"
+        },
+        {
+          "name": "@rosen-bridge/ergo-multi-sig",
+          "oldVersion": "3.0.1",
+          "newVersion": "3.1.0",
+          "type": "minor"
+        },
+        {
+          "name": "@rosen-bridge/tss",
+          "oldVersion": "6.0.1",
+          "newVersion": "6.0.2",
+          "type": "patch"
+        },
+        {
+          "name": "@rosen-bridge/detection",
+          "oldVersion": "3.0.1",
+          "newVersion": "3.0.2",
+          "type": "patch"
+        }
+      ],
+      "packages": [
+        {
+          "name": "@rosen-bridge/communication",
+          "version": "3.1.0",
+          "dependencies": {
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/encryption": "^1.0.1"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-bridge/detection",
+          "version": "3.0.2",
+          "dependencies": {
+            "@noble/hashes": "^1.7.1",
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/communication": "^3.1.0",
+            "@rosen-bridge/encryption": "^1.0.1"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-bridge/encryption",
+          "version": "1.0.1",
+          "dependencies": {
+            "@noble/ed25519": "^2.2.3",
+            "@noble/hashes": "^1.7.1",
+            "secp256k1": "^5.0.1"
+          },
+          "devDependencies": {
+            "@types/secp256k1": "^4.0.7"
+          }
+        },
+        {
+          "name": "@rosen-bridge/ergo-multi-sig",
+          "version": "3.1.0",
+          "dependencies": {
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/communication": "^3.1.0",
+            "@rosen-bridge/detection": "^3.0.2",
+            "@rosen-bridge/encryption": "^1.0.1",
+            "@rosen-bridge/semaphore": "^0.1.0",
+            "ergo-lib-wasm-nodejs": "^0.24.1"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-bridge/tss",
+          "version": "6.0.2",
+          "dependencies": {
+            "@noble/ed25519": "^2.2.3",
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/communication": "^3.1.0",
+            "@rosen-bridge/detection": "^3.0.2",
+            "@rosen-bridge/encryption": "^1.0.1",
+            "@rosen-bridge/semaphore": "^0.1.0",
+            "@rosen-clients/rate-limited-axios": "^2.0.1",
+            "secp256k1": "^5.0.1"
+          },
+          "devDependencies": {
+            "@types/secp256k1": "^4.0.7"
+          }
+        },
+        {
+          "name": "@rosen-bridge/keygen-service",
+          "version": "1.0.3",
+          "dependencies": {
+            "@chainsafe/libp2p-gossipsub": "^5.4.1",
+            "@chainsafe/libp2p-noise": "^10.2.0",
+            "@fastify/rate-limit": "^9.1.0",
+            "@fastify/swagger": "^8.8.0",
+            "@fastify/swagger-ui": "^1.9.3",
+            "@fastify/type-provider-typebox": "^3.4.0",
+            "@libp2p/bootstrap": "^5.0.2",
+            "@libp2p/interface-connection": "^3.0.6",
+            "@libp2p/interface-peer-id": "^1.1.2",
+            "@libp2p/mplex": "^7.1.1",
+            "@libp2p/peer-id-factory": "^1.0.18",
+            "@libp2p/pubsub-peer-discovery": "^7.0.1",
+            "@libp2p/websockets": "^5.0.2",
+            "@multiformats/multiaddr": "^11.0.3",
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/json-bigint": "^1.1.0",
+            "@rosen-bridge/winston-logger": "^3.1.0",
+            "@rosen-clients/rate-limited-axios": "^2.0.1",
+            "@sinclair/typebox": "^0.30.4",
+            "config": "^3.3.7",
+            "fastify": "^4.18.0",
+            "it-length-prefixed": "8.0.4",
+            "it-map": "2.0.0",
+            "it-pipe": "2.0.4",
+            "it-pushable": "^3.1.0",
+            "libp2p": "^0.41.0",
+            "lodash-es": "^4.17.21",
+            "uint8arrays": "^3.1.0"
+          },
+          "devDependencies": {
+            "@types/config": "^0.0.41",
+            "@types/lodash-es": "^4.17.6",
+            "@types/node": "^22.18.0",
+            "tsx": "^4.19.2",
+            "typescript": "^5.8.3"
+          }
+        },
+        {
+          "name": "tss-api",
+          "version": "3.0.0",
+          "dependencies": {},
+          "devDependencies": {}
+        }
+      ]
+    },
+    {
+      "repo": "utils",
+      "existingChangesets": [
+        "curvy-moles-fold",
+        "ready-hoops-fly"
+      ],
+      "releases": [
+        {
+          "name": "@rosen-bridge/address-codec",
+          "oldVersion": "2.1.0",
+          "newVersion": "2.2.0",
+          "type": "minor"
+        },
+        {
+          "name": "@rosen-bridge/rosen-extractor",
+          "oldVersion": "12.1.2",
+          "newVersion": "12.2.0",
+          "type": "minor"
+        },
+        {
+          "name": "@rosen-bridge/config",
+          "oldVersion": "2.1.0",
+          "newVersion": "2.1.1",
+          "type": "patch"
+        },
+        {
+          "name": "@rosen-bridge/extended-typeorm",
+          "oldVersion": "1.1.0",
+          "newVersion": "1.1.1",
+          "type": "patch"
+        },
+        {
+          "name": "@rosen-bridge/tx-pot",
+          "oldVersion": "2.0.5",
+          "newVersion": "2.0.6",
+          "type": "patch"
+        }
+      ],
+      "packages": [
+        {
+          "name": "@rosen-bridge/address-codec",
+          "version": "2.2.0",
+          "dependencies": {
+            "@rosen-bridge/address-codec-bitcoin": "^0.1.0",
+            "@rosen-bridge/address-codec-bitcoin-runes": "^0.1.0",
+            "@rosen-bridge/address-codec-cardano": "^0.1.0",
+            "@rosen-bridge/address-codec-doge": "^0.1.0",
+            "@rosen-bridge/address-codec-ergo": "^0.1.0",
+            "@rosen-bridge/address-codec-evm": "^0.1.0",
+            "@rosen-bridge/address-codec-firo": "^0.1.0",
+            "@rosen-bridge/address-codec-handshake": "^0.1.0"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-bridge/address-codec-bitcoin",
+          "version": "0.1.0",
+          "dependencies": {
+            "@bitcoinerlab/secp256k1": "^1.2.0",
+            "bitcoinjs-lib": "^6.1.5"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-bridge/address-codec-bitcoin-runes",
+          "version": "0.1.0",
+          "dependencies": {
+            "@bitcoinerlab/secp256k1": "^1.2.0",
+            "bitcoinjs-lib": "^6.1.5"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-bridge/address-codec-cardano",
+          "version": "0.1.0",
+          "dependencies": {
+            "@emurgo/cardano-serialization-lib-nodejs": "^13.2.1"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-bridge/address-codec-doge",
+          "version": "0.1.0",
+          "dependencies": {
+            "@bitcoinerlab/secp256k1": "^1.2.0",
+            "bitcoinjs-lib": "^6.1.5"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-bridge/address-codec-ergo",
+          "version": "0.1.0",
+          "dependencies": {
+            "ergo-lib-wasm-nodejs": "^0.24.1"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-bridge/address-codec-evm",
+          "version": "0.1.0",
+          "dependencies": {
+            "ethers": "6.16.0"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-bridge/address-codec-firo",
+          "version": "0.1.0",
+          "dependencies": {
+            "@bitcoinerlab/secp256k1": "^1.2.0",
+            "bitcoinjs-lib": "^6.1.5"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-bridge/address-codec-handshake",
+          "version": "0.1.0",
+          "dependencies": {
+            "@bitcoinerlab/secp256k1": "^1.2.0",
+            "bitcoinjs-lib": "^6.1.5"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-bridge/address-manager",
+          "version": "0.1.0",
+          "dependencies": {
+            "@rosen-bridge/abstract-logger": "^4.0.0"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-bridge/collateral",
+          "version": "0.1.0",
+          "dependencies": {
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "ergo-lib-wasm-nodejs": "^0.24.1"
+          },
+          "devDependencies": {
+            "@rosen-bridge/json-bigint": "^1.1.0"
+          }
+        },
+        {
+          "name": "@rosen-bridge/extended-minimum-fee",
+          "version": "0.1.1",
+          "dependencies": {
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/json-bigint": "^1.1.0",
+            "@rosen-bridge/minimum-fee": "^4.0.1",
+            "ergo-lib-wasm-nodejs": "^0.24.1"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-bridge/permit",
+          "version": "1.1.0",
+          "dependencies": {
+            "ergo-lib-wasm-nodejs": "^0.24.1"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-bridge/rwt-repo",
+          "version": "4.2.0",
+          "dependencies": {
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "ergo-lib-wasm-nodejs": "^0.24.1"
+          },
+          "devDependencies": {
+            "@rosen-bridge/json-bigint": "^1.1.0"
+          }
+        },
+        {
+          "name": "@rosen-bridge/changeset-formatter",
+          "version": "2.0.1",
+          "dependencies": {},
+          "devDependencies": {
+            "@changesets/types": "^6.0.0"
+          }
+        },
+        {
+          "name": "@rosen-bridge/cli",
+          "version": "2.1.3",
+          "dependencies": {
+            "@rosen-bridge/encryption": "^1.0.1",
+            "@rosen-bridge/utils": "^3.0.0",
+            "@zxcvbn-ts/core": "^3.0.4",
+            "@zxcvbn-ts/language-common": "^3.0.4",
+            "@zxcvbn-ts/language-en": "^3.0.2",
+            "blakejs": "^1.2.1",
+            "chalk": "^5.3.0",
+            "ora": "^8.0.1",
+            "tsx": "^4.20.5",
+            "yargs": "^17.7.2"
+          },
+          "devDependencies": {
+            "@types/yargs": "^17.0.33"
+          }
+        },
+        {
+          "name": "@rosen-bridge/config",
+          "version": "2.1.1",
+          "dependencies": {
+            "@rosen-bridge/json-bigint": "^1.1.0",
+            "config": "^3.3.10",
+            "js-yaml": "^4.1.0",
+            "ora": "^8.0.1",
+            "yargs": "^17.7.2"
+          },
+          "devDependencies": {
+            "@types/config": "^3.3.3",
+            "@types/js-yaml": "^4.0.9",
+            "@types/lodash-es": "^4.17.12",
+            "lodash-es": "^4.17.21",
+            "uuid": "^11.1.0"
+          }
+        },
+        {
+          "name": "@rosen-bridge/extended-tokens",
+          "version": "0.1.4",
+          "dependencies": {
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/tokens": "^6.0.2",
+            "ergo-lib-wasm-nodejs": "^0.24.1"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-bridge/extended-typeorm",
+          "version": "1.1.1",
+          "dependencies": {
+            "async-mutex": "^0.4.0",
+            "reflect-metadata": "0.2.2",
+            "typeorm": "0.3.26"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-bridge/fastify-enhanced",
+          "version": "3.3.0",
+          "dependencies": {
+            "@fastify/swagger": "^9.5.1",
+            "@fastify/swagger-ui": "^5.2.3",
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "fastify": "^5.3.3",
+            "fastify-zod-openapi": "^4.1.2",
+            "zod-openapi": "^4.2.4"
+          },
+          "devDependencies": {
+            "zod": "^3.21.4"
+          }
+        },
+        {
+          "name": "@rosen-bridge/interval-timer",
+          "version": "0.1.0",
+          "dependencies": {},
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-bridge/json-bigint",
+          "version": "1.1.0",
+          "dependencies": {
+            "json-bigint": "^1.0.0"
+          },
+          "devDependencies": {
+            "@types/json-bigint": "^1.0.2"
+          }
+        },
+        {
+          "name": "@rosen-bridge/abstract-logger",
+          "version": "4.0.0",
+          "dependencies": {},
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-bridge/callback-logger",
+          "version": "2.0.0",
+          "dependencies": {
+            "@rosen-bridge/abstract-logger": "^4.0.0"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-bridge/winston-logger",
+          "version": "3.1.0",
+          "dependencies": {
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/json-bigint": "^1.1.0",
+            "logform": "^2.7.0",
+            "winston": "^3.17.0",
+            "winston-daily-rotate-file": "^4.7.1",
+            "winston-loki": "^6.0.7"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-bridge/minimum-fee",
+          "version": "4.0.1",
+          "dependencies": {
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/json-bigint": "^1.1.0",
+            "@rosen-clients/ergo-explorer": "^2.1.3",
+            "@rosen-clients/ergo-node": "^3.1.3"
+          },
+          "devDependencies": {
+            "ergo-lib-wasm-nodejs": "^0.24.1"
+          }
+        },
+        {
+          "name": "@rosen-bridge/query-params",
+          "version": "0.1.0",
+          "dependencies": {
+            "deepmerge": "^4.3.1",
+            "zod": "^4.1.12"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-bridge/rosen-extractor",
+          "version": "12.2.0",
+          "dependencies": {
+            "@bitcoinerlab/secp256k1": "^1.2.0",
+            "@blockfrost/openapi": "^0.1.80",
+            "@cardano-ogmios/schema": "^6.0.3",
+            "@emurgo/cardano-serialization-lib-nodejs": "^13.2.1",
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/address-manager": "^0.1.0",
+            "@rosen-bridge/json-bigint": "^1.1.0",
+            "@rosen-bridge/tokens": "^6.0.2",
+            "bitcoinjs-lib": "^6.1.5",
+            "ergo-lib-wasm-nodejs": "^0.24.1",
+            "ethers": "6.16.0",
+            "lodash-es": "^4.17.21"
+          },
+          "devDependencies": {
+            "@rosen-bridge/address-codec": "^2.2.0",
+            "@types/lodash-es": "^4.17.6"
+          }
+        },
+        {
+          "name": "@rosen-bridge/semaphore",
+          "version": "0.1.0",
+          "dependencies": {},
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-bridge/service-manager",
+          "version": "3.0.0",
+          "dependencies": {
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/semaphore": "^0.1.0"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-bridge/service-manager-cli",
+          "version": "1.0.0",
+          "dependencies": {
+            "@hpcc-js/wasm": "^2.33.8",
+            "fast-glob": "^3.3.3",
+            "tsx": "^4.20.5",
+            "typescript": "^5.8.3",
+            "yargs": "^17.7.2"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-bridge/tokens",
+          "version": "6.0.2",
+          "dependencies": {
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/semaphore": "^0.1.0"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-bridge/tx-pot",
+          "version": "2.0.6",
+          "dependencies": {
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/extended-typeorm": "^1.1.1"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-bridge/utils",
+          "version": "3.0.0",
+          "dependencies": {
+            "download": "^8.0.0",
+            "octokit": "^2.0.14"
+          },
+          "devDependencies": {
+            "@types/download": "^8.0.2"
+          }
+        }
+      ]
+    },
+    {
+      "repo": "scanner",
+      "existingChangesets": [
+        "silent-avocados-know"
+      ],
+      "releases": [
+        {
+          "name": "@rosen-bridge/evm-observation-extractor",
+          "oldVersion": "7.0.7",
+          "newVersion": "7.1.0",
+          "type": "minor"
+        },
+        {
+          "name": "@rosen-bridge/raw-data-provider",
+          "oldVersion": "0.2.2",
+          "newVersion": "0.3.0",
+          "type": "minor"
+        },
+        {
+          "name": "@rosen-bridge/evm-scanner",
+          "oldVersion": "2.0.1",
+          "newVersion": "2.1.0",
+          "type": "minor"
+        },
+        {
+          "name": "@rosen-bridge/abstract-scanner",
+          "oldVersion": "4.0.0",
+          "newVersion": "4.0.1",
+          "type": "patch"
+        },
+        {
+          "name": "@rosen-bridge/abstract-observation-extractor",
+          "oldVersion": "2.0.0",
+          "newVersion": "2.0.0",
+          "type": "none"
+        },
+        {
+          "name": "@rosen-bridge/evm-address-tx-extractor",
+          "oldVersion": "4.0.0",
+          "newVersion": "4.0.1",
+          "type": "patch"
+        },
+        {
+          "name": "@rosen-bridge/bitcoin-runes-observation-extractor",
+          "oldVersion": "3.0.8",
+          "newVersion": "3.0.9",
+          "type": "patch"
+        },
+        {
+          "name": "@rosen-bridge/ergo-observation-extractor",
+          "oldVersion": "2.0.7",
+          "newVersion": "2.0.7",
+          "type": "none"
+        },
+        {
+          "name": "@rosen-bridge/bitcoin-scanner",
+          "oldVersion": "2.0.1",
+          "newVersion": "2.0.2",
+          "type": "patch"
+        },
+        {
+          "name": "@rosen-bridge/cardano-scanner",
+          "oldVersion": "3.0.1",
+          "newVersion": "3.0.2",
+          "type": "patch"
+        },
+        {
+          "name": "@rosen-bridge/ergo-scanner",
+          "oldVersion": "2.0.1",
+          "newVersion": "2.0.2",
+          "type": "patch"
+        },
+        {
+          "name": "@rosen-bridge/firo-scanner",
+          "oldVersion": "1.0.1",
+          "newVersion": "1.0.2",
+          "type": "patch"
+        },
+        {
+          "name": "@rosen-bridge/handshake-scanner",
+          "oldVersion": "1.0.2",
+          "newVersion": "1.0.3",
+          "type": "patch"
+        },
+        {
+          "name": "@rosen-bridge/watcher-data-extractor",
+          "oldVersion": "16.0.0",
+          "newVersion": "16.0.0",
+          "type": "none"
+        },
+        {
+          "name": "@rosen-bridge/bitcoin-observation-extractor",
+          "oldVersion": "8.0.7",
+          "newVersion": "8.0.8",
+          "type": "patch"
+        },
+        {
+          "name": "@rosen-bridge/firo-observation-extractor",
+          "oldVersion": "1.1.5",
+          "newVersion": "1.1.6",
+          "type": "patch"
+        },
+        {
+          "name": "@rosen-bridge/handshake-observation-extractor",
+          "oldVersion": "1.0.8",
+          "newVersion": "1.0.9",
+          "type": "patch"
+        }
+      ],
+      "packages": [
+        {
+          "name": "@rosen-bridge/abstract-extractor",
+          "version": "4.0.0",
+          "dependencies": {
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/extended-typeorm": "^1.1.0",
+            "@rosen-bridge/json-bigint": "^1.1.0",
+            "@rosen-bridge/scanner-interfaces": "^1.0.0",
+            "@rosen-bridge/semaphore": "^0.1.0",
+            "@rosen-clients/ergo-explorer": "^2.1.3",
+            "@rosen-clients/ergo-node": "^3.1.3",
+            "lodash-es": "^4.17.21",
+            "p-queue": "^9.0.1",
+            "uuid": "^11.1.1"
+          },
+          "devDependencies": {
+            "@types/lodash-es": "^4.17.12"
+          }
+        },
+        {
+          "name": "@rosen-bridge/abstract-observation-extractor",
+          "version": "2.0.0",
+          "dependencies": {
+            "@rosen-bridge/abstract-extractor": "^4.0.0",
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/extended-typeorm": "^1.1.0",
+            "@rosen-bridge/rosen-extractor": "^12.1.2",
+            "@rosen-bridge/scanner-interfaces": "^1.0.0",
+            "@rosen-bridge/tokens": "^6.0.2",
+            "blakejs": "^1.2.1"
+          },
+          "devDependencies": {
+            "@rosen-bridge/abstract-scanner": "^4.0.1"
+          }
+        },
+        {
+          "name": "@rosen-bridge/abstract-scanner",
+          "version": "4.0.1",
+          "dependencies": {
+            "@rosen-bridge/abstract-extractor": "^4.0.0",
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/extended-typeorm": "^1.1.0",
+            "@rosen-bridge/json-bigint": "^1.1.0",
+            "@rosen-bridge/scanner-interfaces": "^1.0.0",
+            "@rosen-bridge/semaphore": "^0.1.0",
+            "lodash-es": "^4.17.21"
+          },
+          "devDependencies": {
+            "@types/lodash-es": "^4.17.12"
+          }
+        },
+        {
+          "name": "@rosen-bridge/address-extractor",
+          "version": "7.0.9",
+          "dependencies": {
+            "@rosen-bridge/abstract-extractor": "^4.0.0",
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/extended-typeorm": "^1.1.0",
+            "@rosen-bridge/json-bigint": "^1.1.0",
+            "@rosen-bridge/scanner-interfaces": "^1.0.0",
+            "ergo-lib-wasm-nodejs": "^0.24.1",
+            "lodash-es": "^4.17.21"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-bridge/box-tracker",
+          "version": "1.0.0",
+          "dependencies": {
+            "@rosen-bridge/abstract-extractor": "^4.0.0",
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/extended-typeorm": "^1.1.0",
+            "@rosen-bridge/scanner-interfaces": "^1.0.0",
+            "@rosen-bridge/tx-pot": "^2.0.5",
+            "@rosen-clients/ergo-explorer": "^2.1.3",
+            "@rosen-clients/ergo-node": "^3.1.3",
+            "ergo-lib-wasm-nodejs": "^0.24.1"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-bridge/evm-address-tx-extractor",
+          "version": "4.0.1",
+          "dependencies": {
+            "@rosen-bridge/abstract-extractor": "^4.0.0",
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/abstract-scanner": "^4.0.1",
+            "@rosen-bridge/extended-typeorm": "^1.1.0",
+            "@rosen-bridge/scanner-interfaces": "^1.0.0",
+            "ethers": "6.16.0"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-bridge/fraud-extractor",
+          "version": "3.0.9",
+          "dependencies": {
+            "@rosen-bridge/abstract-extractor": "^4.0.0",
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/extended-typeorm": "^1.1.0",
+            "@rosen-bridge/json-bigint": "^1.1.0",
+            "@rosen-bridge/scanner-interfaces": "^1.0.0",
+            "ergo-lib-wasm-nodejs": "^0.24.1"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-bridge/bitcoin-observation-extractor",
+          "version": "8.0.8",
+          "dependencies": {
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/abstract-observation-extractor": "^2.0.0",
+            "@rosen-bridge/bitcoin-scanner": "^2.0.2",
+            "@rosen-bridge/extended-typeorm": "^1.1.0",
+            "@rosen-bridge/rosen-extractor": "^12.1.2",
+            "@rosen-bridge/tokens": "^6.0.2"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-bridge/bitcoin-runes-observation-extractor",
+          "version": "3.0.9",
+          "dependencies": {
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/abstract-observation-extractor": "^2.0.0",
+            "@rosen-bridge/bitcoin-scanner": "^2.0.2",
+            "@rosen-bridge/extended-typeorm": "^1.1.0",
+            "@rosen-bridge/json-bigint": "^1.1.0",
+            "@rosen-bridge/rosen-extractor": "^12.1.2",
+            "@rosen-bridge/scanner-interfaces": "^1.0.0",
+            "@rosen-bridge/tokens": "^6.0.2",
+            "@rosen-clients/rate-limited-axios": "^2.0.1",
+            "blakejs": "^1.2.1",
+            "ordiscan": "^1.3.0"
+          },
+          "devDependencies": {
+            "@rosen-bridge/abstract-scanner": "^4.0.1"
+          }
+        },
+        {
+          "name": "@rosen-bridge/cardano-observation-extractor",
+          "version": "3.0.8",
+          "dependencies": {
+            "@blockfrost/openapi": "0.1.81",
+            "@cardano-ogmios/schema": "^6.6.1",
+            "@emurgo/cardano-serialization-lib-nodejs": "^13.2.1",
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/abstract-observation-extractor": "^2.0.0",
+            "@rosen-bridge/extended-typeorm": "^1.1.0",
+            "@rosen-bridge/rosen-extractor": "^12.1.2",
+            "@rosen-bridge/tokens": "^6.0.2"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-bridge/ergo-observation-extractor",
+          "version": "2.0.7",
+          "dependencies": {
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/abstract-observation-extractor": "^2.0.0",
+            "@rosen-bridge/extended-typeorm": "^1.1.0",
+            "@rosen-bridge/rosen-extractor": "^12.1.2",
+            "@rosen-bridge/scanner-interfaces": "^1.0.0",
+            "@rosen-bridge/tokens": "^6.0.2"
+          },
+          "devDependencies": {
+            "@rosen-bridge/abstract-scanner": "^4.0.1",
+            "@rosen-bridge/json-bigint": "^1.1.0",
+            "ergo-lib-wasm-nodejs": "^0.24.1"
+          }
+        },
+        {
+          "name": "@rosen-bridge/evm-observation-extractor",
+          "version": "7.1.0",
+          "dependencies": {
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/abstract-observation-extractor": "^2.0.0",
+            "@rosen-bridge/extended-typeorm": "^1.1.1",
+            "@rosen-bridge/rosen-extractor": "^12.1.2",
+            "@rosen-bridge/scanner-interfaces": "^1.0.0",
+            "@rosen-bridge/tokens": "^6.0.2",
+            "blakejs": "^1.2.1",
+            "ethers": "6.16.0"
+          },
+          "devDependencies": {
+            "@rosen-bridge/abstract-scanner": "^4.0.1",
+            "@rosen-bridge/address-codec": "2.2.0",
+            "@rosen-bridge/address-manager": "0.1.0"
+          }
+        },
+        {
+          "name": "@rosen-bridge/firo-observation-extractor",
+          "version": "1.1.6",
+          "dependencies": {
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/abstract-observation-extractor": "^2.0.0",
+            "@rosen-bridge/extended-typeorm": "^1.1.0",
+            "@rosen-bridge/firo-scanner": "^1.0.2",
+            "@rosen-bridge/rosen-extractor": "^12.1.2",
+            "@rosen-bridge/tokens": "^6.0.2"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-bridge/handshake-observation-extractor",
+          "version": "1.0.9",
+          "dependencies": {
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/abstract-observation-extractor": "^2.0.0",
+            "@rosen-bridge/extended-typeorm": "^1.1.0",
+            "@rosen-bridge/handshake-scanner": "^1.0.3",
+            "@rosen-bridge/rosen-extractor": "^12.1.2",
+            "@rosen-bridge/scanner-interfaces": "^1.0.0",
+            "@rosen-bridge/tokens": "^6.0.2"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-bridge/raw-data-provider",
+          "version": "0.3.0",
+          "dependencies": {
+            "@cardano-ogmios/client": "^6.6.1",
+            "@cardano-ogmios/schema": "^6.6.1",
+            "@emurgo/cardano-serialization-lib-nodejs": "^13.2.1",
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/abstract-observation-extractor": "^2.0.0",
+            "@rosen-bridge/abstract-scanner": "^4.0.1",
+            "@rosen-bridge/bitcoin-observation-extractor": "^8.0.8",
+            "@rosen-bridge/bitcoin-runes-observation-extractor": "^3.0.9",
+            "@rosen-bridge/bitcoin-scanner": "^2.0.2",
+            "@rosen-bridge/cardano-observation-extractor": "^3.0.8",
+            "@rosen-bridge/ergo-observation-extractor": "^2.0.7",
+            "@rosen-bridge/evm-observation-extractor": "^7.1.0",
+            "@rosen-bridge/extended-typeorm": "^1.1.1",
+            "@rosen-bridge/json-bigint": "^1.1.0",
+            "@rosen-bridge/scanner-interfaces": "^1.0.0",
+            "@rosen-clients/cardano-koios": "^3.1.3",
+            "@rosen-clients/ergo-explorer": "^2.1.3",
+            "@rosen-clients/ergo-node": "^3.1.3",
+            "@rosen-clients/rate-limited-axios": "^2.0.1",
+            "ethers": "6.16.0"
+          },
+          "devDependencies": {
+            "@rosen-bridge/address-codec": "2.1.0",
+            "@rosen-bridge/address-manager": "0.1.0",
+            "@rosen-bridge/tokens": "6.0.2"
+          }
+        },
+        {
+          "name": "@rosen-bridge/reward-extractor",
+          "version": "0.0.6",
+          "dependencies": {
+            "@rosen-bridge/abstract-extractor": "^4.0.0",
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/extended-typeorm": "^1.1.0",
+            "@rosen-bridge/json-bigint": "^1.1.0",
+            "@rosen-bridge/scanner-interfaces": "^1.0.0",
+            "ergo-lib-wasm-nodejs": "^0.24.1"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-bridge/scanner-interfaces",
+          "version": "1.0.0",
+          "dependencies": {},
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-bridge/bitcoin-scanner",
+          "version": "2.0.2",
+          "dependencies": {
+            "@rosen-bridge/abstract-scanner": "^4.0.1",
+            "@rosen-bridge/scanner-interfaces": "^1.0.0",
+            "@rosen-clients/rate-limited-axios": "^2.0.1"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-bridge/cardano-scanner",
+          "version": "3.0.2",
+          "dependencies": {
+            "@blockfrost/blockfrost-js": "^6.0.0",
+            "@blockfrost/openapi": "0.1.81",
+            "@cardano-ogmios/client": "^6.6.1",
+            "@cardano-ogmios/schema": "^6.6.1",
+            "@emurgo/cardano-serialization-lib-nodejs": "^13.2.1",
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/abstract-scanner": "^4.0.1",
+            "@rosen-bridge/extended-typeorm": "^1.1.0",
+            "@rosen-bridge/json-bigint": "^1.1.0",
+            "@rosen-bridge/scanner-interfaces": "^1.0.0",
+            "@rosen-clients/rate-limited-axios": "^2.0.1",
+            "cockatiel": "^3.2.1"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-bridge/ergo-scanner",
+          "version": "2.0.2",
+          "dependencies": {
+            "@rosen-bridge/abstract-scanner": "^4.0.1",
+            "@rosen-bridge/scanner-interfaces": "^1.0.0",
+            "@rosen-clients/ergo-explorer": "^2.1.3",
+            "@rosen-clients/ergo-node": "^3.1.3"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-bridge/evm-scanner",
+          "version": "2.1.0",
+          "dependencies": {
+            "@rosen-bridge/abstract-scanner": "^4.0.1",
+            "@rosen-bridge/extended-typeorm": "1.1.1",
+            "@rosen-bridge/scanner-interfaces": "^1.0.0",
+            "ethers": "6.16.0"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-bridge/firo-scanner",
+          "version": "1.0.2",
+          "dependencies": {
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/abstract-scanner": "^4.0.1",
+            "@rosen-bridge/scanner-interfaces": "^1.0.0",
+            "@rosen-clients/rate-limited-axios": "^2.0.1"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-bridge/handshake-scanner",
+          "version": "1.0.3",
+          "dependencies": {
+            "@rosen-bridge/abstract-scanner": "^4.0.1",
+            "@rosen-bridge/scanner-interfaces": "^1.0.0",
+            "@rosen-clients/rate-limited-axios": "^2.0.1"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-bridge/tx-id-extractor",
+          "version": "4.0.0",
+          "dependencies": {
+            "@cardano-ogmios/schema": "^6.6.1",
+            "@rosen-bridge/abstract-extractor": "^4.0.0",
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/extended-typeorm": "^1.1.0",
+            "@rosen-bridge/scanner-interfaces": "^1.0.0"
+          },
+          "devDependencies": {}
+        },
+        {
+          "name": "@rosen-bridge/watcher-data-extractor",
+          "version": "16.0.0",
+          "dependencies": {
+            "@rosen-bridge/abstract-extractor": "^4.0.0",
+            "@rosen-bridge/abstract-logger": "^4.0.0",
+            "@rosen-bridge/extended-typeorm": "^1.1.0",
+            "@rosen-bridge/json-bigint": "^1.1.0",
+            "@rosen-bridge/scanner-interfaces": "^1.0.0",
+            "@rosen-bridge/tokens": "^6.0.2",
+            "@types/lodash-es": "^4.17.6",
+            "blakejs": "^1.2.1",
+            "ergo-lib-wasm-nodejs": "^0.24.1",
+            "lodash-es": "^4.17.21"
+          },
+          "devDependencies": {
+            "@rosen-bridge/abstract-scanner": "^4.0.1"
+          }
+        }
+      ]
+    }
+  ],
+  "sequentialScanner": {
+    "stages": [
+      {
+        "id": "shared-prerequisites",
+        "releases": [
+          {
+            "name": "@rosen-bridge/evm-observation-extractor",
+            "type": "minor",
+            "oldVersion": "7.0.7",
+            "changesets": [
+              "evm-observation-derivation"
+            ],
+            "newVersion": "7.1.0"
+          },
+          {
+            "name": "@rosen-bridge/evm-scanner",
+            "type": "patch",
+            "oldVersion": "2.0.1",
+            "changesets": [
+              "evm-rpc-request-timeout"
+            ],
+            "newVersion": "2.0.2"
+          },
+          {
+            "name": "@rosen-bridge/abstract-scanner",
+            "type": "patch",
+            "oldVersion": "4.0.0",
+            "changesets": [
+              "optional-scanner-cleanup-config"
+            ],
+            "newVersion": "4.0.1"
+          },
+          {
+            "name": "@rosen-bridge/raw-data-provider",
+            "type": "patch",
+            "oldVersion": "0.2.2",
+            "changesets": [
+              "raw-data-state-ownership"
+            ],
+            "newVersion": "0.2.3"
+          },
+          {
+            "name": "@rosen-bridge/abstract-observation-extractor",
+            "type": "none",
+            "oldVersion": "2.0.0",
+            "changesets": [],
+            "newVersion": "2.0.0"
+          },
+          {
+            "name": "@rosen-bridge/evm-address-tx-extractor",
+            "type": "patch",
+            "oldVersion": "4.0.0",
+            "changesets": [],
+            "newVersion": "4.0.1"
+          },
+          {
+            "name": "@rosen-bridge/bitcoin-runes-observation-extractor",
+            "type": "patch",
+            "oldVersion": "3.0.8",
+            "changesets": [],
+            "newVersion": "3.0.9"
+          },
+          {
+            "name": "@rosen-bridge/ergo-observation-extractor",
+            "type": "none",
+            "oldVersion": "2.0.7",
+            "changesets": [],
+            "newVersion": "2.0.7"
+          },
+          {
+            "name": "@rosen-bridge/bitcoin-scanner",
+            "type": "patch",
+            "oldVersion": "2.0.1",
+            "changesets": [],
+            "newVersion": "2.0.2"
+          },
+          {
+            "name": "@rosen-bridge/cardano-scanner",
+            "type": "patch",
+            "oldVersion": "3.0.1",
+            "changesets": [],
+            "newVersion": "3.0.2"
+          },
+          {
+            "name": "@rosen-bridge/ergo-scanner",
+            "type": "patch",
+            "oldVersion": "2.0.1",
+            "changesets": [],
+            "newVersion": "2.0.2"
+          },
+          {
+            "name": "@rosen-bridge/firo-scanner",
+            "type": "patch",
+            "oldVersion": "1.0.1",
+            "changesets": [],
+            "newVersion": "1.0.2"
+          },
+          {
+            "name": "@rosen-bridge/handshake-scanner",
+            "type": "patch",
+            "oldVersion": "1.0.2",
+            "changesets": [],
+            "newVersion": "1.0.3"
+          },
+          {
+            "name": "@rosen-bridge/watcher-data-extractor",
+            "type": "none",
+            "oldVersion": "16.0.0",
+            "changesets": [],
+            "newVersion": "16.0.0"
+          },
+          {
+            "name": "@rosen-bridge/bitcoin-observation-extractor",
+            "type": "patch",
+            "oldVersion": "8.0.7",
+            "changesets": [],
+            "newVersion": "8.0.8"
+          },
+          {
+            "name": "@rosen-bridge/firo-observation-extractor",
+            "type": "patch",
+            "oldVersion": "1.1.5",
+            "changesets": [],
+            "newVersion": "1.1.6"
+          },
+          {
+            "name": "@rosen-bridge/handshake-observation-extractor",
+            "type": "patch",
+            "oldVersion": "1.0.8",
+            "changesets": [],
+            "newVersion": "1.0.9"
+          }
+        ],
+        "packages": [
+          {
+            "name": "@rosen-bridge/abstract-extractor",
+            "version": "4.0.0",
+            "dependencies": {
+              "@rosen-bridge/abstract-logger": "^4.0.0",
+              "@rosen-bridge/extended-typeorm": "^1.1.0",
+              "@rosen-bridge/json-bigint": "^1.1.0",
+              "@rosen-bridge/scanner-interfaces": "^1.0.0",
+              "@rosen-bridge/semaphore": "^0.1.0",
+              "@rosen-clients/ergo-explorer": "^2.1.3",
+              "@rosen-clients/ergo-node": "^3.1.3",
+              "lodash-es": "^4.17.21",
+              "p-queue": "^9.0.1",
+              "uuid": "^11.1.1"
+            }
+          },
+          {
+            "name": "@rosen-bridge/abstract-observation-extractor",
+            "version": "2.0.0",
+            "dependencies": {
+              "@rosen-bridge/abstract-extractor": "^4.0.0",
+              "@rosen-bridge/abstract-logger": "^4.0.0",
+              "@rosen-bridge/extended-typeorm": "^1.1.0",
+              "@rosen-bridge/rosen-extractor": "^12.1.2",
+              "@rosen-bridge/scanner-interfaces": "^1.0.0",
+              "@rosen-bridge/tokens": "^6.0.2",
+              "blakejs": "^1.2.1"
+            }
+          },
+          {
+            "name": "@rosen-bridge/abstract-scanner",
+            "version": "4.0.1",
+            "dependencies": {
+              "@rosen-bridge/abstract-extractor": "^4.0.0",
+              "@rosen-bridge/abstract-logger": "^4.0.0",
+              "@rosen-bridge/extended-typeorm": "^1.1.0",
+              "@rosen-bridge/json-bigint": "^1.1.0",
+              "@rosen-bridge/scanner-interfaces": "^1.0.0",
+              "@rosen-bridge/semaphore": "^0.1.0",
+              "lodash-es": "^4.17.21"
+            }
+          },
+          {
+            "name": "@rosen-bridge/address-extractor",
+            "version": "7.0.9",
+            "dependencies": {
+              "@rosen-bridge/abstract-extractor": "^4.0.0",
+              "@rosen-bridge/abstract-logger": "^4.0.0",
+              "@rosen-bridge/extended-typeorm": "^1.1.0",
+              "@rosen-bridge/json-bigint": "^1.1.0",
+              "@rosen-bridge/scanner-interfaces": "^1.0.0",
+              "ergo-lib-wasm-nodejs": "^0.24.1",
+              "lodash-es": "^4.17.21"
+            }
+          },
+          {
+            "name": "@rosen-bridge/box-tracker",
+            "version": "1.0.0",
+            "dependencies": {
+              "@rosen-bridge/abstract-extractor": "^4.0.0",
+              "@rosen-bridge/abstract-logger": "^4.0.0",
+              "@rosen-bridge/extended-typeorm": "^1.1.0",
+              "@rosen-bridge/scanner-interfaces": "^1.0.0",
+              "@rosen-bridge/tx-pot": "^2.0.5",
+              "@rosen-clients/ergo-explorer": "^2.1.3",
+              "@rosen-clients/ergo-node": "^3.1.3",
+              "ergo-lib-wasm-nodejs": "^0.24.1"
+            }
+          },
+          {
+            "name": "@rosen-bridge/evm-address-tx-extractor",
+            "version": "4.0.1",
+            "dependencies": {
+              "@rosen-bridge/abstract-extractor": "^4.0.0",
+              "@rosen-bridge/abstract-logger": "^4.0.0",
+              "@rosen-bridge/abstract-scanner": "^4.0.1",
+              "@rosen-bridge/extended-typeorm": "^1.1.0",
+              "@rosen-bridge/scanner-interfaces": "^1.0.0",
+              "ethers": "6.16.0"
+            }
+          },
+          {
+            "name": "@rosen-bridge/fraud-extractor",
+            "version": "3.0.9",
+            "dependencies": {
+              "@rosen-bridge/abstract-extractor": "^4.0.0",
+              "@rosen-bridge/abstract-logger": "^4.0.0",
+              "@rosen-bridge/extended-typeorm": "^1.1.0",
+              "@rosen-bridge/json-bigint": "^1.1.0",
+              "@rosen-bridge/scanner-interfaces": "^1.0.0",
+              "ergo-lib-wasm-nodejs": "^0.24.1"
+            }
+          },
+          {
+            "name": "@rosen-bridge/bitcoin-observation-extractor",
+            "version": "8.0.8",
+            "dependencies": {
+              "@rosen-bridge/abstract-logger": "^4.0.0",
+              "@rosen-bridge/abstract-observation-extractor": "^2.0.0",
+              "@rosen-bridge/bitcoin-scanner": "^2.0.2",
+              "@rosen-bridge/extended-typeorm": "^1.1.0",
+              "@rosen-bridge/rosen-extractor": "^12.1.2",
+              "@rosen-bridge/tokens": "^6.0.2"
+            }
+          },
+          {
+            "name": "@rosen-bridge/bitcoin-runes-observation-extractor",
+            "version": "3.0.9",
+            "dependencies": {
+              "@rosen-bridge/abstract-logger": "^4.0.0",
+              "@rosen-bridge/abstract-observation-extractor": "^2.0.0",
+              "@rosen-bridge/bitcoin-scanner": "^2.0.2",
+              "@rosen-bridge/extended-typeorm": "^1.1.0",
+              "@rosen-bridge/json-bigint": "^1.1.0",
+              "@rosen-bridge/rosen-extractor": "^12.1.2",
+              "@rosen-bridge/scanner-interfaces": "^1.0.0",
+              "@rosen-bridge/tokens": "^6.0.2",
+              "@rosen-clients/rate-limited-axios": "^2.0.1",
+              "blakejs": "^1.2.1",
+              "ordiscan": "^1.3.0"
+            }
+          },
+          {
+            "name": "@rosen-bridge/cardano-observation-extractor",
+            "version": "3.0.8",
+            "dependencies": {
+              "@blockfrost/openapi": "0.1.81",
+              "@cardano-ogmios/schema": "^6.6.1",
+              "@emurgo/cardano-serialization-lib-nodejs": "^13.2.1",
+              "@rosen-bridge/abstract-logger": "^4.0.0",
+              "@rosen-bridge/abstract-observation-extractor": "^2.0.0",
+              "@rosen-bridge/extended-typeorm": "^1.1.0",
+              "@rosen-bridge/rosen-extractor": "^12.1.2",
+              "@rosen-bridge/tokens": "^6.0.2"
+            }
+          },
+          {
+            "name": "@rosen-bridge/ergo-observation-extractor",
+            "version": "2.0.7",
+            "dependencies": {
+              "@rosen-bridge/abstract-logger": "^4.0.0",
+              "@rosen-bridge/abstract-observation-extractor": "^2.0.0",
+              "@rosen-bridge/extended-typeorm": "^1.1.0",
+              "@rosen-bridge/rosen-extractor": "^12.1.2",
+              "@rosen-bridge/scanner-interfaces": "^1.0.0",
+              "@rosen-bridge/tokens": "^6.0.2"
+            }
+          },
+          {
+            "name": "@rosen-bridge/evm-observation-extractor",
+            "version": "7.1.0",
+            "dependencies": {
+              "@rosen-bridge/abstract-logger": "^4.0.0",
+              "@rosen-bridge/abstract-observation-extractor": "^2.0.0",
+              "@rosen-bridge/extended-typeorm": "^1.1.1",
+              "@rosen-bridge/rosen-extractor": "^12.1.2",
+              "@rosen-bridge/scanner-interfaces": "^1.0.0",
+              "@rosen-bridge/tokens": "^6.0.2",
+              "blakejs": "^1.2.1",
+              "ethers": "6.16.0"
+            }
+          },
+          {
+            "name": "@rosen-bridge/firo-observation-extractor",
+            "version": "1.1.6",
+            "dependencies": {
+              "@rosen-bridge/abstract-logger": "^4.0.0",
+              "@rosen-bridge/abstract-observation-extractor": "^2.0.0",
+              "@rosen-bridge/extended-typeorm": "^1.1.0",
+              "@rosen-bridge/firo-scanner": "^1.0.2",
+              "@rosen-bridge/rosen-extractor": "^12.1.2",
+              "@rosen-bridge/tokens": "^6.0.2"
+            }
+          },
+          {
+            "name": "@rosen-bridge/handshake-observation-extractor",
+            "version": "1.0.9",
+            "dependencies": {
+              "@rosen-bridge/abstract-logger": "^4.0.0",
+              "@rosen-bridge/abstract-observation-extractor": "^2.0.0",
+              "@rosen-bridge/extended-typeorm": "^1.1.0",
+              "@rosen-bridge/handshake-scanner": "^1.0.3",
+              "@rosen-bridge/rosen-extractor": "^12.1.2",
+              "@rosen-bridge/scanner-interfaces": "^1.0.0",
+              "@rosen-bridge/tokens": "^6.0.2"
+            }
+          },
+          {
+            "name": "@rosen-bridge/raw-data-provider",
+            "version": "0.2.3",
+            "dependencies": {
+              "@cardano-ogmios/client": "^6.6.1",
+              "@cardano-ogmios/schema": "^6.6.1",
+              "@emurgo/cardano-serialization-lib-nodejs": "^13.2.1",
+              "@rosen-bridge/abstract-logger": "^4.0.0",
+              "@rosen-bridge/abstract-observation-extractor": "^2.0.0",
+              "@rosen-bridge/abstract-scanner": "^4.0.1",
+              "@rosen-bridge/bitcoin-observation-extractor": "^8.0.8",
+              "@rosen-bridge/bitcoin-runes-observation-extractor": "^3.0.9",
+              "@rosen-bridge/bitcoin-scanner": "^2.0.2",
+              "@rosen-bridge/cardano-observation-extractor": "^3.0.8",
+              "@rosen-bridge/ergo-observation-extractor": "^2.0.7",
+              "@rosen-bridge/evm-observation-extractor": "^7.1.0",
+              "@rosen-bridge/extended-typeorm": "^1.1.1",
+              "@rosen-bridge/json-bigint": "^1.1.0",
+              "@rosen-bridge/scanner-interfaces": "^1.0.0",
+              "@rosen-clients/cardano-koios": "^3.1.3",
+              "@rosen-clients/ergo-explorer": "^2.1.3",
+              "@rosen-clients/ergo-node": "^3.1.3",
+              "@rosen-clients/rate-limited-axios": "^2.0.1",
+              "ethers": "6.16.0"
+            }
+          },
+          {
+            "name": "@rosen-bridge/reward-extractor",
+            "version": "0.0.6",
+            "dependencies": {
+              "@rosen-bridge/abstract-extractor": "^4.0.0",
+              "@rosen-bridge/abstract-logger": "^4.0.0",
+              "@rosen-bridge/extended-typeorm": "^1.1.0",
+              "@rosen-bridge/json-bigint": "^1.1.0",
+              "@rosen-bridge/scanner-interfaces": "^1.0.0",
+              "ergo-lib-wasm-nodejs": "^0.24.1"
+            }
+          },
+          {
+            "name": "@rosen-bridge/scanner-interfaces",
+            "version": "1.0.0",
+            "dependencies": {}
+          },
+          {
+            "name": "@rosen-bridge/bitcoin-scanner",
+            "version": "2.0.2",
+            "dependencies": {
+              "@rosen-bridge/abstract-scanner": "^4.0.1",
+              "@rosen-bridge/scanner-interfaces": "^1.0.0",
+              "@rosen-clients/rate-limited-axios": "^2.0.1"
+            }
+          },
+          {
+            "name": "@rosen-bridge/cardano-scanner",
+            "version": "3.0.2",
+            "dependencies": {
+              "@blockfrost/blockfrost-js": "^6.0.0",
+              "@blockfrost/openapi": "0.1.81",
+              "@cardano-ogmios/client": "^6.6.1",
+              "@cardano-ogmios/schema": "^6.6.1",
+              "@emurgo/cardano-serialization-lib-nodejs": "^13.2.1",
+              "@rosen-bridge/abstract-logger": "^4.0.0",
+              "@rosen-bridge/abstract-scanner": "^4.0.1",
+              "@rosen-bridge/extended-typeorm": "^1.1.0",
+              "@rosen-bridge/json-bigint": "^1.1.0",
+              "@rosen-bridge/scanner-interfaces": "^1.0.0",
+              "@rosen-clients/rate-limited-axios": "^2.0.1",
+              "cockatiel": "^3.2.1"
+            }
+          },
+          {
+            "name": "@rosen-bridge/ergo-scanner",
+            "version": "2.0.2",
+            "dependencies": {
+              "@rosen-bridge/abstract-scanner": "^4.0.1",
+              "@rosen-bridge/scanner-interfaces": "^1.0.0",
+              "@rosen-clients/ergo-explorer": "^2.1.3",
+              "@rosen-clients/ergo-node": "^3.1.3"
+            }
+          },
+          {
+            "name": "@rosen-bridge/evm-scanner",
+            "version": "2.0.2",
+            "dependencies": {
+              "@rosen-bridge/abstract-scanner": "^4.0.1",
+              "@rosen-bridge/scanner-interfaces": "^1.0.0",
+              "ethers": "6.16.0"
+            }
+          },
+          {
+            "name": "@rosen-bridge/firo-scanner",
+            "version": "1.0.2",
+            "dependencies": {
+              "@rosen-bridge/abstract-logger": "^4.0.0",
+              "@rosen-bridge/abstract-scanner": "^4.0.1",
+              "@rosen-bridge/scanner-interfaces": "^1.0.0",
+              "@rosen-clients/rate-limited-axios": "^2.0.1"
+            }
+          },
+          {
+            "name": "@rosen-bridge/handshake-scanner",
+            "version": "1.0.3",
+            "dependencies": {
+              "@rosen-bridge/abstract-scanner": "^4.0.1",
+              "@rosen-bridge/scanner-interfaces": "^1.0.0",
+              "@rosen-clients/rate-limited-axios": "^2.0.1"
+            }
+          },
+          {
+            "name": "@rosen-bridge/tx-id-extractor",
+            "version": "4.0.0",
+            "dependencies": {
+              "@cardano-ogmios/schema": "^6.6.1",
+              "@rosen-bridge/abstract-extractor": "^4.0.0",
+              "@rosen-bridge/abstract-logger": "^4.0.0",
+              "@rosen-bridge/extended-typeorm": "^1.1.0",
+              "@rosen-bridge/scanner-interfaces": "^1.0.0"
+            }
+          },
+          {
+            "name": "@rosen-bridge/watcher-data-extractor",
+            "version": "16.0.0",
+            "dependencies": {
+              "@rosen-bridge/abstract-extractor": "^4.0.0",
+              "@rosen-bridge/abstract-logger": "^4.0.0",
+              "@rosen-bridge/extended-typeorm": "^1.1.0",
+              "@rosen-bridge/json-bigint": "^1.1.0",
+              "@rosen-bridge/scanner-interfaces": "^1.0.0",
+              "@rosen-bridge/tokens": "^6.0.2",
+              "@types/lodash-es": "^4.17.6",
+              "blakejs": "^1.2.1",
+              "ergo-lib-wasm-nodejs": "^0.24.1",
+              "lodash-es": "^4.17.21"
+            }
+          }
+        ]
+      },
+      {
+        "id": "avalanche",
+        "releases": [
+          {
+            "name": "@rosen-bridge/evm-observation-extractor",
+            "type": "minor",
+            "oldVersion": "7.1.0",
+            "changesets": [
+              "avalanche-observation-extraction"
+            ],
+            "newVersion": "7.2.0"
+          },
+          {
+            "name": "@rosen-bridge/raw-data-provider",
+            "type": "minor",
+            "oldVersion": "0.2.3",
+            "changesets": [
+              "avalanche-raw-data-provider"
+            ],
+            "newVersion": "0.3.0"
+          },
+          {
+            "name": "@rosen-bridge/evm-scanner",
+            "type": "minor",
+            "oldVersion": "2.0.2",
+            "changesets": [
+              "avalanche-settled-scanning"
+            ],
+            "newVersion": "2.1.0"
+          }
+        ],
+        "packages": [
+          {
+            "name": "@rosen-bridge/abstract-extractor",
+            "version": "4.0.0",
+            "dependencies": {
+              "@rosen-bridge/abstract-logger": "^4.0.0",
+              "@rosen-bridge/extended-typeorm": "^1.1.0",
+              "@rosen-bridge/json-bigint": "^1.1.0",
+              "@rosen-bridge/scanner-interfaces": "^1.0.0",
+              "@rosen-bridge/semaphore": "^0.1.0",
+              "@rosen-clients/ergo-explorer": "^2.1.3",
+              "@rosen-clients/ergo-node": "^3.1.3",
+              "lodash-es": "^4.17.21",
+              "p-queue": "^9.0.1",
+              "uuid": "^11.1.1"
+            }
+          },
+          {
+            "name": "@rosen-bridge/abstract-observation-extractor",
+            "version": "2.0.0",
+            "dependencies": {
+              "@rosen-bridge/abstract-extractor": "^4.0.0",
+              "@rosen-bridge/abstract-logger": "^4.0.0",
+              "@rosen-bridge/extended-typeorm": "^1.1.0",
+              "@rosen-bridge/rosen-extractor": "^12.1.2",
+              "@rosen-bridge/scanner-interfaces": "^1.0.0",
+              "@rosen-bridge/tokens": "^6.0.2",
+              "blakejs": "^1.2.1"
+            }
+          },
+          {
+            "name": "@rosen-bridge/abstract-scanner",
+            "version": "4.0.1",
+            "dependencies": {
+              "@rosen-bridge/abstract-extractor": "^4.0.0",
+              "@rosen-bridge/abstract-logger": "^4.0.0",
+              "@rosen-bridge/extended-typeorm": "^1.1.0",
+              "@rosen-bridge/json-bigint": "^1.1.0",
+              "@rosen-bridge/scanner-interfaces": "^1.0.0",
+              "@rosen-bridge/semaphore": "^0.1.0",
+              "lodash-es": "^4.17.21"
+            }
+          },
+          {
+            "name": "@rosen-bridge/address-extractor",
+            "version": "7.0.9",
+            "dependencies": {
+              "@rosen-bridge/abstract-extractor": "^4.0.0",
+              "@rosen-bridge/abstract-logger": "^4.0.0",
+              "@rosen-bridge/extended-typeorm": "^1.1.0",
+              "@rosen-bridge/json-bigint": "^1.1.0",
+              "@rosen-bridge/scanner-interfaces": "^1.0.0",
+              "ergo-lib-wasm-nodejs": "^0.24.1",
+              "lodash-es": "^4.17.21"
+            }
+          },
+          {
+            "name": "@rosen-bridge/box-tracker",
+            "version": "1.0.0",
+            "dependencies": {
+              "@rosen-bridge/abstract-extractor": "^4.0.0",
+              "@rosen-bridge/abstract-logger": "^4.0.0",
+              "@rosen-bridge/extended-typeorm": "^1.1.0",
+              "@rosen-bridge/scanner-interfaces": "^1.0.0",
+              "@rosen-bridge/tx-pot": "^2.0.5",
+              "@rosen-clients/ergo-explorer": "^2.1.3",
+              "@rosen-clients/ergo-node": "^3.1.3",
+              "ergo-lib-wasm-nodejs": "^0.24.1"
+            }
+          },
+          {
+            "name": "@rosen-bridge/evm-address-tx-extractor",
+            "version": "4.0.1",
+            "dependencies": {
+              "@rosen-bridge/abstract-extractor": "^4.0.0",
+              "@rosen-bridge/abstract-logger": "^4.0.0",
+              "@rosen-bridge/abstract-scanner": "^4.0.1",
+              "@rosen-bridge/extended-typeorm": "^1.1.0",
+              "@rosen-bridge/scanner-interfaces": "^1.0.0",
+              "ethers": "6.16.0"
+            }
+          },
+          {
+            "name": "@rosen-bridge/fraud-extractor",
+            "version": "3.0.9",
+            "dependencies": {
+              "@rosen-bridge/abstract-extractor": "^4.0.0",
+              "@rosen-bridge/abstract-logger": "^4.0.0",
+              "@rosen-bridge/extended-typeorm": "^1.1.0",
+              "@rosen-bridge/json-bigint": "^1.1.0",
+              "@rosen-bridge/scanner-interfaces": "^1.0.0",
+              "ergo-lib-wasm-nodejs": "^0.24.1"
+            }
+          },
+          {
+            "name": "@rosen-bridge/bitcoin-observation-extractor",
+            "version": "8.0.8",
+            "dependencies": {
+              "@rosen-bridge/abstract-logger": "^4.0.0",
+              "@rosen-bridge/abstract-observation-extractor": "^2.0.0",
+              "@rosen-bridge/bitcoin-scanner": "^2.0.2",
+              "@rosen-bridge/extended-typeorm": "^1.1.0",
+              "@rosen-bridge/rosen-extractor": "^12.1.2",
+              "@rosen-bridge/tokens": "^6.0.2"
+            }
+          },
+          {
+            "name": "@rosen-bridge/bitcoin-runes-observation-extractor",
+            "version": "3.0.9",
+            "dependencies": {
+              "@rosen-bridge/abstract-logger": "^4.0.0",
+              "@rosen-bridge/abstract-observation-extractor": "^2.0.0",
+              "@rosen-bridge/bitcoin-scanner": "^2.0.2",
+              "@rosen-bridge/extended-typeorm": "^1.1.0",
+              "@rosen-bridge/json-bigint": "^1.1.0",
+              "@rosen-bridge/rosen-extractor": "^12.1.2",
+              "@rosen-bridge/scanner-interfaces": "^1.0.0",
+              "@rosen-bridge/tokens": "^6.0.2",
+              "@rosen-clients/rate-limited-axios": "^2.0.1",
+              "blakejs": "^1.2.1",
+              "ordiscan": "^1.3.0"
+            }
+          },
+          {
+            "name": "@rosen-bridge/cardano-observation-extractor",
+            "version": "3.0.8",
+            "dependencies": {
+              "@blockfrost/openapi": "0.1.81",
+              "@cardano-ogmios/schema": "^6.6.1",
+              "@emurgo/cardano-serialization-lib-nodejs": "^13.2.1",
+              "@rosen-bridge/abstract-logger": "^4.0.0",
+              "@rosen-bridge/abstract-observation-extractor": "^2.0.0",
+              "@rosen-bridge/extended-typeorm": "^1.1.0",
+              "@rosen-bridge/rosen-extractor": "^12.1.2",
+              "@rosen-bridge/tokens": "^6.0.2"
+            }
+          },
+          {
+            "name": "@rosen-bridge/ergo-observation-extractor",
+            "version": "2.0.7",
+            "dependencies": {
+              "@rosen-bridge/abstract-logger": "^4.0.0",
+              "@rosen-bridge/abstract-observation-extractor": "^2.0.0",
+              "@rosen-bridge/extended-typeorm": "^1.1.0",
+              "@rosen-bridge/rosen-extractor": "^12.1.2",
+              "@rosen-bridge/scanner-interfaces": "^1.0.0",
+              "@rosen-bridge/tokens": "^6.0.2"
+            }
+          },
+          {
+            "name": "@rosen-bridge/evm-observation-extractor",
+            "version": "7.2.0",
+            "dependencies": {
+              "@rosen-bridge/abstract-logger": "^4.0.0",
+              "@rosen-bridge/abstract-observation-extractor": "^2.0.0",
+              "@rosen-bridge/extended-typeorm": "^1.1.1",
+              "@rosen-bridge/rosen-extractor": "^12.1.2",
+              "@rosen-bridge/scanner-interfaces": "^1.0.0",
+              "@rosen-bridge/tokens": "^6.0.2",
+              "blakejs": "^1.2.1",
+              "ethers": "6.16.0"
+            }
+          },
+          {
+            "name": "@rosen-bridge/firo-observation-extractor",
+            "version": "1.1.6",
+            "dependencies": {
+              "@rosen-bridge/abstract-logger": "^4.0.0",
+              "@rosen-bridge/abstract-observation-extractor": "^2.0.0",
+              "@rosen-bridge/extended-typeorm": "^1.1.0",
+              "@rosen-bridge/firo-scanner": "^1.0.2",
+              "@rosen-bridge/rosen-extractor": "^12.1.2",
+              "@rosen-bridge/tokens": "^6.0.2"
+            }
+          },
+          {
+            "name": "@rosen-bridge/handshake-observation-extractor",
+            "version": "1.0.9",
+            "dependencies": {
+              "@rosen-bridge/abstract-logger": "^4.0.0",
+              "@rosen-bridge/abstract-observation-extractor": "^2.0.0",
+              "@rosen-bridge/extended-typeorm": "^1.1.0",
+              "@rosen-bridge/handshake-scanner": "^1.0.3",
+              "@rosen-bridge/rosen-extractor": "^12.1.2",
+              "@rosen-bridge/scanner-interfaces": "^1.0.0",
+              "@rosen-bridge/tokens": "^6.0.2"
+            }
+          },
+          {
+            "name": "@rosen-bridge/raw-data-provider",
+            "version": "0.3.0",
+            "dependencies": {
+              "@cardano-ogmios/client": "^6.6.1",
+              "@cardano-ogmios/schema": "^6.6.1",
+              "@emurgo/cardano-serialization-lib-nodejs": "^13.2.1",
+              "@rosen-bridge/abstract-logger": "^4.0.0",
+              "@rosen-bridge/abstract-observation-extractor": "^2.0.0",
+              "@rosen-bridge/abstract-scanner": "^4.0.1",
+              "@rosen-bridge/bitcoin-observation-extractor": "^8.0.8",
+              "@rosen-bridge/bitcoin-runes-observation-extractor": "^3.0.9",
+              "@rosen-bridge/bitcoin-scanner": "^2.0.2",
+              "@rosen-bridge/cardano-observation-extractor": "^3.0.8",
+              "@rosen-bridge/ergo-observation-extractor": "^2.0.7",
+              "@rosen-bridge/evm-observation-extractor": "^7.2.0",
+              "@rosen-bridge/extended-typeorm": "^1.1.1",
+              "@rosen-bridge/json-bigint": "^1.1.0",
+              "@rosen-bridge/scanner-interfaces": "^1.0.0",
+              "@rosen-clients/cardano-koios": "^3.1.3",
+              "@rosen-clients/ergo-explorer": "^2.1.3",
+              "@rosen-clients/ergo-node": "^3.1.3",
+              "@rosen-clients/rate-limited-axios": "^2.0.1",
+              "ethers": "6.16.0"
+            }
+          },
+          {
+            "name": "@rosen-bridge/reward-extractor",
+            "version": "0.0.6",
+            "dependencies": {
+              "@rosen-bridge/abstract-extractor": "^4.0.0",
+              "@rosen-bridge/abstract-logger": "^4.0.0",
+              "@rosen-bridge/extended-typeorm": "^1.1.0",
+              "@rosen-bridge/json-bigint": "^1.1.0",
+              "@rosen-bridge/scanner-interfaces": "^1.0.0",
+              "ergo-lib-wasm-nodejs": "^0.24.1"
+            }
+          },
+          {
+            "name": "@rosen-bridge/scanner-interfaces",
+            "version": "1.0.0",
+            "dependencies": {}
+          },
+          {
+            "name": "@rosen-bridge/bitcoin-scanner",
+            "version": "2.0.2",
+            "dependencies": {
+              "@rosen-bridge/abstract-scanner": "^4.0.1",
+              "@rosen-bridge/scanner-interfaces": "^1.0.0",
+              "@rosen-clients/rate-limited-axios": "^2.0.1"
+            }
+          },
+          {
+            "name": "@rosen-bridge/cardano-scanner",
+            "version": "3.0.2",
+            "dependencies": {
+              "@blockfrost/blockfrost-js": "^6.0.0",
+              "@blockfrost/openapi": "0.1.81",
+              "@cardano-ogmios/client": "^6.6.1",
+              "@cardano-ogmios/schema": "^6.6.1",
+              "@emurgo/cardano-serialization-lib-nodejs": "^13.2.1",
+              "@rosen-bridge/abstract-logger": "^4.0.0",
+              "@rosen-bridge/abstract-scanner": "^4.0.1",
+              "@rosen-bridge/extended-typeorm": "^1.1.0",
+              "@rosen-bridge/json-bigint": "^1.1.0",
+              "@rosen-bridge/scanner-interfaces": "^1.0.0",
+              "@rosen-clients/rate-limited-axios": "^2.0.1",
+              "cockatiel": "^3.2.1"
+            }
+          },
+          {
+            "name": "@rosen-bridge/ergo-scanner",
+            "version": "2.0.2",
+            "dependencies": {
+              "@rosen-bridge/abstract-scanner": "^4.0.1",
+              "@rosen-bridge/scanner-interfaces": "^1.0.0",
+              "@rosen-clients/ergo-explorer": "^2.1.3",
+              "@rosen-clients/ergo-node": "^3.1.3"
+            }
+          },
+          {
+            "name": "@rosen-bridge/evm-scanner",
+            "version": "2.1.0",
+            "dependencies": {
+              "@rosen-bridge/abstract-scanner": "^4.0.1",
+              "@rosen-bridge/scanner-interfaces": "^1.0.0",
+              "ethers": "6.16.0",
+              "@rosen-bridge/extended-typeorm": "1.1.1"
+            }
+          },
+          {
+            "name": "@rosen-bridge/firo-scanner",
+            "version": "1.0.2",
+            "dependencies": {
+              "@rosen-bridge/abstract-logger": "^4.0.0",
+              "@rosen-bridge/abstract-scanner": "^4.0.1",
+              "@rosen-bridge/scanner-interfaces": "^1.0.0",
+              "@rosen-clients/rate-limited-axios": "^2.0.1"
+            }
+          },
+          {
+            "name": "@rosen-bridge/handshake-scanner",
+            "version": "1.0.3",
+            "dependencies": {
+              "@rosen-bridge/abstract-scanner": "^4.0.1",
+              "@rosen-bridge/scanner-interfaces": "^1.0.0",
+              "@rosen-clients/rate-limited-axios": "^2.0.1"
+            }
+          },
+          {
+            "name": "@rosen-bridge/tx-id-extractor",
+            "version": "4.0.0",
+            "dependencies": {
+              "@cardano-ogmios/schema": "^6.6.1",
+              "@rosen-bridge/abstract-extractor": "^4.0.0",
+              "@rosen-bridge/abstract-logger": "^4.0.0",
+              "@rosen-bridge/extended-typeorm": "^1.1.0",
+              "@rosen-bridge/scanner-interfaces": "^1.0.0"
+            }
+          },
+          {
+            "name": "@rosen-bridge/watcher-data-extractor",
+            "version": "16.0.0",
+            "dependencies": {
+              "@rosen-bridge/abstract-extractor": "^4.0.0",
+              "@rosen-bridge/abstract-logger": "^4.0.0",
+              "@rosen-bridge/extended-typeorm": "^1.1.0",
+              "@rosen-bridge/json-bigint": "^1.1.0",
+              "@rosen-bridge/scanner-interfaces": "^1.0.0",
+              "@rosen-bridge/tokens": "^6.0.2",
+              "@types/lodash-es": "^4.17.6",
+              "blakejs": "^1.2.1",
+              "ergo-lib-wasm-nodejs": "^0.24.1",
+              "lodash-es": "^4.17.21"
+            }
+          }
+        ]
+      }
+    ],
+    "checks": {
+      "prerequisiteExtractor": "7.1.0",
+      "avalancheExtractor": "7.2.0",
+      "versionedProvider": "0.3.0",
+      "versionedProviderExtractorRange": "^7.2.0",
+      "rejectsPreAvalancheVersion": true
+    },
+    "rebasedMetadata": [
+      {
+        "path": "packages/observation-extractors/evm-observation-extractor/package.json",
+        "additions": [
+          {
+            "field": "devDependencies",
+            "name": "@rosen-bridge/address-codec",
+            "range": "2.2.0"
+          },
+          {
+            "field": "devDependencies",
+            "name": "@rosen-bridge/address-manager",
+            "range": "0.1.0"
+          }
+        ],
+        "retainedVersion": "7.1.0"
+      },
+      {
+        "path": "packages/scanners/evm-scanner/package.json",
+        "additions": [
+          {
+            "field": "dependencies",
+            "name": "@rosen-bridge/extended-typeorm",
+            "range": "1.1.1"
+          }
+        ],
+        "retainedVersion": "2.0.2"
+      }
+    ]
+  },
+  "evidence": {
+    "aggregate": {
+      "bytes": 131927,
+      "sha256": "69a2c98df9f377159d1f051a498a14dbdd789be7ad147f1294aa15e070bfc329"
+    },
+    "sequential": {
+      "bytes": 71583,
+      "sha256": "cf33d26206cdd668392af10980ee8b659ee3282c72c687eed616474b30bd110a"
+    }
+  },
+  "limits": "Complete Changesets plans include existing pending notes at the pinned baselines. Preview versions only. Recompute on actual accepted/released sources and verify registry integrity and exports before qualifying consumers."
+}

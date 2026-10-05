@@ -1,0 +1,559 @@
+{
+  "schema": "rosen-guard-release-input-identity.v1",
+  "baselineHead": "b1f5ab6f81435053a979e8078eb098d8ec1f5a47",
+  "sourceTree": "e5de5820f47e1a66d9890aab0be919870dc6667a",
+  "correctedTree": "24ecaa6ff5206ad5d2117033d4614b95f4f6ea5f",
+  "releaseInputsUnchanged": true,
+  "inputs": [
+    {
+      "path": ".changeset/README.md",
+      "bytes": 510,
+      "sha256": "bf33c79d7e0477dcad0e0b98c8d364db6fdb794d62ef68b6153d61e868b3bdf0"
+    },
+    {
+      "path": ".changeset/abstract-chain-verify-event-order.md",
+      "bytes": 170,
+      "sha256": "da4e0f93d4d7607b2b1da67464cac6d7f839c7179dd4da15ee76e88632ea36e1"
+    },
+    {
+      "path": ".changeset/bitcoin-tx-max-fee-cap.md",
+      "bytes": 223,
+      "sha256": "4aa765d05021b6392635b91d54b8b328f544f5c4d0339d2462c2feff777472e7"
+    },
+    {
+      "path": ".changeset/brave-nails-greet.md",
+      "bytes": 122,
+      "sha256": "82ec37e320866c301744197e3acff3531be98c96c7219f5907c3b74e35a598ca"
+    },
+    {
+      "path": ".changeset/cached-balance-precision.md",
+      "bytes": 182,
+      "sha256": "8d4487acf4f84e6801685687b9ebb18c70d6d5aaaf0f3d1b53042be6f8f3947e"
+    },
+    {
+      "path": ".changeset/cardano-blockfrost-tx-failed-on-chain.md",
+      "bytes": 355,
+      "sha256": "241a19ecacdde8d0f41ca1d9b4b1e401cd9a39bb9e076c0ea9eabefd863bf591"
+    },
+    {
+      "path": ".changeset/cardano-koios-tx-failed-on-chain.md",
+      "bytes": 302,
+      "sha256": "45d633f010e5838bd1adde069acaf39024581757421bdf6b0ed1cbfcd6ee3538"
+    },
+    {
+      "path": ".changeset/cardano-lock-tx-failed-on-chain.md",
+      "bytes": 279,
+      "sha256": "6b32be699e2ac61fa56b6a3a52fcd7be7f6631e6600ed795d9c1e1df682e17c9"
+    },
+    {
+      "path": ".changeset/config.json",
+      "bytes": 518,
+      "sha256": "a89cc0afa4de15a2e984178eb8e78712b7f1c142291c369f5c7c307940bd40af"
+    },
+    {
+      "path": ".changeset/ergo-authorized-submission.md",
+      "bytes": 284,
+      "sha256": "b5707b47d01e7ce18390a745ed2e6fe0dcf4d9c2fa7f9dceccff57ba4536ccea"
+    },
+    {
+      "path": ".changeset/ergo-signed-accounting.md",
+      "bytes": 193,
+      "sha256": "86dee0c9f782a1e05a5428befc964332fa0bc524b01821d819df528c4b0f2b64"
+    },
+    {
+      "path": ".changeset/ergo-signed-semantics.md",
+      "bytes": 136,
+      "sha256": "12dff8d0129f5b2ce6f0e8bbd1539105a11c75f110d91375ee876f215eedb018"
+    },
+    {
+      "path": ".changeset/evm-remove-max-priority-fee-verification.md",
+      "bytes": 116,
+      "sha256": "9e11d6d1f6a169c238d95022cc7fa0d119f53ac7e77c535b8ebdd767fc01f9ba"
+    },
+    {
+      "path": ".changeset/few-pandas-count.md",
+      "bytes": 103,
+      "sha256": "dfb0df7633b68ddc76e90116a9d578898d8d5c9d60c6129dcd99ef9c02f945c8"
+    },
+    {
+      "path": ".changeset/generic-synchronization-binding.md",
+      "bytes": 165,
+      "sha256": "55317f4f155c3fece87e2ba7793fec72396b2d6f33ae17d877df44b0b421fe3f"
+    },
+    {
+      "path": ".changeset/generic-transaction-cas.md",
+      "bytes": 166,
+      "sha256": "99a2051791c317ba245b60f285cd606fdb4ef96f89bcede0fb8512202b30237a"
+    },
+    {
+      "path": ".changeset/gentle-items-sing.md",
+      "bytes": 218,
+      "sha256": "d312f96c3d24a6fd24151d4347c426d48e87980517ee9319cb81b5914b39a1b1"
+    },
+    {
+      "path": ".changeset/hip-badgers-sell.md",
+      "bytes": 66,
+      "sha256": "edbe59adaa4b8af0ee0c8f3229a963fd731c2f6209f73131c2e8db7c4bf5b921"
+    },
+    {
+      "path": ".changeset/lastcheck-height-tracking.md",
+      "bytes": 354,
+      "sha256": "e041bf6f525030dbb2a3588c87fb8710cd12d1b580d3321a5e64ea65d2186ace"
+    },
+    {
+      "path": ".changeset/mean-bugs-wave.md",
+      "bytes": 108,
+      "sha256": "2588157a36c856486f751e933f2019387a64ff3c8c15dfded54277b2341ae735"
+    },
+    {
+      "path": ".changeset/nasty-candles-deliver.md",
+      "bytes": 350,
+      "sha256": "2f321faa6e65642655d7258975d9d8e73db5c26e3a0ed7a15fb71698e1b2188d"
+    },
+    {
+      "path": ".changeset/nine-cats-sort.md",
+      "bytes": 254,
+      "sha256": "e7411d4702ae189317d56edf4ccc41096b0253daf026ee4831c97ff666b020f4"
+    },
+    {
+      "path": ".changeset/olive-donkeys-shave.md",
+      "bytes": 865,
+      "sha256": "93b03bdf7f04b5b7dcb23e13068a2f9667939ae67e4280dc55ef9a57b13383fb"
+    },
+    {
+      "path": ".changeset/qualified-tss-authorization.md",
+      "bytes": 150,
+      "sha256": "d0370b95183a762107f7019b3656639116a6336982431500fae169f1f9c9189f"
+    },
+    {
+      "path": ".changeset/rich-planes-jump.md",
+      "bytes": 56,
+      "sha256": "2d766658b4b83f25d7dada2cedb892d531afab9dd30711201cd1d692c2ac2eb1"
+    },
+    {
+      "path": ".changeset/slow-avocados-behave.md",
+      "bytes": 175,
+      "sha256": "27adbad2349c16a1ffe1fd5966248421fa3fddb103833d8f534abdc70923a179"
+    },
+    {
+      "path": ".changeset/spicy-toys-clean.md",
+      "bytes": 190,
+      "sha256": "a14debffb63887c07e303385839b41fec626328ed23e4d3b43fb31dafe57a29e"
+    },
+    {
+      "path": ".changeset/three-pigs-itch.md",
+      "bytes": 8,
+      "sha256": "d487269d2de0655a9ed127c83b0d1006d724e600385b32f4f4b39893c1e0164b"
+    },
+    {
+      "path": ".changeset/token-map-update-release.md",
+      "bytes": 111,
+      "sha256": "a7309fc7b015660f2ba1b3a9237a25b5439033a23fab10619a92bbeb96bcaa8e"
+    },
+    {
+      "path": "package-lock.json",
+      "bytes": 706814,
+      "sha256": "dc098eb5a7644c43cfb3287d9445ec19c71e4bf7335f26c15026c68ac9a4fd69"
+    },
+    {
+      "path": "package.json",
+      "bytes": 1624,
+      "sha256": "82ce4203436a7f42a05c8f239d93735fdf4b11647f199e334a26af7ad912279c"
+    },
+    {
+      "path": "packages/abstract-chain/package.json",
+      "bytes": 1535,
+      "sha256": "a021582c7f4214b87b42304975cc91bdb602933d99dd999575100efd09eb5631"
+    },
+    {
+      "path": "packages/chains/base/package.json",
+      "bytes": 1213,
+      "sha256": "ff99ddc61a31052f23eba031731a82121621c6644d9bf0d10ccc2dbcf005140a"
+    },
+    {
+      "path": "packages/chains/binance/package.json",
+      "bytes": 1203,
+      "sha256": "0b551584231c8ef150b5664abcf048aff768c88637c76f03b315c41d7a048662"
+    },
+    {
+      "path": "packages/chains/bitcoin-runes/package.json",
+      "bytes": 1639,
+      "sha256": "96a1cee9b7865cedc9a473675cb9ec2d232547430e3654cd0595a627806469e4"
+    },
+    {
+      "path": "packages/chains/bitcoin/package.json",
+      "bytes": 1518,
+      "sha256": "3edcd8278151c30ccef683047cafcf02dafd3fc2d0c18a30de7797353c7087c1"
+    },
+    {
+      "path": "packages/chains/cardano/package.json",
+      "bytes": 1546,
+      "sha256": "71b1e56498f97fa9d1a539b69f97612add3a59fbb13a7d42c20c64184e235301"
+    },
+    {
+      "path": "packages/chains/doge/package.json",
+      "bytes": 1508,
+      "sha256": "f9a8629c4a76c393be4398871fcacc57ba6a2f237ad1d417848bdd843c05ff4f"
+    },
+    {
+      "path": "packages/chains/ergo/package.json",
+      "bytes": 1600,
+      "sha256": "9b07db82c9dfe757c076a540c6604672eb2e97a45c6b8627b90418dd29dc5891"
+    },
+    {
+      "path": "packages/chains/ethereum/package.json",
+      "bytes": 1206,
+      "sha256": "7df9cf8ee158a08baefaa093708b5febd499972ea9cbd658d3817db066e102df"
+    },
+    {
+      "path": "packages/chains/evm/package.json",
+      "bytes": 1446,
+      "sha256": "17a7b7fceebc271c31d0ded632f0f525620638ea16c6c21aff7e5aad24daa0a0"
+    },
+    {
+      "path": "packages/chains/firo/package.json",
+      "bytes": 1510,
+      "sha256": "7ca04d3b27f7c8b6018a004df80c922fab6c25abd3416efdf6d5b254ad757b36"
+    },
+    {
+      "path": "packages/chains/handshake/package.json",
+      "bytes": 1535,
+      "sha256": "788ef170c6aa46d482628901b2e1b29e3f6b6c294b6818fc9b921ce3bbb53c40"
+    },
+    {
+      "path": "packages/networks/bitcoin-esplora/package.json",
+      "bytes": 1512,
+      "sha256": "39b20c0f1dca69d5522469b2283f2264ad73d1e0174e167cb3e047763778158c"
+    },
+    {
+      "path": "packages/networks/bitcoin-runes-rpc/package.json",
+      "bytes": 1527,
+      "sha256": "04b7d12c83851b22c0c3764a7bb2b84db9c0ab0a5bd9d6bc2791b23f7c091e6d"
+    },
+    {
+      "path": "packages/networks/cardano-blockfrost/package.json",
+      "bytes": 1584,
+      "sha256": "ea4f54f35164c5d9c5902b45d011eeeb41ed3cbd812449efd92ac01e6b1a9c78"
+    },
+    {
+      "path": "packages/networks/cardano-koios/package.json",
+      "bytes": 1515,
+      "sha256": "53f213d49f0fcaa33b9e731753761b9d720b8517b38b7727ccad835dd2b29e5d"
+    },
+    {
+      "path": "packages/networks/doge-blockcypher/package.json",
+      "bytes": 1529,
+      "sha256": "7b6e8d37c1ad4d11141e39669a7e0b838f94781d9d7c85a72349a9a7db8f5fc4"
+    },
+    {
+      "path": "packages/networks/doge-esplora/package.json",
+      "bytes": 1499,
+      "sha256": "42e4d509e8f1e9d06b6f44d00785cd695f9549675b710bd5d8067aa6edf1461f"
+    },
+    {
+      "path": "packages/networks/doge-rpc/package.json",
+      "bytes": 1505,
+      "sha256": "c25e6c16718416b9b35e2e1de52a690353a21d638f2485caf76a0f2bb802299f"
+    },
+    {
+      "path": "packages/networks/ergo-explorer/package.json",
+      "bytes": 1619,
+      "sha256": "96fb5bd1ffee3aec967f11026e06d712691c1eeb7a509c8f0864b1cce2396355"
+    },
+    {
+      "path": "packages/networks/ergo-node/package.json",
+      "bytes": 1603,
+      "sha256": "fa7d576bfd8efade6f953aed2d1e2dab4ba1407e29e7ff7031431e720659dac5"
+    },
+    {
+      "path": "packages/networks/evm-op-stack-rpc/package.json",
+      "bytes": 1602,
+      "sha256": "b5e21f30986c433e119b73a8e8ef5e9d81839bb2dc5c5893a2538d231466935e"
+    },
+    {
+      "path": "packages/networks/evm-rpc/package.json",
+      "bytes": 1534,
+      "sha256": "18801e78983d51b11b504b38c80e9dbd2dc61955f86ea40ac353da9fb1dea5c0"
+    },
+    {
+      "path": "packages/networks/firo-electrumx/package.json",
+      "bytes": 1506,
+      "sha256": "3a1af9d67fa309dda2c504b8aa93bc5fcc05e9c150274f37d0f0b632bdcc22db"
+    },
+    {
+      "path": "packages/networks/handshake-rpc/package.json",
+      "bytes": 1537,
+      "sha256": "a5e2fa55450bd52a96bcddbf2e6c1221b7d08b742477bb30d249b275d4c0ae50"
+    },
+    {
+      "path": "services/guard-service/package.json",
+      "bytes": 4538,
+      "sha256": "e67b59ea184a68b3813038e46e44a392c52da8c29e35d7634134f4b45b5a0c6d"
+    }
+  ],
+  "plans": [
+    {
+      "path": "release/six-group-plan.json",
+      "bytes": 15241,
+      "sha256": "9351431b1db56fae48ec4e9c560e8e259f331340d393781c96bb59a0042f8c21"
+    },
+    {
+      "path": "release/eight-group-plan.json",
+      "bytes": 15958,
+      "sha256": "8957560b1b94d3400fcdfc337c927a96bbc695d3ea72a5026104ee0a0e8fc9e9"
+    }
+  ],
+  "previewPackages": [
+    {
+      "name": "@rosen-chains/abstract-chain",
+      "type": "patch",
+      "oldVersion": "17.0.0",
+      "changesets": [
+        "abstract-chain-verify-event-order",
+        "nasty-candles-deliver"
+      ],
+      "newVersion": "17.0.1"
+    },
+    {
+      "name": "@rosen-chains/bitcoin",
+      "type": "minor",
+      "oldVersion": "11.0.0",
+      "changesets": [
+        "bitcoin-tx-max-fee-cap",
+        "nasty-candles-deliver"
+      ],
+      "newVersion": "11.1.0"
+    },
+    {
+      "name": "@rosen-chains/bitcoin-runes",
+      "type": "minor",
+      "oldVersion": "5.0.0",
+      "changesets": [
+        "bitcoin-tx-max-fee-cap",
+        "nasty-candles-deliver"
+      ],
+      "newVersion": "5.1.0"
+    },
+    {
+      "name": "guard-service",
+      "type": "major",
+      "oldVersion": "11.0.1",
+      "changesets": [
+        "brave-nails-greet",
+        "cached-balance-precision",
+        "ergo-signed-semantics",
+        "generic-synchronization-binding",
+        "generic-transaction-cas",
+        "gentle-items-sing",
+        "hip-badgers-sell",
+        "lastcheck-height-tracking",
+        "nine-cats-sort",
+        "qualified-tss-authorization",
+        "slow-avocados-behave",
+        "spicy-toys-clean",
+        "token-map-update-release"
+      ],
+      "newVersion": "12.0.0"
+    },
+    {
+      "name": "@rosen-chains/cardano-blockfrost-network",
+      "type": "patch",
+      "oldVersion": "10.0.4",
+      "changesets": [
+        "cardano-blockfrost-tx-failed-on-chain"
+      ],
+      "newVersion": "10.0.5"
+    },
+    {
+      "name": "@rosen-chains/cardano-koios-network",
+      "type": "patch",
+      "oldVersion": "13.0.4",
+      "changesets": [
+        "cardano-koios-tx-failed-on-chain"
+      ],
+      "newVersion": "13.0.5"
+    },
+    {
+      "name": "@rosen-chains/cardano",
+      "type": "patch",
+      "oldVersion": "17.0.0",
+      "changesets": [
+        "cardano-lock-tx-failed-on-chain",
+        "nasty-candles-deliver"
+      ],
+      "newVersion": "17.0.1"
+    },
+    {
+      "name": "@rosen-chains/ergo",
+      "type": "minor",
+      "oldVersion": "15.0.0",
+      "changesets": [
+        "ergo-authorized-submission",
+        "ergo-signed-accounting",
+        "nasty-candles-deliver"
+      ],
+      "newVersion": "15.1.0"
+    },
+    {
+      "name": "@rosen-chains/ergo-explorer-network",
+      "type": "patch",
+      "oldVersion": "10.0.5",
+      "changesets": [
+        "ergo-authorized-submission"
+      ],
+      "newVersion": "10.0.6"
+    },
+    {
+      "name": "@rosen-chains/ergo-node-network",
+      "type": "patch",
+      "oldVersion": "10.0.5",
+      "changesets": [
+        "ergo-authorized-submission"
+      ],
+      "newVersion": "10.0.6"
+    },
+    {
+      "name": "@rosen-chains/evm",
+      "type": "patch",
+      "oldVersion": "10.0.2",
+      "changesets": [
+        "evm-remove-max-priority-fee-verification",
+        "nasty-candles-deliver"
+      ],
+      "newVersion": "10.0.3"
+    },
+    {
+      "name": "@rosen-chains/firo-electrumx",
+      "type": "patch",
+      "oldVersion": "0.1.2",
+      "changesets": [
+        "few-pandas-count"
+      ],
+      "newVersion": "0.1.3"
+    },
+    {
+      "name": "@rosen-chains/evm-rpc",
+      "type": "patch",
+      "oldVersion": "4.0.6",
+      "changesets": [
+        "mean-bugs-wave"
+      ],
+      "newVersion": "4.0.7"
+    },
+    {
+      "name": "@rosen-chains/handshake",
+      "type": "patch",
+      "oldVersion": "1.0.0",
+      "changesets": [
+        "nasty-candles-deliver"
+      ],
+      "newVersion": "1.0.1"
+    },
+    {
+      "name": "@rosen-chains/doge",
+      "type": "patch",
+      "oldVersion": "5.0.0",
+      "changesets": [
+        "nasty-candles-deliver"
+      ],
+      "newVersion": "5.0.1"
+    },
+    {
+      "name": "@rosen-chains/firo",
+      "type": "patch",
+      "oldVersion": "1.0.0",
+      "changesets": [
+        "nasty-candles-deliver"
+      ],
+      "newVersion": "1.0.1"
+    },
+    {
+      "name": "@rosen-chains/handshake-rpc",
+      "type": "patch",
+      "oldVersion": "0.0.1",
+      "changesets": [
+        "olive-donkeys-shave"
+      ],
+      "newVersion": "0.0.2"
+    },
+    {
+      "name": "@rosen-chains/base",
+      "type": "minor",
+      "oldVersion": "0.0.0",
+      "changesets": [
+        "rich-planes-jump"
+      ],
+      "newVersion": "0.1.0"
+    },
+    {
+      "name": "@rosen-chains/bitcoin-esplora",
+      "type": "patch",
+      "oldVersion": "5.0.5",
+      "changesets": [],
+      "newVersion": "5.0.6"
+    },
+    {
+      "name": "@rosen-chains/bitcoin-runes-rpc",
+      "type": "patch",
+      "oldVersion": "2.0.7",
+      "changesets": [],
+      "newVersion": "2.0.8"
+    },
+    {
+      "name": "@rosen-chains/doge-blockcypher",
+      "type": "patch",
+      "oldVersion": "1.0.5",
+      "changesets": [],
+      "newVersion": "1.0.6"
+    },
+    {
+      "name": "@rosen-chains/doge-esplora",
+      "type": "patch",
+      "oldVersion": "2.0.5",
+      "changesets": [],
+      "newVersion": "2.0.6"
+    },
+    {
+      "name": "@rosen-chains/doge-rpc",
+      "type": "patch",
+      "oldVersion": "1.0.5",
+      "changesets": [],
+      "newVersion": "1.0.6"
+    },
+    {
+      "name": "@rosen-chains/evm-op-stack-rpc",
+      "type": "patch",
+      "oldVersion": "0.0.1",
+      "changesets": [],
+      "newVersion": "0.0.2"
+    },
+    {
+      "name": "@rosen-chains/binance",
+      "type": "patch",
+      "oldVersion": "4.0.2",
+      "changesets": [],
+      "newVersion": "4.0.3"
+    },
+    {
+      "name": "@rosen-chains/ethereum",
+      "type": "patch",
+      "oldVersion": "4.0.2",
+      "changesets": [],
+      "newVersion": "4.0.3"
+    }
+  ],
+  "externalPrerequisites": [
+    {
+      "id": "S01",
+      "purpose": "Final communication dispatch authorization",
+      "producerSeries": "../producer-series-20261004"
+    },
+    {
+      "id": "U01",
+      "purpose": "SQLite transaction ownership",
+      "producerSeries": "../producer-series-20261004"
+    }
+  ],
+  "actualRelease": false,
+  "normalRegistryQualification": false
+}

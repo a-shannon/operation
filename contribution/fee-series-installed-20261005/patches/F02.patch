@@ -1,0 +1,738 @@
+diff --git a/.changeset/avalanche-test-entry.md b/.changeset/avalanche-test-entry.md
+new file mode 100644
+index 0000000..e58042c
+--- /dev/null
++++ b/.changeset/avalanche-test-entry.md
+@@ -0,0 +1,7 @@
++---
++'minimum-fee-job': patch
++'minfee-app': patch
++---
++
++Add a portable Avalanche test command with validated local producer and decoder
++fixtures, complete service selections and per-case JSON reports.
+diff --git a/docs/avalanche-tests.md b/docs/avalanche-tests.md
+new file mode 100644
+index 0000000..05bfa13
+--- /dev/null
++++ b/docs/avalanche-tests.md
+@@ -0,0 +1,120 @@
++# Avalanche fee tests
++
++Run the declared target from the repository root:
++
++```sh
++npm run test:avalanche
++```
++
++Use Node 22.18.0 or newer and the repository's npm installation. The command
++uses the declared Vitest and tsx dependencies, sets the JavaScript crypto
++backend, and saves JSON reports and logs under the ignored `.cache` directory.
++Each run records its tool versions, expanded case titles and owning spec files.
++Each job uses at most two workers to keep simultaneous WASM fixture starts
++within the source tests' existing timeouts.
++
++The backend and frontend also expose `test:avalanche` for running one service.
++The root target covers 17 backend specs and 16 frontend specs through 15 jobs.
++It checks every existing Avalanche config, removes overlapping selections, and
++rejects a report that omits a selected spec or adds an unexpected one.
++
++## Fixture contract
++
++### Prepare and run
++
++Install this repository's and Utils' build dependencies with their reviewed
++lockfiles first. From the fee repository root, use Node 22.18.0 or newer and npm
++11.6.2 to create a new fixture directory and run the complete target:
++
++```sh
++npm run prepare:avalanche-fixtures -- --output .cache/avalanche-fixtures --utils-root ../utils --run
++```
++
++If invoking Node directly, supply `--npm-cli` with the npm CLI JavaScript file;
++otherwise the helper uses `npm_execpath` supplied by the npm script. The output directory
++must not already exist. An interrupted setup keeps its logs and partial files;
++select a new directory for another attempt.
++
++Setup builds Utils' local `extended-typeorm` package, including its candidate
++bootstrap, and installs its packed archive rather than an older registry
++bootstrap. It downloads the three producer archives through the configured npm
++registry, checks their fixed SHA-512 values and installs the pinned direct
++dependencies. Installation runs dependency lifecycle scripts, including the
++SQLite native binding setup. No running Guard, credentials or funded wallet is
++required. Generated Utils build outputs are updated by its ordinary build.
++
++The helper saves `environment.json`, `package-lock.json`, `fixture-receipt.json`,
++archives and command logs. Direct versions are fixed; the first installation
++resolves their transitive dependency ranges. Retain the resulting lockfile and
++archives and use `npm ci` in that fixture directory to replay that dependency
++graph. `--run` invokes the actual target, including the decoder/parser and other
++fixture checks below. A successful setup alone is not a passing test result.
++
++For later runs, import the saved environment and invoke the public target. For
++example, in PowerShell from the fee repository root:
++
++```powershell
++$fixture = Get-Content .cache/avalanche-fixtures/environment.json | ConvertFrom-Json
++$fixture.PSObject.Properties | ForEach-Object { [Environment]::SetEnvironmentVariable($_.Name, $_.Value, 'Process') }
++npm run test:avalanche
++```
++
++### Environment
++
++Set all eight variables before invoking the target. Paths may be absolute or
++relative to the directory where the command starts. The dependency fixtures are
++trusted local test inputs; the command does not download or install packages.
++
++| Variable                            | Fixture                                                                                                                                                                                                                 |
++| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
++| `AVALANCHE_GUARD_PACKAGE_JSON`      | Package manifest for an installed fixture dependency tree providing the Guard minimum-fee decoder 4.0.1, WASM 0.24.1 and the SDK dependencies used by the test configs. It does not need to be a running Guard service. |
++| `AVALANCHE_FEE_V3_ARCHIVE`          | Original `@rosen-bridge/minimum-fee` 3.1.2 npm tarball.                                                                                                                                                                 |
++| `AVALANCHE_TOKENS_V5_ARCHIVE`       | Original `@rosen-bridge/tokens` 5.0.0 npm tarball.                                                                                                                                                                      |
++| `AVALANCHE_SEMAPHORE_ARCHIVE`       | Original `await-semaphore` 0.1.3 npm tarball.                                                                                                                                                                           |
++| `AVALANCHE_FRONTEND_REACT_FIXTURES` | A `node_modules` directory containing React, React DOM and React Test Renderer 18.3.1.                                                                                                                                  |
++| `AVALANCHE_PUBLICATION_KV_PACKAGE`  | The installed `@vercel/kv` 3.0.0 JavaScript entry file.                                                                                                                                                                 |
++| `AVALANCHE_AUTHORITY_ARTIFACT_ROOT` | Writable directory for synthetic economic authority files.                                                                                                                                                              |
++| `AVALANCHE_LIFECYCLE_ARTIFACT_ROOT` | Writable directory for synthetic service configuration, SQLite databases and lifecycle artifacts.                                                                                                                       |
++
++The launcher verifies the three archive SHA-512 identities before running any
++test. It also checks the decoder version and exact parser SHA-256, WASM version,
++React fixture versions, KV 3.0.0 and its Redis transport 1.34.2. Missing fixtures or mismatched bytes stop
++the command before a test process starts. The archive identities are defined in
++the launcher and checked again by the producer fixtures.
++
++The 3.1.2 archive supplies the real fee producer. The installed 4.0.1 decoder
++exercises its downstream consumer, while the token fixture uses the original
++5.0.0 producer. These roles intentionally have different versions. Replacing
++them with the current application dependencies changes the test contract.
++The archive evaluator also consumes `abstract-logger` 4.0.0 through the declared
++tsx loader. Its `DefaultLogger` API is required by the selected producer fixture;
++logger 3.0.1 supplies a different API and cannot replace it.
++The recipe pins `@upstash/redis` 1.34.2 as well as KV 3.0.0 to preserve the
++transport's historical batching fixture. A newer transitive Redis SDK changes
++the intercepted `flushdb` request shape and therefore changes this test input.
++
++## Test scope
++
++The convention for source-owned TypeScript unit tests is
++[RCS-001](https://github.com/rosen-bridge/rcs/blob/7b9784dae9d8d5b66b80de7a6043d1ba36a3a4bf/rcs-001.md).
++They retain real WASM construction, serialization and decoding where those bytes
++are the behavior under test. RPC replies, prices and KV transport use synthetic
++fixtures. No credentials or funded wallet are needed.
++
++The consumer-join and economics-join suites are supplementary integration tests.
++Their 17 and 20 cases call the actual backend producer and frontend inspectors;
++they check that the same constructed transaction reaches its downstream
++structure and economics consumers. The lifecycle suite also exercises actual
++service initialization against synthetic configuration and SQLite. These joins
++remain separate matrix entries, alongside the source-owned tests.
++
++The transport fixtures intercept external calls and reject unexpected requests.
++The command's result describes the selected synthetic test execution. Deployment,
++signing authority and live bridge operation require their own evidence.
++
++Helper descriptions and contribution conventions follow
++[RCS-002](https://github.com/rosen-bridge/rcs/blob/7b9784dae9d8d5b66b80de7a6043d1ba36a3a4bf/rcs-002.md).
++The separate repository `npm test` workspace target also includes package tests;
++`test:avalanche` selects the fee application's Avalanche matrix.
++
++The frontend selection includes the existing page, validation table and QR consumer checks. These checks bind both consumers to one reviewed publication and refuse refreshed publication drift. The former AvalanchePublication prototype is excluded.
+diff --git a/package.json b/package.json
+index 2b97f10..6f62e57 100644
+--- a/package.json
++++ b/package.json
+@@ -11,6 +11,8 @@
+   "scripts": {
+     "build": "npm run build --workspaces",
+     "test": "npm run test --workspaces",
++    "test:avalanche": "node --import tsx scripts/test-avalanche.mjs",
++    "prepare:avalanche-fixtures": "node scripts/prepare-avalanche-fixtures.mjs",
+     "coverage": "npm run coverage --workspaces",
+     "lint": "npm run lint --workspaces",
+     "lint:check": "npm run lint:check --workspaces",
+diff --git a/scripts/prepare-avalanche-fixtures.mjs b/scripts/prepare-avalanche-fixtures.mjs
+new file mode 100644
+index 0000000..b11e393
+--- /dev/null
++++ b/scripts/prepare-avalanche-fixtures.mjs
+@@ -0,0 +1,238 @@
++import assert from 'node:assert/strict';
++import { spawnSync } from 'node:child_process';
++import { createHash } from 'node:crypto';
++import {
++  existsSync,
++  mkdirSync,
++  readFileSync,
++  statfsSync,
++  writeFileSync,
++} from 'node:fs';
++import { createRequire } from 'node:module';
++import { dirname, join, resolve } from 'node:path';
++import { fileURLToPath } from 'node:url';
++
++const repository = resolve(dirname(fileURLToPath(import.meta.url)), '..');
++const archivePackages = [
++  ['AVALANCHE_FEE_V3_ARCHIVE', '@rosen-bridge/minimum-fee@3.1.2'],
++  ['AVALANCHE_TOKENS_V5_ARCHIVE', '@rosen-bridge/tokens@5.0.0'],
++  ['AVALANCHE_SEMAPHORE_ARCHIVE', 'await-semaphore@0.1.3'],
++];
++const archivePins = {
++  AVALANCHE_FEE_V3_ARCHIVE:
++    'jixoO+JwD/+YDRHmzeTABrXBqtKao91pj2TBDHAOru6Hd63nvJ4bRpJv+cGQmXAkVdDdhNNUaCy5OFS0A3J/uA==',
++  AVALANCHE_TOKENS_V5_ARCHIVE:
++    'KNr5/wBPcbEBSfXgfgpYIEr+Mz+ebeEankzFFWV1b2lBE8B68GhF973c4NtkC4+Hw1L+d85dtWCH+1um6T6ZcA==',
++  AVALANCHE_SEMAPHORE_ARCHIVE:
++    'd1W2aNSYcz/sxYO4pMGX9vq65qOTu0P800epMud+6cYYX0QcT7zyqcxec3VWzpgvdXo57UWmVbZpLMjX2m1I7Q==',
++};
++const dependencies = {
++  'ethers': '6.16.0',
++  'lodash-es': '4.17.21',
++  'axios': '1.13.4',
++  'config': '3.3.12',
++  '@rosen-bridge/abstract-logger': '4.0.0',
++  '@rosen-bridge/json-bigint': '1.1.0',
++  '@rosen-bridge/tokens': '6.0.2',
++  '@rosen-bridge/minimum-fee': '4.0.1',
++  '@rosen-bridge/ergo-box-selection': '2.1.1',
++  'ergo-lib-wasm-nodejs': '0.24.1',
++  '@rosen-bridge/winston-logger': '3.1.0',
++  'sqlite3': '5.1.7',
++  'react': '18.3.1',
++  'react-dom': '18.3.1',
++  'react-test-renderer': '18.3.1',
++  '@vercel/kv': '3.0.0',
++  '@upstash/redis': '1.34.2',
++};
++
++/** Reads fixture paths and rejects ambiguous, unknown or repeated options. */
++const options = () => {
++  const result = {};
++  const args = process.argv.slice(2);
++  for (let index = 0; index < args.length; index++) {
++    const key = args[index];
++    assert.ok(
++      ['--output', '--utils-root', '--npm-cli', '--run'].includes(key),
++      `Unknown option: ${key}`,
++    );
++    assert.ok(!Object.hasOwn(result, key), `Repeated option: ${key}`);
++    if (key === '--run') result[key] = true;
++    else {
++      const value = args[++index];
++      assert.ok(value && !value.startsWith('--'), `Missing value: ${key}`);
++      result[key] = resolve(value);
++    }
++  }
++  assert.ok(result['--output'], 'Required: --output <new directory>');
++  assert.ok(result['--utils-root'], 'Required: --utils-root <utils checkout>');
++  result['--npm-cli'] ??= process.env.npm_execpath;
++  assert.ok(
++    result['--npm-cli'] && existsSync(result['--npm-cli']),
++    'Run through npm run prepare:avalanche-fixtures or supply --npm-cli <npm-cli.js>',
++  );
++  return result;
++};
++
++/** Runs npm directly through Node and preserves each command's diagnostic log. */
++const npm = (cli, args, cwd, log) => {
++  const result = spawnSync(process.execPath, [cli, ...args], {
++    cwd,
++    env: process.env,
++    encoding: 'utf8',
++    maxBuffer: 32 * 1024 * 1024,
++  });
++  writeFileSync(log, (result.stdout ?? '') + (result.stderr ?? ''));
++  assert.ifError(result.error);
++  assert.equal(result.status, 0, `npm failed; see ${log}`);
++  return result.stdout;
++};
++
++/** Pins an emitted file without importing or executing its content. */
++const digest = (filename, algorithm = 'sha256', encoding = 'hex') =>
++  createHash(algorithm).update(readFileSync(filename)).digest(encoding);
++
++/** Creates a fresh dependency tree, archive pins and reusable test environment. */
++const prepare = () => {
++  const opts = options();
++  const [major, minor] = process.versions.node.split('.').map(Number);
++  assert.ok(major > 22 || (major === 22 && minor >= 18), 'Node >=22.18.0');
++  const output = opts['--output'];
++  assert.ok(!existsSync(output), 'Output must be a new directory');
++  let ancestor = dirname(output);
++  while (!existsSync(ancestor)) ancestor = dirname(ancestor);
++  const space = statfsSync(ancestor, { bigint: true });
++  assert.ok(
++    space.bavail * space.bsize >= 10n * 1024n ** 3n,
++    'Need 10 GiB free',
++  );
++  const extended = join(opts['--utils-root'], 'packages', 'extended-typeorm');
++  const metadata = JSON.parse(
++    readFileSync(join(extended, 'package.json'), 'utf8'),
++  );
++  assert.equal(metadata.name, '@rosen-bridge/extended-typeorm');
++  const archives = join(output, 'archives');
++  const logs = join(output, 'logs');
++  mkdirSync(archives, { recursive: true });
++  mkdirSync(logs);
++  const cli = opts['--npm-cli'];
++  const npmVersion = npm(
++    cli,
++    ['--version'],
++    repository,
++    join(logs, 'npm.log'),
++  ).trim();
++  assert.equal(npmVersion, '11.6.2', 'Use repository npm 11.6.2');
++  npm(
++    cli,
++    ['run', 'build'],
++    extended,
++    join(logs, 'extended-typeorm-build.log'),
++  );
++  assert.ok(
++    existsSync(join(extended, 'dist', 'bootstrap.js')),
++    'Missing bootstrap',
++  );
++  const pack = (specifier, name) => {
++    const result = JSON.parse(
++      npm(
++        cli,
++        [
++          'pack',
++          specifier,
++          '--pack-destination',
++          archives,
++          '--ignore-scripts',
++          '--json',
++        ],
++        repository,
++        join(logs, `${name}.log`),
++      ),
++    );
++    assert.equal(result.length, 1, 'Expected one npm archive');
++    assert.equal(result[0].filename, result[0].filename.split(/[\\/]/).pop());
++    return join(archives, result[0].filename);
++  };
++  const localArchive = pack(extended, 'extended-typeorm-pack');
++  const environment = {};
++  for (const [name, specifier] of archivePackages) {
++    environment[name] = pack(specifier, name);
++    assert.equal(
++      digest(environment[name], 'sha512', 'base64'),
++      archivePins[name],
++      name,
++    );
++  }
++  const manifest = {
++    name: 'avalanche-fee-test-fixtures',
++    version: '0.0.0',
++    private: true,
++    type: 'module',
++    dependencies: {
++      ...dependencies,
++      '@rosen-bridge/extended-typeorm': `file:archives/${localArchive.split(/[\\/]/).pop()}`,
++    },
++  };
++  const packageFile = join(output, 'package.json');
++  writeFileSync(packageFile, JSON.stringify(manifest, null, 2) + '\n');
++  npm(
++    cli,
++    ['install', '--no-audit', '--no-fund'],
++    output,
++    join(logs, 'install.log'),
++  );
++  const fixtureRequire = createRequire(packageFile);
++  environment.AVALANCHE_GUARD_PACKAGE_JSON = packageFile;
++  environment.AVALANCHE_FRONTEND_REACT_FIXTURES = join(output, 'node_modules');
++  environment.AVALANCHE_PUBLICATION_KV_PACKAGE = join(
++    dirname(fixtureRequire.resolve('@vercel/kv')),
++    'index.js',
++  );
++  environment.AVALANCHE_AUTHORITY_ARTIFACT_ROOT = join(output, 'authority');
++  environment.AVALANCHE_LIFECYCLE_ARTIFACT_ROOT = join(output, 'lifecycle');
++  mkdirSync(environment.AVALANCHE_AUTHORITY_ARTIFACT_ROOT);
++  mkdirSync(environment.AVALANCHE_LIFECYCLE_ARTIFACT_ROOT);
++  writeFileSync(
++    join(output, 'environment.json'),
++    JSON.stringify(environment, null, 2) + '\n',
++  );
++  writeFileSync(
++    join(output, 'fixture-receipt.json'),
++    JSON.stringify(
++      {
++        node: process.versions.node,
++        npm: npmVersion,
++        packageLockSha256: digest(join(output, 'package-lock.json')),
++        candidate: {
++          name: metadata.name,
++          version: metadata.version,
++          sha256: digest(localArchive),
++        },
++        archives: Object.fromEntries(
++          archivePackages.map(([name, specifier]) => [
++            specifier,
++            digest(environment[name], 'sha512', 'base64'),
++          ]),
++        ),
++      },
++      null,
++      2,
++    ) + '\n',
++  );
++  console.log(`Fixture environment ready: ${join(output, 'environment.json')}`);
++  if (opts['--run']) {
++    const result = spawnSync(
++      process.execPath,
++      ['--import', 'tsx', join(repository, 'scripts', 'test-avalanche.mjs')],
++      {
++        cwd: repository,
++        env: { ...process.env, ...environment },
++        stdio: 'inherit',
++      },
++    );
++    assert.ifError(result.error);
++    assert.equal(result.status, 0, 'Avalanche fee test target failed');
++  }
++};
++
++prepare();
+diff --git a/scripts/test-avalanche.mjs b/scripts/test-avalanche.mjs
+new file mode 100644
+index 0000000..cf64472
+--- /dev/null
++++ b/scripts/test-avalanche.mjs
+@@ -0,0 +1,336 @@
++import assert from 'node:assert/strict';
++import { spawnSync } from 'node:child_process';
++import { createHash, randomUUID } from 'node:crypto';
++import {
++  existsSync,
++  mkdirSync,
++  readFileSync,
++  statSync,
++  writeFileSync,
++} from 'node:fs';
++import { createRequire } from 'node:module';
++import { dirname, join, relative, resolve } from 'node:path';
++import { fileURLToPath, pathToFileURL } from 'node:url';
++
++const repository = resolve(dirname(fileURLToPath(import.meta.url)), '..');
++const require = createRequire(join(repository, 'package.json'));
++const archivePins = {
++  AVALANCHE_FEE_V3_ARCHIVE:
++    'jixoO+JwD/+YDRHmzeTABrXBqtKao91pj2TBDHAOru6Hd63nvJ4bRpJv+cGQmXAkVdDdhNNUaCy5OFS0A3J/uA==',
++  AVALANCHE_TOKENS_V5_ARCHIVE:
++    'KNr5/wBPcbEBSfXgfgpYIEr+Mz+ebeEankzFFWV1b2lBE8B68GhF973c4NtkC4+Hw1L+d85dtWCH+1um6T6ZcA==',
++  AVALANCHE_SEMAPHORE_ARCHIVE:
++    'd1W2aNSYcz/sxYO4pMGX9vq65qOTu0P800epMud+6cYYX0QcT7zyqcxec3VWzpgvdXo57UWmVbZpLMjX2m1I7Q==',
++};
++const requiredEnvironment = [
++  'AVALANCHE_GUARD_PACKAGE_JSON',
++  ...Object.keys(archivePins),
++  'AVALANCHE_FRONTEND_REACT_FIXTURES',
++  'AVALANCHE_PUBLICATION_KV_PACKAGE',
++  'AVALANCHE_AUTHORITY_ARTIFACT_ROOT',
++  'AVALANCHE_LIFECYCLE_ARTIFACT_ROOT',
++];
++const configurations = {
++  backend: [
++    'avalanche',
++    'avalancheChainFee',
++    'avalancheFeeRuntime',
++    'avalancheFeePlan',
++    'avalancheFeeIntegration',
++    'avalancheFeeConstruction',
++    'avalancheFeePublication',
++    'avalancheFeeLifecycle',
++    'avalancheFeeConsumerJoin',
++    'avalancheFeeEconomicsJoin',
++  ],
++  frontend: [
++    'avalanchePublication',
++    'avalancheReview',
++    'avalancheStructure',
++    'avalancheEconomics',
++    'avalancheEconomicReview',
++    'avalancheExistingUi',
++    'avalancheExistingUiPresentation',
++  ],
++};
++const jobs = {
++  backend: [
++    ['avalanche'],
++    ['avalancheChainFee'],
++    ['avalancheFeeRuntime'],
++    ['avalancheFeePlan', 'tests/minimum-fee/avalancheFeePlan.spec.ts'],
++    ['avalancheFeePublication'],
++    ['avalancheFeeLifecycle', 'tests/index.spec.ts'],
++    ['avalancheFeeConsumerJoin'],
++    ['avalancheFeeEconomicsJoin'],
++  ],
++  frontend: [
++    ['avalanchePublication'],
++    ['avalancheReview', 'tests/avalanche/review.spec.ts'],
++    ['avalancheStructure'],
++    ['avalancheEconomics'],
++    ['avalancheEconomicReview'],
++    ['avalancheExistingUi'],
++    ['avalancheExistingUiPresentation'],
++  ],
++};
++
++/** Reads the optional service selector and rejects unsupported arguments. */
++const selectedServices = () => {
++  const args = process.argv.slice(2);
++  if (args.length === 0) return ['backend', 'frontend'];
++  assert.equal(args.length, 2, 'Expected --service backend or frontend');
++  assert.equal(args[0], '--service', 'Expected --service backend or frontend');
++  assert.ok(
++    Object.hasOwn(configurations, args[1]),
++    'Service must be backend or frontend',
++  );
++  return [args[1]];
++};
++
++/** Finds package metadata above a resolved entry without executing the package. */
++const packageMetadata = (entry, name) => {
++  let directory = dirname(entry);
++  while (true) {
++    const filename = join(directory, 'package.json');
++    if (existsSync(filename)) {
++      const metadata = JSON.parse(readFileSync(filename, 'utf8'));
++      if (metadata.name === name) return metadata;
++    }
++    const parent = dirname(directory);
++    assert.notEqual(parent, directory, `Package metadata missing: ${name}`);
++    directory = parent;
++  }
++};
++
++/** Requires a regular fixture file and returns its absolute configured path. */
++const fixtureFile = (name) => {
++  const filename = resolve(process.env[name]);
++  assert.ok(statSync(filename).isFile(), `Fixture must be a file: ${name}`);
++  return filename;
++};
++
++/** Validates the complete fixture contract before importing test configs or creating reports. */
++const preflight = () => {
++  const [major, minor] = process.versions.node.split('.').map(Number);
++  assert.ok(
++    major > 22 || (major === 22 && minor >= 18),
++    'Node 22.18.0 or newer is required',
++  );
++  for (const name of requiredEnvironment)
++    assert.ok(process.env[name], `Required fixture: ${name}`);
++  for (const name of requiredEnvironment)
++    process.env[name] = resolve(process.env[name]);
++  for (const [name, integrity] of Object.entries(archivePins))
++    assert.equal(
++      createHash('sha512')
++        .update(readFileSync(fixtureFile(name)))
++        .digest('base64'),
++      integrity,
++      `Pinned archive integrity mismatch: ${name}`,
++    );
++  const fixtureRequire = createRequire(
++    fixtureFile('AVALANCHE_GUARD_PACKAGE_JSON'),
++  );
++  const feeEntry = fixtureRequire.resolve('@rosen-bridge/minimum-fee');
++  const wasmEntry = fixtureRequire.resolve('ergo-lib-wasm-nodejs');
++  assert.equal(
++    packageMetadata(feeEntry, '@rosen-bridge/minimum-fee').version,
++    '4.0.1',
++    'The downstream minimum-fee parser fixture must be 4.0.1',
++  );
++  assert.equal(
++    packageMetadata(wasmEntry, 'ergo-lib-wasm-nodejs').version,
++    '0.24.1',
++    'The WASM fixture must be 0.24.1',
++  );
++  assert.equal(
++    createHash('sha256')
++      .update(readFileSync(join(dirname(feeEntry), 'utils.js')))
++      .digest('hex'),
++    '29bf09160751542324333147c79973efc6dbb91c2cb93fb2e98a553a090f4d09',
++    'Downstream minimum-fee parser bytes changed',
++  );
++  const reactRoot = resolve(process.env.AVALANCHE_FRONTEND_REACT_FIXTURES);
++  for (const name of ['react', 'react-dom', 'react-test-renderer'])
++    assert.equal(
++      JSON.parse(readFileSync(join(reactRoot, name, 'package.json'), 'utf8'))
++        .version,
++      '18.3.1',
++      `The ${name} fixture must be 18.3.1`,
++    );
++  assert.equal(
++    packageMetadata(
++      fixtureFile('AVALANCHE_PUBLICATION_KV_PACKAGE'),
++      '@vercel/kv',
++    ).version,
++    '3.0.0',
++    'The KV fixture must be 3.0.0',
++  );
++  assert.equal(
++    packageMetadata(
++      createRequire(fixtureFile('AVALANCHE_PUBLICATION_KV_PACKAGE')).resolve(
++        '@upstash/redis',
++      ),
++      '@upstash/redis',
++    ).version.replace(/^v/, ''),
++    '1.34.2',
++    'The KV transport fixture must be 1.34.2',
++  );
++  const vitestPackage = require.resolve('vitest/package.json');
++  const loader = require.resolve('tsx/esm');
++  return {
++    cli: join(dirname(vitestPackage), 'vitest.mjs'),
++    loader,
++    versions: {
++      node: process.versions.node,
++      vitest: JSON.parse(readFileSync(vitestPackage, 'utf8')).version,
++      tsx: packageMetadata(loader, 'tsx').version,
++    },
++  };
++};
++
++/** Imports every owned config and proves the job selections cover each declared spec exactly once. */
++const selectJobs = async (services) => {
++  const selected = [];
++  for (const service of services) {
++    const directory = join(repository, 'services', service);
++    const configs = new Map();
++    const declared = new Set();
++    for (const name of configurations[service]) {
++      const filename = join(directory, `vitest.${name}.config.ts`);
++      const config = (await import(pathToFileURL(filename).href)).default;
++      assert.ok(Array.isArray(config.test.include), `Missing include: ${name}`);
++      for (const spec of config.test.include) {
++        assert.ok(spec.endsWith('.spec.ts') || spec.endsWith('.spec.tsx'));
++        assert.ok(existsSync(join(directory, spec)), `Missing spec: ${spec}`);
++        declared.add(spec);
++      }
++      configs.set(name, { filename, include: config.test.include });
++    }
++    const admitted = new Set();
++    for (const [name, ...filters] of jobs[service]) {
++      const config = configs.get(name);
++      const specs = filters.length ? filters : config.include;
++      for (const spec of specs) {
++        assert.ok(
++          config.include.includes(spec),
++          `Filter outside config: ${spec}`,
++        );
++        assert.ok(!admitted.has(spec), `Duplicate selected spec: ${spec}`);
++        admitted.add(spec);
++      }
++      selected.push({
++        service,
++        name,
++        directory,
++        config: config.filename,
++        specs,
++      });
++    }
++    assert.deepEqual([...admitted].sort(), [...declared].sort());
++    assert.equal(admitted.size, service === 'backend' ? 17 : 16);
++  }
++  return selected;
++};
++
++/** Runs one config selection and verifies its report contains exactly those spec files and positive passing cases. */
++const runJob = (job, tools, reportRoot) => {
++  const report = join(reportRoot, `${job.service}-${job.name}.json`);
++  const child = spawnSync(
++    process.execPath,
++    [
++      tools.cli,
++      'run',
++      '--config',
++      job.config,
++      '--no-cache',
++      '--maxWorkers=2',
++      '--reporter=json',
++      `--outputFile=${report}`,
++      ...job.specs,
++    ],
++    {
++      cwd: job.directory,
++      env: {
++        ...process.env,
++        NODE_OPTIONS: `--import ${pathToFileURL(tools.loader).href}`,
++        NODE_BACKEND: 'js',
++        NODE_ENV: 'test',
++      },
++      encoding: 'utf8',
++      timeout: 180000,
++      maxBuffer: 32 * 1024 * 1024,
++      windowsHide: true,
++    },
++  );
++  writeFileSync(report.replace(/\.json$/, '.log'), child.stdout + child.stderr);
++  assert.equal(child.status, 0, `Failed test job: ${job.service}/${job.name}`);
++  const result = JSON.parse(readFileSync(report, 'utf8'));
++  assert.equal(result.success, true);
++  assert.equal(result.numFailedTests, 0);
++  assert.deepEqual(
++    result.testResults.map((test) => resolve(test.name)).sort(),
++    job.specs.map((spec) => resolve(job.directory, spec)).sort(),
++    'Executed spec files differ from the selected job',
++  );
++  const cases = result.testResults.flatMap((test) => {
++    assert.ok(test.assertionResults.length > 0, 'Empty test file');
++    return test.assertionResults.map((item) => {
++      assert.equal(item.status, 'passed', 'Every selected case must pass');
++      return {
++        file: relative(repository, test.name).replaceAll('\\', '/'),
++        groups: item.ancestorTitles,
++        title: item.title,
++      };
++    });
++  });
++  assert.equal(cases.length, result.numPassedTests);
++  console.log(`${job.service}/${job.name}: ${cases.length} passed`);
++  return {
++    service: job.service,
++    config: job.name,
++    passed: cases.length,
++    cases,
++  };
++};
++
++/** Validates fixtures, runs the complete selected service matrix, and saves the exact case inventory. */
++const main = async () => {
++  const services = selectedServices();
++  const tools = preflight();
++  const selected = await selectJobs(services);
++  const reportRoot = join(
++    repository,
++    '.cache',
++    `avalanche-tests-${randomUUID()}`,
++  );
++  mkdirSync(reportRoot, { recursive: true });
++  for (const name of [
++    'AVALANCHE_AUTHORITY_ARTIFACT_ROOT',
++    'AVALANCHE_LIFECYCLE_ARTIFACT_ROOT',
++  ])
++    mkdirSync(resolve(process.env[name]), { recursive: true });
++  const results = selected.map((job) => runJob(job, tools, reportRoot));
++  const summary = {
++    services,
++    versions: tools.versions,
++    jobs: results,
++    files: results
++      .flatMap((job) => job.cases.map((item) => item.file))
++      .filter((item, index, all) => all.indexOf(item) === index).length,
++    passed: results.reduce((sum, job) => sum + job.passed, 0),
++  };
++  writeFileSync(
++    join(reportRoot, 'summary.json'),
++    JSON.stringify(summary, null, 2),
++  );
++  console.log(
++    `Reports: ${relative(repository, reportRoot).replaceAll('\\', '/')}`,
++  );
++};
++
++main().catch((error) => {
++  console.error(error.message);
++  process.exitCode = 1;
++});

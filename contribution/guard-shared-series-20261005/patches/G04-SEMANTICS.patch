@@ -1,0 +1,1078 @@
+diff --git a/.changeset/ergo-signed-semantics.md b/.changeset/ergo-signed-semantics.md
+new file mode 100644
+index 0000000..c37e3bd
+--- /dev/null
++++ b/.changeset/ergo-signed-semantics.md
+@@ -0,0 +1,6 @@
++---
++'guard-service': patch
++---
++
++Add exact reduced-to-signed Ergo body and auxiliary-box consistency checks for
++authorization consumers.
+diff --git a/services/guard-service/src/verification/ergoSignedSemantics.ts b/services/guard-service/src/verification/ergoSignedSemantics.ts
+new file mode 100644
+index 0000000..e18ff62
+--- /dev/null
++++ b/services/guard-service/src/verification/ergoSignedSemantics.ts
+@@ -0,0 +1,213 @@
++import * as wasm from 'ergo-lib-wasm-nodejs';
++import { isDeepStrictEqual } from 'node:util';
++
++import { ErgoTransaction } from '@rosen-chains/ergo';
++
++/** Checks canonical auxiliary box bytes against ordered expected identities. */
++const canonicalAuxiliary = (
++  boxes: readonly Uint8Array[],
++  references: readonly string[],
++): Buffer[] => {
++  if (!Array.isArray(boxes) || boxes.length !== references.length)
++    throw new Error('Ergo auxiliary count mismatch');
++  const seen = new Set<string>();
++  return Array.from({ length: references.length }, (_, index) => {
++    if (!Object.hasOwn(boxes, index))
++      throw new Error('Ergo auxiliary slot is missing');
++    const bytes = boxes[index];
++    if (!(bytes instanceof Uint8Array))
++      throw new Error('Invalid Ergo auxiliary bytes');
++    const box = wasm.ErgoBox.sigma_parse_bytes(bytes);
++    try {
++      const id = box.box_id();
++      let key: string;
++      try {
++        key = id.to_str();
++      } finally {
++        id.free();
++      }
++      const canonical = Buffer.from(box.sigma_serialize_bytes());
++      if (
++        seen.has(key) ||
++        key !== references[index] ||
++        !canonical.equals(Buffer.from(bytes))
++      )
++        throw new Error('Ergo auxiliary identity mismatch');
++      seen.add(key);
++      return canonical;
++    } finally {
++      box.free();
++    }
++  });
++};
++
++/** Extracts signed Ergo identities and payment semantics with owned resources. */
++const signedSemantics = (model: ErgoTransaction) => {
++  if (
++    !model ||
++    model.network !== 'ergo' ||
++    !(model.txBytes instanceof Uint8Array)
++  )
++    throw new Error('Invalid signed Ergo model');
++  const transaction = wasm.Transaction.sigma_parse_bytes(model.txBytes);
++  try {
++    const id = transaction.id();
++    let txId: string;
++    try {
++      txId = id.to_str();
++    } finally {
++      id.free();
++    }
++    if (
++      model.txId !== txId ||
++      !Buffer.from(transaction.sigma_serialize_bytes()).equals(
++        Buffer.from(model.txBytes),
++      )
++    )
++      throw new Error('Signed Ergo identity mismatch');
++
++    const inputs = transaction.inputs();
++    const unsignedInputs = new wasm.UnsignedInputs();
++    try {
++      for (let index = 0; index < inputs.len(); index++) {
++        const input = inputs.get(index);
++        const proof = input.spending_proof();
++        const boxId = input.box_id();
++        const extension = proof.extension();
++        try {
++          const unsignedInput = new wasm.UnsignedInput(boxId, extension);
++          try {
++            unsignedInputs.add(unsignedInput);
++          } finally {
++            unsignedInput.free();
++          }
++        } finally {
++          extension.free();
++          boxId.free();
++          proof.free();
++          input.free();
++        }
++      }
++      const dataInputs = transaction.data_inputs();
++      const outputs = transaction.output_candidates();
++      try {
++        const unsigned = new wasm.UnsignedTransaction(
++          unsignedInputs,
++          dataInputs,
++          outputs,
++        );
++        try {
++          // EIP-12 retains exact decimal strings and every body field; only the
++          // proofs are removed by the public WASM reconstruction above.
++          const body = unsigned.to_js_eip12();
++          return {
++            txId,
++            body,
++            inputs: canonicalAuxiliary(
++              model.inputBoxes,
++              body.inputs.map((input: { boxId: string }) => input.boxId),
++            ),
++            dataInputs: canonicalAuxiliary(
++              model.dataInputs,
++              body.dataInputs.map((input: { boxId: string }) => input.boxId),
++            ),
++          };
++        } finally {
++          unsigned.free();
++        }
++      } finally {
++        dataInputs.free();
++        outputs.free();
++      }
++    } finally {
++      inputs.free();
++      unsignedInputs.free();
++    }
++  } finally {
++    transaction.free();
++  }
++};
++
++/** Extracts canonical reduced Ergo identities and unsigned payment semantics. */
++const reducedSemantics = (model: ErgoTransaction) => {
++  if (
++    !model ||
++    model.network !== 'ergo' ||
++    !(model.txBytes instanceof Uint8Array)
++  )
++    throw new Error('Invalid reduced Ergo model');
++  const transaction = wasm.ReducedTransaction.sigma_parse_bytes(model.txBytes);
++  try {
++    if (
++      !Buffer.from(transaction.sigma_serialize_bytes()).equals(
++        Buffer.from(model.txBytes),
++      )
++    )
++      throw new Error('Noncanonical reduced Ergo bytes');
++    const unsigned = transaction.unsigned_tx();
++    try {
++      const id = unsigned.id();
++      let txId: string;
++      try {
++        txId = id.to_str();
++      } finally {
++        id.free();
++      }
++      if (model.txId !== txId)
++        throw new Error('Reduced Ergo identity mismatch');
++      const body = unsigned.to_js_eip12();
++      return {
++        txId,
++        body,
++        inputs: canonicalAuxiliary(
++          model.inputBoxes,
++          body.inputs.map((input: { boxId: string }) => input.boxId),
++        ),
++        dataInputs: canonicalAuxiliary(
++          model.dataInputs,
++          body.dataInputs.map((input: { boxId: string }) => input.boxId),
++        ),
++      };
++    } finally {
++      unsigned.free();
++    }
++  } finally {
++    transaction.free();
++  }
++};
++
++/** Validates representation, model ID and complete ordered boxes, not reduction correctness. */
++export const assertCanonicalReducedErgo = (model: ErgoTransaction): void => {
++  reducedSemantics(model);
++};
++
++/**
++ * Compare a canonical Reduced transaction with a canonical Signed transaction.
++ * Proof bytes are deliberately excluded; proof validity, execution, settlement,
++ * eventId and txType authorization remain the caller's responsibility.
++ */
++export const assertReducedToSignedErgoSemantics = (
++  reduced: ErgoTransaction,
++  signed: ErgoTransaction,
++): void => {
++  const expected = reducedSemantics(reduced);
++  const actual = signedSemantics(signed);
++  if (!isDeepStrictEqual(expected, actual))
++    throw new Error('Reduced-to-signed Ergo semantics mismatch');
++};
++
++/**
++ * Compare canonical signed Ergo bodies and their complete ordered auxiliary
++ * boxes, allowing different proof bytes. This does not validate proofs,
++ * execution, or settlement. Both networks must be Ergo; eventId and txType are
++ * application metadata, deliberately left to the caller's authority checks.
++ */
++export const assertSameSignedErgoSemantics = (
++  captured: ErgoTransaction,
++  observed: ErgoTransaction,
++): void => {
++  const expected = signedSemantics(captured);
++  const actual = signedSemantics(observed);
++  if (!isDeepStrictEqual(expected, actual))
++    throw new Error('Signed Ergo semantics mismatch');
++};
+diff --git a/services/guard-service/tests/signing/fixtures/recoveryMultiInput.ts b/services/guard-service/tests/signing/fixtures/recoveryMultiInput.ts
+new file mode 100644
+index 0000000..57b0ca6
+--- /dev/null
++++ b/services/guard-service/tests/signing/fixtures/recoveryMultiInput.ts
+@@ -0,0 +1,3 @@
++// Exact transaction3PaymentTransaction fixture from packages/chains/ergo/tests/transactionTestData.ts.
++// Source SHA256: c8d2d077c63ac5d49533af204640a48113f06009392e0db217f9fe2309790de3. Synthetic recovery tests make no proof-validity claim.
++export default `{"network":"ergo","txId":"890e3bddc1e64b8c4be61084e7bc0278ff908332f055b7b99eeb2e5c57b59b6e","eventId":"2bedc6e54ede7748e5efc7df689a0a89b281ac1d92d09054650d5f27a25d5b7c","txBytes":"ee240471d166c0a74fdc5111379e9fe19b471bff2d9d202f659c43f531f106355d435b0000e7506ce39824c7a6ff2d37ae3b416d1c7121e052466b301dbcf3dce9af3b7fdd00003066dd4cc794579655384ed1e7cf8f42d6aa36fea5b079e6b21528bf9a72269b00009855b8d84809901dcae938e736e8cd97701d092c8b492e8d3979951d7048bd37000001350bff7491aa9bf828a922fd8f50df0191c6ae586cb077d84b9caef5dd96cfbc051d9a45e047b45a4a4c565ac49e70b5e2f03f625975cbe41912833e9a547d060d10278c102bf890fdab8ef5111e94053c90b3541bc25b0de2ee8aa6305ccec3defc6c2070eb004fc08fcde1514dee56b1d0587477748d8af647179b098f52f559517c91b4ea680166ddd3f67b27b0274c20bbd2aeb82b60eaf5bf5471b37f684afbbaac7337d051c10fc3da0ccb864f4d32d40027551e1c3ea3ce361f39b91e400ee0a71210130400040004040400040204000e203ac8a90d0aa8c5c50e99dd2588a990fd37b5d3aee70e32d56241f41ed49e9f030404040004000400010104020400040004000e203de37506fc685d71aae6c896771f3c81f91cb27cd30e4f7d12076bb2a5ba6a3805020101d807d601b2a5730000d6028cb2db6308a773010001d603aeb5b4a57302b1a5d901036391b1db630872037303d9010363aedb63087203d901054d0e938c7205017202d604e4c6a7041ad605b2a5730400d606db63087205d607ae7206d901074d0e938c720701720295938cb2db63087201730500017306d196830301ef7203938cb2db6308b2a473070073080001b2720473090095720796830201938cb27206730a0001720293c27205c2a7730bd801d608c2a7d196830501ef720393c27201720893e4c67201041a7204938cb2db6308b2a4730c00730d0001b27204730e00957207d801d609b27206730f0096830701938c720901720293cbc272057310e6c67205051ae6c67205060e93e4c67205070ecb720893e4c67205041a7204938c72090273117312f0fa3a0200010164010e209dc9311055af1547a6739d7cdd5e17b75aa7338e8990f41fff40bbbe0d644446e0a71210130400040004040400040204000e203ac8a90d0aa8c5c50e99dd2588a990fd37b5d3aee70e32d56241f41ed49e9f030404040004000400010104020400040004000e203de37506fc685d71aae6c896771f3c81f91cb27cd30e4f7d12076bb2a5ba6a3805020101d807d601b2a5730000d6028cb2db6308a773010001d603aeb5b4a57302b1a5d901036391b1db630872037303d9010363aedb63087203d901054d0e938c7205017202d604e4c6a7041ad605b2a5730400d606db63087205d607ae7206d901074d0e938c720701720295938cb2db63087201730500017306d196830301ef7203938cb2db6308b2a473070073080001b2720473090095720796830201938cb27206730a0001720293c27205c2a7730bd801d608c2a7d196830501ef720393c27201720893e4c67201041a7204938cb2db6308b2a4730c00730d0001b27204730e00957207d801d609b27206730f0096830701938c720901720293cbc272057310e6c67205051ae6c67205060e93e4c67205070ecb720893e4c67205041a7204938c72090273117312f0fa3a0200010164010e208abfa5881954da4848d720847f3b4f1577682cf5738827388bf418f2487f4852e0a71210130400040004040400040204000e203ac8a90d0aa8c5c50e99dd2588a990fd37b5d3aee70e32d56241f41ed49e9f030404040004000400010104020400040004000e203de37506fc685d71aae6c896771f3c81f91cb27cd30e4f7d12076bb2a5ba6a3805020101d807d601b2a5730000d6028cb2db6308a773010001d603aeb5b4a57302b1a5d901036391b1db630872037303d9010363aedb63087203d901054d0e938c7205017202d604e4c6a7041ad605b2a5730400d606db63087205d607ae7206d901074d0e938c720701720295938cb2db63087201730500017306d196830301ef7203938cb2db6308b2a473070073080001b2720473090095720796830201938cb27206730a0001720293c27205c2a7730bd801d608c2a7d196830501ef720393c27201720893e4c67201041a7204938cb2db6308b2a4730c00730d0001b27204730e00957207d801d609b27206730f0096830701938c720901720293cbc272057310e6c67205051ae6c67205060e93e4c67205070ecb720893e4c67205041a7204938c72090273117312f0fa3a0200010164010e200b5fe301668c691ba7310038a612e01b717f20062dd19c1a4552edb7b0037ce1e0a71210130400040004040400040204000e203ac8a90d0aa8c5c50e99dd2588a990fd37b5d3aee70e32d56241f41ed49e9f030404040004000400010104020400040004000e203de37506fc685d71aae6c896771f3c81f91cb27cd30e4f7d12076bb2a5ba6a3805020101d807d601b2a5730000d6028cb2db6308a773010001d603aeb5b4a57302b1a5d901036391b1db630872037303d9010363aedb63087203d901054d0e938c7205017202d604e4c6a7041ad605b2a5730400d606db63087205d607ae7206d901074d0e938c720701720295938cb2db63087201730500017306d196830301ef7203938cb2db6308b2a473070073080001b2720473090095720796830201938cb27206730a0001720293c27205c2a7730bd801d608c2a7d196830501ef720393c27201720893e4c67201041a7204938cb2db6308b2a4730c00730d0001b27204730e00957207d801d609b27206730f0096830701938c720901720293cbc272057310e6c67205051ae6c67205060e93e4c67205070ecb720893e4c67205041a7204938c72090273117312f0fa3a0200010164010e20f9f75e886f9f88a3ba0809ae60accd3de67ab0ce5ba3436524c5bf666dd3b1dce0a71210130400040004040400040204000e203ac8a90d0aa8c5c50e99dd2588a990fd37b5d3aee70e32d56241f41ed49e9f030404040004000400010104020400040004000e203de37506fc685d71aae6c896771f3c81f91cb27cd30e4f7d12076bb2a5ba6a3805020101d807d601b2a5730000d6028cb2db6308a773010001d603aeb5b4a57302b1a5d901036391b1db630872037303d9010363aedb63087203d901054d0e938c7205017202d604e4c6a7041ad605b2a5730400d606db63087205d607ae7206d901074d0e938c720701720295938cb2db63087201730500017306d196830301ef7203938cb2db6308b2a473070073080001b2720473090095720796830201938cb27206730a0001720293c27205c2a7730bd801d608c2a7d196830501ef720393c27201720893e4c67201041a7204938cb2db6308b2a4730c00730d0001b27204730e00957207d801d609b27206730f0096830701938c720901720293cbc272057310e6c67205051ae6c67205060e93e4c67205070ecb720893e4c67205041a7204938c72090273117312f0fa3a0200010164010e20005740bfc12e8af70d5230c872be782a3201312108579c7461780ef590268168e0a71210130400040004040400040204000e203ac8a90d0aa8c5c50e99dd2588a990fd37b5d3aee70e32d56241f41ed49e9f030404040004000400010104020400040004000e203de37506fc685d71aae6c896771f3c81f91cb27cd30e4f7d12076bb2a5ba6a3805020101d807d601b2a5730000d6028cb2db6308a773010001d603aeb5b4a57302b1a5d901036391b1db630872037303d9010363aedb63087203d901054d0e938c7205017202d604e4c6a7041ad605b2a5730400d606db63087205d607ae7206d901074d0e938c720701720295938cb2db63087201730500017306d196830301ef7203938cb2db6308b2a473070073080001b2720473090095720796830201938cb27206730a0001720293c27205c2a7730bd801d608c2a7d196830501ef720393c27201720893e4c67201041a7204938cb2db6308b2a4730c00730d0001b27204730e00957207d801d609b27206730f0096830701938c720901720293cbc272057310e6c67205051ae6c67205060e93e4c67205070ecb720893e4c67205041a7204938c72090273117312f0fa3a0200010164010e20484a851b92f503bdc4c28801003b2886980feebea479852fa9734dc82d176029e0a71210130400040004040400040204000e203ac8a90d0aa8c5c50e99dd2588a990fd37b5d3aee70e32d56241f41ed49e9f030404040004000400010104020400040004000e203de37506fc685d71aae6c896771f3c81f91cb27cd30e4f7d12076bb2a5ba6a3805020101d807d601b2a5730000d6028cb2db6308a773010001d603aeb5b4a57302b1a5d901036391b1db630872037303d9010363aedb63087203d901054d0e938c7205017202d604e4c6a7041ad605b2a5730400d606db63087205d607ae7206d901074d0e938c720701720295938cb2db63087201730500017306d196830301ef7203938cb2db6308b2a473070073080001b2720473090095720796830201938cb27206730a0001720293c27205c2a7730bd801d608c2a7d196830501ef720393c27201720893e4c67201041a7204938cb2db6308b2a4730c00730d0001b27204730e00957207d801d609b27206730f0096830701938c720901720293cbc272057310e6c67205051ae6c67205060e93e4c67205070ecb720893e4c67205041a7204938c72090273117312f0fa3a0200010164010e20eddfa367686cacef732e2bda97ff2357fc8177997a89d94b1aa0b7e7a68fb23be0a71210130400040004040400040204000e203ac8a90d0aa8c5c50e99dd2588a990fd37b5d3aee70e32d56241f41ed49e9f030404040004000400010104020400040004000e203de37506fc685d71aae6c896771f3c81f91cb27cd30e4f7d12076bb2a5ba6a3805020101d807d601b2a5730000d6028cb2db6308a773010001d603aeb5b4a57302b1a5d901036391b1db630872037303d9010363aedb63087203d901054d0e938c7205017202d604e4c6a7041ad605b2a5730400d606db63087205d607ae7206d901074d0e938c720701720295938cb2db63087201730500017306d196830301ef7203938cb2db6308b2a473070073080001b2720473090095720796830201938cb27206730a0001720293c27205c2a7730bd801d608c2a7d196830501ef720393c27201720893e4c67201041a7204938cb2db6308b2a4730c00730d0001b27204730e00957207d801d609b27206730f0096830701938c720901720293cbc272057310e6c67205051ae6c67205060e93e4c67205070ecb720893e4c67205041a7204938c72090273117312f0fa3a0200010164010e209f3c93a1d23a8f9e7724c30d81bd3b8ba69f20c89753699a994b82bf6ae26925e0a71210130400040004040400040204000e203ac8a90d0aa8c5c50e99dd2588a990fd37b5d3aee70e32d56241f41ed49e9f030404040004000400010104020400040004000e203de37506fc685d71aae6c896771f3c81f91cb27cd30e4f7d12076bb2a5ba6a3805020101d807d601b2a5730000d6028cb2db6308a773010001d603aeb5b4a57302b1a5d901036391b1db630872037303d9010363aedb63087203d901054d0e938c7205017202d604e4c6a7041ad605b2a5730400d606db63087205d607ae7206d901074d0e938c720701720295938cb2db63087201730500017306d196830301ef7203938cb2db6308b2a473070073080001b2720473090095720796830201938cb27206730a0001720293c27205c2a7730bd801d608c2a7d196830501ef720393c27201720893e4c67201041a7204938cb2db6308b2a4730c00730d0001b27204730e00957207d801d609b27206730f0096830701938c720901720293cbc272057310e6c67205051ae6c67205060e93e4c67205070ecb720893e4c67205041a7204938c72090273117312f0fa3a0200010164010e20294bbe6ae9df2b402d93536ef7b741e0ccc7527f7d51a09ee50606b30491388fa0a1820d0008cd02d0b75bc997751195d143671cc10e8a590f25b987f2b2dd0d99cc5f48c6966d3df0fa3a0101b410010e0080897a0008cd03cc76f1074a4477cd378329c4e902ee6145add72e9c26c82b4f2255e768d48811f0fa3a0000ea8cd50a0008cd02d229bb11603f2a9ccdea55e2c4660a5e5bd4f3c08863c1ff2b5df25f5bd10432f0fa3a0000c6b3c1d8c702100304000e20a96b8049f0741c7255b60cf01954439d2e4b2d19ae7d8ebc688ecb190a33b5380400d801d601b2db6501fe730000ea02d1aedb63087201d901024d0e938c720201730198b2e4c672010510730200ade4c67201041ad901020ecdee7202f0fa3a0402878ce1e01603ed89ddf40304030186bab00400e091431005040004000e36100204a00b08cd0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798ea02d192a39a8cc7a701730073011001020402d19683030193a38cc7b2a57300000193c2b2a57301007473027303830108cdeeac93b1a57304f0fa3a0000d20098070acd02db3849f655693c28e3c44ededd546c6c3267b6f90c0f9ad9785061c387ca2e69cd0249e1b4b331b93481cc812c024f1f8a198fe078895ad7f03ab890bd4e81fb5907cd020e106e606e70e426a19900f42f3210420f53498c9956106d30b1837596dbc451cd02ddd718f3080a04c2e9f2016dc13153f65d64da83ccfea433139c89236476e2b7cd02e2c106d43c57936310f06d4fea9f6940dbf1c4e32cb99bdd7ac7b7714e545271cd032bb38046b67ed49aa6f4d255bbe1c098ff2f7b682f9922a2a376862de266b16ecd03c3374d06b092583835a3a93c7acbc6c449656881abff5d6b17df456a7f3d618bcd02956d0fd87b81ebe8ea4763a64e126a548adef2eec3a9719683944100cb992bc5cd02b980e0cbb817f80163485aea9ce59c3d6249d510733002a9fc6843718a540b07cd03d7e6475ef5ceb9b0e9b0cad722c9cbfa3a13e8e94188ac963e11e4e66e9eaa2c0098070acd02db3849f655693c28e3c44ededd546c6c3267b6f90c0f9ad9785061c387ca2e69cd0249e1b4b331b93481cc812c024f1f8a198fe078895ad7f03ab890bd4e81fb5907cd020e106e606e70e426a19900f42f3210420f53498c9956106d30b1837596dbc451cd02ddd718f3080a04c2e9f2016dc13153f65d64da83ccfea433139c89236476e2b7cd02e2c106d43c57936310f06d4fea9f6940dbf1c4e32cb99bdd7ac7b7714e545271cd032bb38046b67ed49aa6f4d255bbe1c098ff2f7b682f9922a2a376862de266b16ecd03c3374d06b092583835a3a93c7acbc6c449656881abff5d6b17df456a7f3d618bcd02956d0fd87b81ebe8ea4763a64e126a548adef2eec3a9719683944100cb992bc5cd02b980e0cbb817f80163485aea9ce59c3d6249d510733002a9fc6843718a540b07cd03d7e6475ef5ceb9b0e9b0cad722c9cbfa3a13e8e94188ac963e11e4e66e9eaa2c0098070acd02db3849f655693c28e3c44ededd546c6c3267b6f90c0f9ad9785061c387ca2e69cd0249e1b4b331b93481cc812c024f1f8a198fe078895ad7f03ab890bd4e81fb5907cd020e106e606e70e426a19900f42f3210420f53498c9956106d30b1837596dbc451cd02ddd718f3080a04c2e9f2016dc13153f65d64da83ccfea433139c89236476e2b7cd02e2c106d43c57936310f06d4fea9f6940dbf1c4e32cb99bdd7ac7b7714e545271cd032bb38046b67ed49aa6f4d255bbe1c098ff2f7b682f9922a2a376862de266b16ecd03c3374d06b092583835a3a93c7acbc6c449656881abff5d6b17df456a7f3d618bcd02956d0fd87b81ebe8ea4763a64e126a548adef2eec3a9719683944100cb992bc5cd02b980e0cbb817f80163485aea9ce59c3d6249d510733002a9fc6843718a540b07cd03d7e6475ef5ceb9b0e9b0cad722c9cbfa3a13e8e94188ac963e11e4e66e9eaa2c0000","txType":"payment","inputBoxes":["e09fdc041008040004000e200ab4d9f4de06bcabc9473a0a29dd0b9f28159226f0abb9d5c35d4f77c69803e1040204000e20f833f756e1bf9d15b8f984aefa64482040d6c8b3ec217b2be8b8a477e82d900d04c0700e206a1a0cf61ec4148916281e6d82a1d17a60eed7845200401d5231377f4643ba67d805d601e4c6a7041ad602b17201d603b4a573007202d604c2b2a5730100d605cb7204d196830301937202b17203afdc0c1d7201017203d901063c0e63d801d6088c720602ed9383010e8c720601e4c67208041a93c27208720495937205730296830201938cb2db6308b2a47303007304000173059299a373068cc7a70196830201aea4d901066393cbc272067307937205e4c6a7060eb4da3a011d9a45e047b45a4a4c565ac49e70b5e2f03f625975cbe41912833e9a547d060d09031a09209dc9311055af1547a6739d7cdd5e17b75aa7338e8990f41fff40bbbe0d644446208abfa5881954da4848d720847f3b4f1577682cf5738827388bf418f2487f4852200b5fe301668c691ba7310038a612e01b717f20062dd19c1a4552edb7b0037ce120f9f75e886f9f88a3ba0809ae60accd3de67ab0ce5ba3436524c5bf666dd3b1dc20005740bfc12e8af70d5230c872be782a3201312108579c7461780ef59026816820484a851b92f503bdc4c28801003b2886980feebea479852fa9734dc82d17602920eddfa367686cacef732e2bda97ff2357fc8177997a89d94b1aa0b7e7a68fb23b209f3c93a1d23a8f9e7724c30d81bd3b8ba69f20c89753699a994b82bf6ae2692520294bbe6ae9df2b402d93536ef7b741e0ccc7527f7d51a09ee50606b30491388f1a0c40366264383066666234343761336166646164343236613336616564353061636461663362353164343866313433393062323965393664636262313738666539650763617264616e6f046572676f6761646472317139373779347334783337757a3463777775676e647170633933706d737366326c64303566356e676c6d6b66336b6a786d63643632397a7a6c7a3666356c3870326674777473716766343532676574707833356b6363733573347171666576327067333967376372356e3545487077416a6f595a70706a74575a663464754c434d46467a6f50736756364c744b447a5242634a3248630800000000033d8e6a080000000001c9c3800800000000001e84802c617373657431703430723065756e32616c737a6c78686a376b3475796c796134636a35346c786b6a6a6d736d036572674038376234303038376539333632653339396438313031333962633231393733313232326434663839626363366630663566646263636438313730376261383661080000000000820a9b0e20203ace1f2606730afc938bf9a38d991bae1f99bc84a7ef66e850d66005a9d92190e09cc766734b4c29d21c1c3c6df6fb4482e26fe7a534386136c8c2dd6c54fc00","c0843d100304000e20a96b8049f0741c7255b60cf01954439d2e4b2d19ae7d8ebc688ecb190a33b5380400d801d601b2db6501fe730000ea02d1aedb63087201d901024d0e938c720201730198b2e4c672010510730200ade4c67201041ad901020ecdee7202ffaa3901fc6c2070eb004fc08fcde1514dee56b1d0587477748d8af647179b098f52f5599db2fe01011a050763617264616e6f67616464723171797267727068647379376c746132726165327075386870356d7732666e7076753873653030727861367a7a6d63347368346779666b646870776671386c6e68356c39353636336430396e337339637275746e63397977616d637671733565356d360634303030303007323030303030303339685a785633594e536662437153364745736573374468415653617476616f4e746473694e766b696d504747326338667a6b47695e6c1b7c3f0ff50e34292cc8431dafd64bdff961c987182c791aee16d077cf00","a0cc8ac601100304000e20a96b8049f0741c7255b60cf01954439d2e4b2d19ae7d8ebc688ecb190a33b5380400d801d601b2db6501fe730000ea02d1aedb63087201d901024d0e938c720201730198b2e4c672010510730200ade4c67201041ad901020ecdee7202ecab3900011a050763617264616e6f67616464723171797267727068647379376c746132726165327075386870356d7732666e7076753873653030727861367a7a6d63347368346779666b646870776671386c6e68356c39353636336430396e337339637275746e63397977616d637671733565356d360731303030303030093230303030303030303339685a785633594e536662437153364745736573374468415653617476616f4e746473694e766b696d504747326338667a6b479093daad4db8f273f5caa99fa7c6c702211355957747c732f8f98d22f95aacb200","d0f1d6a7c602100304000e20a96b8049f0741c7255b60cf01954439d2e4b2d19ae7d8ebc688ecb190a33b5380400d801d601b2db6501fe730000ea02d1aedb63087201d901024d0e938c720201730198b2e4c672010510730200ade4c67201041ad901020ecdee720282e13a04fc6c2070eb004fc08fcde1514dee56b1d0587477748d8af647179b098f52f559ead9e2de16517c91b4ea680166ddd3f67b27b0274c20bbd2aeb82b60eaf5bf5471b37f684aed89ddf403fbbaac7337d051c10fc3da0ccb864f4d32d40027551e1c3ea3ce361f39b91e400310278c102bf890fdab8ef5111e94053c90b3541bc25b0de2ee8aa6305ccec3debed1b0040010a79e37f53c5130015d2361315e32e3fdddaa14d2bf2ede94a6c4c1beaf5b670c"],"dataInputs":["e09143100504000400040004000402d802d601c2a7d602b2a5730000ea02d196830301937201c2b2a473010093c272027201938cb2db63087202730200018cb2db6308a77303000198b2e4c6a70510730400ade4c6a7041ad901030ecdee7203d9dc3301a96b8049f0741c7255b60cf01954439d2e4b2d19ae7d8ebc688ecb190a33b53801021a0a2102db3849f655693c28e3c44ededd546c6c3267b6f90c0f9ad9785061c387ca2e69210249e1b4b331b93481cc812c024f1f8a198fe078895ad7f03ab890bd4e81fb590721020e106e606e70e426a19900f42f3210420f53498c9956106d30b1837596dbc4512102ddd718f3080a04c2e9f2016dc13153f65d64da83ccfea433139c89236476e2b72102e2c106d43c57936310f06d4fea9f6940dbf1c4e32cb99bdd7ac7b7714e54527121032bb38046b67ed49aa6f4d255bbe1c098ff2f7b682f9922a2a376862de266b16e2103c3374d06b092583835a3a93c7acbc6c449656881abff5d6b17df456a7f3d618b2102956d0fd87b81ebe8ea4763a64e126a548adef2eec3a9719683944100cb992bc52102b980e0cbb817f80163485aea9ce59c3d6249d510733002a9fc6843718a540b072103d7e6475ef5ceb9b0e9b0cad722c9cbfa3a13e8e94188ac963e11e4e66e9eaa2c10020e10e3f3794c3bfe63a88a2703a2588bce143bdc40fbd06bbdb469bbfaf00cf4eb3500"]}`;
+diff --git a/services/guard-service/tests/verification/ergoSignedSemantics.spec.ts b/services/guard-service/tests/verification/ergoSignedSemantics.spec.ts
+new file mode 100644
+index 0000000..224c82a
+--- /dev/null
++++ b/services/guard-service/tests/verification/ergoSignedSemantics.spec.ts
+@@ -0,0 +1,722 @@
++/* eslint vitest/expect-expect: ["error", {"assertFunctionNames": ["expect", "reject", "rejectReduced"]}] */
++import * as wasm from 'ergo-lib-wasm-nodejs';
++
++import { TransactionType } from '@rosen-chains/abstract-chain';
++import { ErgoTransaction } from '@rosen-chains/ergo';
++
++import {
++  assertCanonicalReducedErgo,
++  assertReducedToSignedErgoSemantics,
++  assertSameSignedErgoSemantics,
++} from '../../src/verification/ergoSignedSemantics';
++import {
++  reduced,
++  body,
++  signed,
++  compare,
++  mutations,
++} from './ergoSignedSemanticsTestUtils';
++
++describe('assertSameSignedErgoSemantics', () => {
++  for (const field of ['inputBoxes', 'dataInputs'] as const) {
++    for (const side of ['captured', 'observed', 'identical'] as const) {
++      /**
++       * @target assertSameSignedErgoSemantics `${side} ${field} rejects %s slots independently`
++       * @dependencies Real Ergo WASM codecs and complete Reduced/Signed transaction and auxiliary-box fixtures; arbitrary proofs.
++       * @scenario Prepare captured, observed, boxes, original, length, prototype. Change only delete boxes[0] as selected by the named control. Invoke assertSameSignedErgoSemantics through the suite helper.
++       * @expected toBe(original); toBe(length); toBe(false); toThrow('Ergo auxiliary slot is missing')
++       */
++
++      it.each(['sparse', 'inherited'])(
++        `${side} ${field} rejects %s slots independently`,
++        (kind) => {
++          const captured = signed();
++          const observed = side === 'identical' ? captured : signed();
++          const boxes = (side === 'observed' ? observed : captured)[field];
++          const original = boxes[0];
++          const length = boxes.length;
++          delete boxes[0];
++          if (kind === 'inherited') {
++            const prototype = Object.create(Object.getPrototypeOf(boxes));
++            Object.defineProperty(prototype, '0', { value: original });
++            Object.setPrototypeOf(boxes, prototype);
++            expect(boxes[0]).toBe(original);
++          }
++          expect(boxes.length).toBe(length);
++          expect(Object.hasOwn(boxes, 0)).toBe(false);
++          expect(compare(captured, observed)).toThrow(
++            'Ergo auxiliary slot is missing',
++          );
++        },
++      );
++    }
++  }
++
++  /**
++   * @target assertSameSignedErgoSemantics 'accepts different canonical proofs for the same body and complete boxes'
++   * @dependencies Real Ergo WASM codecs and complete Reduced/Signed transaction and auxiliary-box fixtures; arbitrary proofs.
++   * @scenario Prepare captured, observed. Exercise the named valid, malformed or reordered fixture control. Invoke assertSameSignedErgoSemantics through the suite helper.
++   * @expected toBe(observed.txId); toEqual(observed.txBytes); toThrow()
++   */
++
++  it('accepts different canonical proofs for the same body and complete boxes', () => {
++    const captured = signed(undefined, []);
++    const observed = signed();
++    expect(captured.txId).toBe(observed.txId);
++    expect(captured.txBytes).not.toEqual(observed.txBytes);
++    expect(compare(captured, observed)).not.toThrow();
++    expect(compare(observed, captured)).not.toThrow();
++  });
++
++  /**
++   * @target assertSameSignedErgoSemantics 'leaves application event and transaction type authorization to its caller'
++   * @dependencies Real Ergo WASM codecs and complete Reduced/Signed transaction and auxiliary-box fixtures; arbitrary proofs.
++   * @scenario Prepare observed. Change only observed.eventId, observed.txType as selected by the named control. Invoke assertSameSignedErgoSemantics through the suite helper.
++   * @expected toThrow()
++   */
++
++  it('leaves application event and transaction type authorization to its caller', () => {
++    const observed = signed();
++    observed.eventId = 'different application event';
++    observed.txType = TransactionType.manual;
++    expect(compare(signed(), observed)).not.toThrow();
++  });
++
++  /**
++   * @target assertSameSignedErgoSemantics 'does not modify caller buffers or arrays'
++   * @dependencies Real Ergo WASM codecs and complete Reduced/Signed transaction and auxiliary-box fixtures; arbitrary proofs.
++   * @scenario Prepare captured, observed, before. Exercise the named valid, malformed or reordered fixture control. Invoke assertSameSignedErgoSemantics through the suite helper.
++   * @expected toEqual(before)
++   */
++
++  it('does not modify caller buffers or arrays', () => {
++    const captured = signed();
++    const observed = signed(undefined, []);
++    const before = [captured.toJson(), observed.toJson()];
++    assertSameSignedErgoSemantics(captured, observed);
++    expect([captured.toJson(), observed.toJson()]).toEqual(before);
++  });
++
++  /**
++   * @target assertSameSignedErgoSemantics 'preserves large output amounts as exact strings'
++   * @dependencies Real Ergo WASM codecs and complete Reduced/Signed transaction and auxiliary-box fixtures; arbitrary proofs.
++   * @scenario Prepare value, captured. Change only value.outputs[0].value as selected by the named control. Invoke assertSameSignedErgoSemantics through the suite helper.
++   * @expected toThrow(); toThrow('semantics mismatch')
++   */
++
++  it('preserves large output amounts as exact strings', () => {
++    const value = body();
++    value.outputs[0].value = '9007199254740993';
++    const captured = signed(value);
++    expect(compare(captured, signed(value, []))).not.toThrow();
++    value.outputs[0].value = '9007199254740992';
++    expect(compare(captured, signed(value))).toThrow('semantics mismatch');
++  });
++
++  for (const side of ['captured', 'observed'] as const) {
++    const reject = (
++      mutate: (model: ErgoTransaction) => void,
++      message?: string,
++    ) => {
++      const pair = { captured: signed(), observed: signed() };
++      mutate(pair[side]);
++      expect(compare(pair.captured, pair.observed)).toThrow(message);
++    };
++    /**
++     * @target assertSameSignedErgoSemantics `${side}: rejects a non-Ergo network`
++     * @dependencies Real Ergo WASM codecs and complete Reduced/Signed transaction and auxiliary-box fixtures; arbitrary proofs.
++     * @scenario Prepare the complete model fixtures. Change only model.network as selected by the named control. Invoke assertSameSignedErgoSemantics through the suite helper.
++     * @expected The comparison helper refuses the named mutated model.
++     */
++
++    it(`${side}: rejects a non-Ergo network`, () => {
++      reject((model) => {
++        model.network = 'avalanche';
++      }, 'Invalid signed Ergo model');
++    });
++    /**
++     * @target assertSameSignedErgoSemantics `${side}: rejects a mismatched model ID`
++     * @dependencies Real Ergo WASM codecs and complete Reduced/Signed transaction and auxiliary-box fixtures; arbitrary proofs.
++     * @scenario Prepare the complete model fixtures. Change only model.txId as selected by the named control. Invoke assertSameSignedErgoSemantics through the suite helper.
++     * @expected The comparison helper refuses the named mutated model.
++     */
++
++    it(`${side}: rejects a mismatched model ID`, () => {
++      reject((model) => {
++        model.txId = '00'.repeat(32);
++      }, 'identity mismatch');
++    });
++    /**
++     * @target assertSameSignedErgoSemantics `${side}: rejects reduced bytes`
++     * @dependencies Real Ergo WASM codecs and complete Reduced/Signed transaction and auxiliary-box fixtures; arbitrary proofs.
++     * @scenario Prepare the complete model fixtures. Change only model.txBytes as selected by the named control. Invoke assertSameSignedErgoSemantics through the suite helper.
++     * @expected The comparison helper refuses the named mutated model.
++     */
++
++    it(`${side}: rejects reduced bytes`, () => {
++      reject((model) => {
++        model.txBytes = reduced().txBytes;
++      });
++    });
++    /**
++     * @target assertSameSignedErgoSemantics `${side}: rejects malformed signed bytes`
++     * @dependencies Real Ergo WASM codecs and complete Reduced/Signed transaction and auxiliary-box fixtures; arbitrary proofs.
++     * @scenario Prepare the complete model fixtures. Change only model.txBytes as selected by the named control. Invoke assertSameSignedErgoSemantics through the suite helper.
++     * @expected The comparison helper refuses the named mutated model.
++     */
++
++    it(`${side}: rejects malformed signed bytes`, () => {
++      reject((model) => {
++        model.txBytes = Uint8Array.of(255);
++      });
++    });
++    /**
++     * @target assertSameSignedErgoSemantics `${side}: rejects a plain byte array`
++     * @dependencies Real Ergo WASM codecs and complete Reduced/Signed transaction and auxiliary-box fixtures; arbitrary proofs.
++     * @scenario Prepare the complete model fixtures. Change only model.txBytes as selected by the named control. Invoke assertSameSignedErgoSemantics through the suite helper.
++     * @expected The comparison helper refuses the named mutated model.
++     */
++
++    it(`${side}: rejects a plain byte array`, () => {
++      reject((model) => {
++        model.txBytes = [...model.txBytes] as unknown as Uint8Array;
++      });
++    });
++    /**
++     * @target assertSameSignedErgoSemantics `${side}: rejects signed suffix %s`
++     * @dependencies Real Ergo WASM codecs and complete Reduced/Signed transaction and auxiliary-box fixtures; arbitrary proofs.
++     * @scenario Prepare parsed, id. Change only model.txBytes as selected by the named control. Invoke assertSameSignedErgoSemantics through the suite helper.
++     * @expected toBe(model.txId)
++     */
++
++    it.each(['00', 'ff', '000102'])(
++      `${side}: rejects signed suffix %s`,
++      (suffix) => {
++        reject((model) => {
++          model.txBytes = Buffer.concat([
++            model.txBytes,
++            Buffer.from(suffix, 'hex'),
++          ]);
++          const parsed = wasm.Transaction.sigma_parse_bytes(model.txBytes);
++          const id = parsed.id();
++          expect(id.to_str()).toBe(model.txId);
++          id.free();
++          parsed.free();
++        }, 'identity mismatch');
++      },
++    );
++    for (const field of ['inputBoxes', 'dataInputs'] as const) {
++      /**
++       * @target assertSameSignedErgoSemantics `${side}: rejects missing ${field}`
++       * @dependencies Real Ergo WASM codecs and complete Reduced/Signed transaction and auxiliary-box fixtures; arbitrary proofs.
++       * @scenario Prepare the complete model fixtures. Change only model[field] as selected by the named control. Invoke assertSameSignedErgoSemantics through the suite helper.
++       * @expected The comparison helper refuses the named mutated model.
++       */
++
++      it(`${side}: rejects missing ${field}`, () => {
++        reject((model) => {
++          model[field] = undefined as unknown as Uint8Array[];
++        }, 'count mismatch');
++      });
++      /**
++       * @target assertSameSignedErgoSemantics `${side}: rejects shorter ${field}`
++       * @dependencies Real Ergo WASM codecs and complete Reduced/Signed transaction and auxiliary-box fixtures; arbitrary proofs.
++       * @scenario Prepare the complete model fixtures. Exercise the named valid, malformed or reordered fixture control. Invoke assertSameSignedErgoSemantics through the suite helper.
++       * @expected The comparison helper refuses the named mutated model.
++       */
++
++      it(`${side}: rejects shorter ${field}`, () => {
++        reject((model) => {
++          model[field].pop();
++        }, 'count mismatch');
++      });
++      /**
++       * @target assertSameSignedErgoSemantics `${side}: rejects extra ${field}`
++       * @dependencies Real Ergo WASM codecs and complete Reduced/Signed transaction and auxiliary-box fixtures; arbitrary proofs.
++       * @scenario Prepare the complete model fixtures. Exercise the named valid, malformed or reordered fixture control. Invoke assertSameSignedErgoSemantics through the suite helper.
++       * @expected The comparison helper refuses the named mutated model.
++       */
++
++      it(`${side}: rejects extra ${field}`, () => {
++        reject((model) => {
++          model[field].push(model[field][0]);
++        }, 'count mismatch');
++      });
++      /**
++       * @target assertSameSignedErgoSemantics `${side}: rejects malformed ${field} bytes`
++       * @dependencies Real Ergo WASM codecs and complete Reduced/Signed transaction and auxiliary-box fixtures; arbitrary proofs.
++       * @scenario Prepare the complete model fixtures. Change only model[field][0] as selected by the named control. Invoke assertSameSignedErgoSemantics through the suite helper.
++       * @expected The comparison helper refuses the named mutated model.
++       */
++
++      it(`${side}: rejects malformed ${field} bytes`, () => {
++        reject((model) => {
++          model[field][0] = Uint8Array.of(255);
++        });
++      });
++      /**
++       * @target assertSameSignedErgoSemantics `${side}: rejects plain-array ${field} bytes`
++       * @dependencies Real Ergo WASM codecs and complete Reduced/Signed transaction and auxiliary-box fixtures; arbitrary proofs.
++       * @scenario Prepare the complete model fixtures. Change only model[field][0] as selected by the named control. Invoke assertSameSignedErgoSemantics through the suite helper.
++       * @expected The comparison helper refuses the named mutated model.
++       */
++
++      it(`${side}: rejects plain-array ${field} bytes`, () => {
++        reject((model) => {
++          model[field][0] = [...model[field][0]] as unknown as Uint8Array;
++        }, 'Invalid Ergo auxiliary bytes');
++      });
++      /**
++       * @target assertSameSignedErgoSemantics `${side}: rejects wrong equal-count ${field}`
++       * @dependencies Real Ergo WASM codecs and complete Reduced/Signed transaction and auxiliary-box fixtures; arbitrary proofs.
++       * @scenario Prepare the complete model fixtures. Change only model[field][0] as selected by the named control. Invoke assertSameSignedErgoSemantics through the suite helper.
++       * @expected The comparison helper refuses the named mutated model.
++       */
++
++      it(`${side}: rejects wrong equal-count ${field}`, () => {
++        reject((model) => {
++          model[field][0] = model.inputBoxes[1];
++        }, 'auxiliary identity mismatch');
++      });
++      /**
++       * @target assertSameSignedErgoSemantics `${side}: rejects ${field} suffix %s`
++       * @dependencies Real Ergo WASM codecs and complete Reduced/Signed transaction and auxiliary-box fixtures; arbitrary proofs.
++       * @scenario Prepare original, parsed. Change only model[field][0] as selected by the named control. Invoke assertSameSignedErgoSemantics through the suite helper.
++       * @expected toEqual(Buffer.from(original))
++       */
++
++      it.each(['00', 'ff', '000102'])(
++        `${side}: rejects ${field} suffix %s`,
++        (suffix) => {
++          reject((model) => {
++            const original = model[field][0];
++            model[field][0] = Buffer.concat([
++              original,
++              Buffer.from(suffix, 'hex'),
++            ]);
++            const parsed = wasm.ErgoBox.sigma_parse_bytes(model[field][0]);
++            expect(Buffer.from(parsed.sigma_serialize_bytes())).toEqual(
++              Buffer.from(original),
++            );
++            parsed.free();
++          }, 'auxiliary identity mismatch');
++        },
++      );
++    }
++    /**
++     * @target assertSameSignedErgoSemantics `${side}: rejects reordered input auxiliaries`
++     * @dependencies Real Ergo WASM codecs and complete Reduced/Signed transaction and auxiliary-box fixtures; arbitrary proofs.
++     * @scenario Prepare the complete model fixtures. Exercise the named valid, malformed or reordered fixture control. Invoke assertSameSignedErgoSemantics through the suite helper.
++     * @expected The comparison helper refuses the named mutated model.
++     */
++
++    it(`${side}: rejects reordered input auxiliaries`, () => {
++      reject((model) => {
++        model.inputBoxes.reverse();
++      }, 'auxiliary identity mismatch');
++    });
++  }
++
++  /**
++   * @target assertSameSignedErgoSemantics 'rejects duplicates even when both %s models match'
++   * @dependencies Real Ergo WASM codecs and complete Reduced/Signed transaction and auxiliary-box fixtures; arbitrary proofs.
++   * @scenario Prepare value, model, aux. Exercise the named valid, malformed or reordered fixture control. Invoke assertSameSignedErgoSemantics through the suite helper.
++   * @expected toThrow('auxiliary identity mismatch')
++   */
++
++  it.each(['inputs', 'dataInputs'] as const)(
++    'rejects duplicates even when both %s models match',
++    (field) => {
++      const value = body();
++      value[field].push(value[field][0]);
++      const model = signed(value);
++      const aux = field === 'inputs' ? model.inputBoxes : model.dataInputs;
++      aux.push(aux[0]);
++      expect(compare(model, model)).toThrow('auxiliary identity mismatch');
++    },
++  );
++
++  /**
++   * @target assertSameSignedErgoSemantics 'rejects reordered complete data auxiliaries'
++   * @dependencies Real Ergo WASM codecs and complete Reduced/Signed transaction and auxiliary-box fixtures; arbitrary proofs.
++   * @scenario Prepare value, captured, observed. Exercise the named valid, malformed or reordered fixture control. Invoke assertSameSignedErgoSemantics through the suite helper.
++   * @expected toThrow(); toThrow('auxiliary identity mismatch')
++   */
++
++  it('rejects reordered complete data auxiliaries', () => {
++    const value = body();
++    value.dataInputs.push({ boxId: value.inputs[0].boxId });
++    const captured = signed(value);
++    captured.dataInputs.push(captured.inputBoxes[0]);
++    const observed = ErgoTransaction.fromJson(captured.toJson());
++    expect(compare(captured, observed)).not.toThrow();
++    observed.dataInputs.reverse();
++    expect(compare(captured, observed)).toThrow('auxiliary identity mismatch');
++  });
++
++  /**
++   * @target assertSameSignedErgoSemantics 'rejects a self-consistent changed data-input order'
++   * @dependencies Real Ergo WASM codecs and complete Reduced/Signed transaction and auxiliary-box fixtures; arbitrary proofs.
++   * @scenario Prepare value, captured, observed. Change only observed.dataInputs as selected by the named control. Invoke assertSameSignedErgoSemantics through the suite helper.
++   * @expected toThrow(); toThrow('semantics mismatch')
++   */
++
++  it('rejects a self-consistent changed data-input order', () => {
++    const value = body();
++    value.dataInputs.push({ boxId: value.inputs[0].boxId });
++    const captured = signed(value);
++    captured.dataInputs.push(captured.inputBoxes[0]);
++    value.dataInputs.reverse();
++    const observed = signed(value);
++    observed.dataInputs = [...captured.dataInputs].reverse();
++    expect(compare(observed, observed)).not.toThrow();
++    expect(compare(captured, observed)).toThrow('semantics mismatch');
++  });
++
++  /**
++   * @target assertSameSignedErgoSemantics 'rejects a changed input ID with its matching complete auxiliary box'
++   * @dependencies Real Ergo WASM codecs and complete Reduced/Signed transaction and auxiliary-box fixtures; arbitrary proofs.
++   * @scenario Prepare value, observed. Change only value.inputs[0].boxId, observed.inputBoxes[0] as selected by the named control. Invoke assertSameSignedErgoSemantics through the suite helper.
++   * @expected toThrow(); toThrow('semantics mismatch')
++   */
++
++  it('rejects a changed input ID with its matching complete auxiliary box', () => {
++    const value = body();
++    value.inputs[0].boxId = value.dataInputs[0].boxId;
++    const observed = signed(value);
++    observed.inputBoxes[0] = observed.dataInputs[0];
++    expect(compare(observed, observed)).not.toThrow();
++    expect(compare(signed(), observed)).toThrow('semantics mismatch');
++  });
++
++  /**
++   * @target assertSameSignedErgoSemantics 'rejects a changed data-input ID with its matching complete auxiliary box'
++   * @dependencies Real Ergo WASM codecs and complete Reduced/Signed transaction and auxiliary-box fixtures; arbitrary proofs.
++   * @scenario Prepare value, observed. Change only value.dataInputs[0].boxId, observed.dataInputs[0] as selected by the named control. Invoke assertSameSignedErgoSemantics through the suite helper.
++   * @expected toThrow(); toThrow('semantics mismatch')
++   */
++
++  it('rejects a changed data-input ID with its matching complete auxiliary box', () => {
++    const value = body();
++    value.dataInputs[0].boxId = value.inputs[0].boxId;
++    const observed = signed(value);
++    observed.dataInputs[0] = observed.inputBoxes[0];
++    expect(compare(observed, observed)).not.toThrow();
++    expect(compare(signed(), observed)).toThrow('semantics mismatch');
++  });
++
++  /**
++   * @target assertSameSignedErgoSemantics 'accepts empty data inputs only when the signed body also has none'
++   * @dependencies Real Ergo WASM codecs and complete Reduced/Signed transaction and auxiliary-box fixtures; arbitrary proofs.
++   * @scenario Prepare value, captured, observed. Change only value.dataInputs, captured.dataInputs, observed.dataInputs as selected by the named control. Invoke assertSameSignedErgoSemantics through the suite helper.
++   * @expected toThrow()
++   */
++
++  it('accepts empty data inputs only when the signed body also has none', () => {
++    const value = body();
++    value.dataInputs = [];
++    const captured = signed(value);
++    captured.dataInputs = [];
++    const observed = signed(value, []);
++    observed.dataInputs = [];
++    expect(compare(captured, observed)).not.toThrow();
++  });
++
++  /**
++   * @target assertSameSignedErgoSemantics 'rejects a self-consistent changed %s body'
++   * @dependencies Real Ergo WASM codecs and complete Reduced/Signed transaction and auxiliary-box fixtures; arbitrary proofs.
++   * @scenario Prepare value, observed. Exercise the named valid, malformed or reordered fixture control. Invoke assertSameSignedErgoSemantics through the suite helper.
++   * @expected toThrow(); toThrow('semantics mismatch')
++   */
++
++  it.each(mutations)(
++    'rejects a self-consistent changed %s body',
++    (name, mutate) => {
++      const value = body();
++      mutate(value);
++      const observed = signed(value);
++      if (name === 'input order') observed.inputBoxes.reverse();
++      expect(compare(observed, observed)).not.toThrow();
++      expect(compare(signed(), observed)).toThrow('semantics mismatch');
++    },
++  );
++});
++describe('assertReducedToSignedErgoSemantics', () => {
++  const compareReduced =
++    (captured = reduced(), observed = signed()) =>
++    () =>
++      assertReducedToSignedErgoSemantics(captured, observed);
++
++  /**
++   * @target assertCanonicalReducedErgo / assertReducedToSignedErgoSemantics 'accepts actual canonical Reduced and Signed with arbitrary proof variant %j'
++   * @dependencies Real Ergo WASM codecs and complete Reduced/Signed transaction and auxiliary-box fixtures; arbitrary proofs.
++   * @scenario Prepare captured, observed, before. Exercise the named valid, malformed or reordered fixture control. Invoke assertCanonicalReducedErgo / assertReducedToSignedErgoSemantics through the suite helper.
++   * @expected toThrow(); toEqual(before)
++   */
++
++  it.each([[], [1, 2, 3], [255, 0, 1]])(
++    'accepts actual canonical Reduced and Signed with arbitrary proof variant %j',
++    (...proof) => {
++      const captured = reduced();
++      const observed = signed(undefined, proof);
++      const before = [captured.toJson(), observed.toJson()];
++      expect(() => assertCanonicalReducedErgo(captured)).not.toThrow();
++      expect(compareReduced(captured, observed)).not.toThrow();
++      expect([captured.toJson(), observed.toJson()]).toEqual(before);
++    },
++  );
++
++  /**
++   * @target assertCanonicalReducedErgo / assertReducedToSignedErgoSemantics 'leaves event/type application metadata to caller authorization'
++   * @dependencies Real Ergo WASM codecs and complete Reduced/Signed transaction and auxiliary-box fixtures; arbitrary proofs.
++   * @scenario Prepare captured. Change only captured.eventId, captured.txType as selected by the named control. Invoke assertCanonicalReducedErgo / assertReducedToSignedErgoSemantics through the suite helper.
++   * @expected toThrow()
++   */
++
++  it('leaves event/type application metadata to caller authorization', () => {
++    const captured = reduced();
++    captured.eventId = 'other-event';
++    captured.txType = TransactionType.arbitrary;
++    expect(compareReduced(captured, signed())).not.toThrow();
++  });
++
++  /**
++   * @target assertCanonicalReducedErgo / assertReducedToSignedErgoSemantics 'rejects Signed bytes as Reduced without parser fallback'
++   * @dependencies Real Ergo WASM codecs and complete Reduced/Signed transaction and auxiliary-box fixtures; arbitrary proofs.
++   * @scenario Prepare model. Exercise the named valid, malformed or reordered fixture control. Invoke assertCanonicalReducedErgo / assertReducedToSignedErgoSemantics through the suite helper.
++   * @expected toThrow()
++   */
++
++  it('rejects Signed bytes as Reduced without parser fallback', () => {
++    const model = signed();
++    expect(() => assertCanonicalReducedErgo(model)).toThrow();
++    expect(compareReduced(model, model)).toThrow();
++  });
++
++  /**
++   * @target assertCanonicalReducedErgo / assertReducedToSignedErgoSemantics 'rejects Reduced bytes on the Signed side without parser fallback'
++   * @dependencies Real Ergo WASM codecs and complete Reduced/Signed transaction and auxiliary-box fixtures; arbitrary proofs.
++   * @scenario Prepare model. Exercise the named valid, malformed or reordered fixture control. Invoke assertCanonicalReducedErgo / assertReducedToSignedErgoSemantics through the suite helper.
++   * @expected toThrow()
++   */
++
++  it('rejects Reduced bytes on the Signed side without parser fallback', () => {
++    const model = reduced();
++    expect(compareReduced(model, model)).toThrow();
++  });
++
++  for (const side of ['reduced', 'signed'] as const) {
++    const rejectReduced = (mutate: (model: ErgoTransaction) => void) => {
++      const captured = reduced();
++      const observed = signed();
++      const model = side === 'reduced' ? captured : observed;
++      mutate(model);
++      expect(compareReduced(captured, observed)).toThrow();
++      if (side === 'reduced')
++        expect(() => assertCanonicalReducedErgo(model)).toThrow();
++    };
++    /**
++     * @target assertCanonicalReducedErgo / assertReducedToSignedErgoSemantics `${side} rejects malformed model %s=%s`
++     * @dependencies Real Ergo WASM codecs and complete Reduced/Signed transaction and auxiliary-box fixtures; arbitrary proofs.
++     * @scenario Prepare the complete model fixtures. Exercise the named valid, malformed or reordered fixture control. Invoke assertCanonicalReducedErgo / assertReducedToSignedErgoSemantics through the suite helper.
++     * @expected The comparison helper refuses the named mutated model.
++     */
++
++    it.each([
++      ['network', 'avalanche'],
++      ['txId', '00'.repeat(32)],
++      ['txId', undefined],
++      ['txBytes', Uint8Array.of(255)],
++      ['txBytes', []],
++      ['txBytes', undefined],
++    ])(`${side} rejects malformed model %s=%s`, (field, value) => {
++      rejectReduced((model) =>
++        Object.assign(model, { [field as string]: value }),
++      );
++    });
++    /**
++     * @target assertCanonicalReducedErgo / assertReducedToSignedErgoSemantics `${side} rejects serialized suffix %s`
++     * @dependencies Real Ergo WASM codecs and complete Reduced/Signed transaction and auxiliary-box fixtures; arbitrary proofs.
++     * @scenario Prepare the complete model fixtures. Change only model.txBytes as selected by the named control. Invoke assertCanonicalReducedErgo / assertReducedToSignedErgoSemantics through the suite helper.
++     * @expected The comparison helper refuses the named mutated model.
++     */
++
++    it.each(['00', 'ff', '000102'])(
++      `${side} rejects serialized suffix %s`,
++      (suffix) => {
++        rejectReduced((model) => {
++          model.txBytes = Buffer.concat([
++            model.txBytes,
++            Buffer.from(suffix, 'hex'),
++          ]);
++        });
++      },
++    );
++    for (const field of ['inputBoxes', 'dataInputs'] as const) {
++      /**
++       * @target assertCanonicalReducedErgo / assertReducedToSignedErgoSemantics `${side} rejects ${field} %s`
++       * @dependencies Real Ergo WASM codecs and complete Reduced/Signed transaction and auxiliary-box fixtures; arbitrary proofs.
++       * @scenario Prepare boxes, original, prototype. Change only model[field], boxes[0], delete boxes[0] as selected by the named control. Invoke assertCanonicalReducedErgo / assertReducedToSignedErgoSemantics through the suite helper.
++       * @expected The comparison helper refuses the named mutated model.
++       */
++
++      it.each([
++        'missing',
++        'shorter',
++        'extra',
++        'malformed',
++        'plain bytes',
++        'wrong ID',
++        'suffix',
++        'sparse',
++        'inherited',
++      ])(`${side} rejects ${field} %s`, (fault) => {
++        rejectReduced((model) => {
++          const boxes = model[field];
++          if (fault === 'missing')
++            model[field] = undefined as unknown as Uint8Array[];
++          if (fault === 'shorter') boxes.pop();
++          if (fault === 'extra') boxes.push(boxes[0]);
++          if (fault === 'malformed') boxes[0] = Uint8Array.of(255);
++          if (fault === 'plain bytes')
++            boxes[0] = [...boxes[0]] as unknown as Uint8Array;
++          if (fault === 'wrong ID') boxes[0] = model.inputBoxes[1];
++          if (fault === 'suffix')
++            boxes[0] = Buffer.concat([boxes[0], Uint8Array.of(0)]);
++          if (fault === 'sparse' || fault === 'inherited') {
++            const original = boxes[0];
++            delete boxes[0];
++            if (fault === 'inherited') {
++              const prototype = Object.create(Object.getPrototypeOf(boxes));
++              Object.defineProperty(prototype, '0', { value: original });
++              Object.setPrototypeOf(boxes, prototype);
++            }
++          }
++        });
++      });
++    }
++    /**
++     * @target assertCanonicalReducedErgo / assertReducedToSignedErgoSemantics `${side} rejects reordered complete input boxes`
++     * @dependencies Real Ergo WASM codecs and complete Reduced/Signed transaction and auxiliary-box fixtures; arbitrary proofs.
++     * @scenario Prepare the complete model fixtures. Exercise the named valid, malformed or reordered fixture control. Invoke assertCanonicalReducedErgo / assertReducedToSignedErgoSemantics through the suite helper.
++     * @expected The comparison helper refuses the named mutated model.
++     */
++
++    it(`${side} rejects reordered complete input boxes`, () => {
++      rejectReduced((model) => {
++        model.inputBoxes.reverse();
++      });
++    });
++    /**
++     * @target assertCanonicalReducedErgo / assertReducedToSignedErgoSemantics `${side} rejects duplicate input boxes without changing count`
++     * @dependencies Real Ergo WASM codecs and complete Reduced/Signed transaction and auxiliary-box fixtures; arbitrary proofs.
++     * @scenario Prepare the complete model fixtures. Change only model.inputBoxes[1] as selected by the named control. Invoke assertCanonicalReducedErgo / assertReducedToSignedErgoSemantics through the suite helper.
++     * @expected The comparison helper refuses the named mutated model.
++     */
++
++    it(`${side} rejects duplicate input boxes without changing count`, () => {
++      rejectReduced((model) => {
++        model.inputBoxes[1] = model.inputBoxes[0];
++      });
++    });
++  }
++
++  /**
++   * @target assertCanonicalReducedErgo / assertReducedToSignedErgoSemantics 'rejects a self-consistent Signed %s change against Reduced'
++   * @dependencies Real Ergo WASM codecs and complete Reduced/Signed transaction and auxiliary-box fixtures; arbitrary proofs.
++   * @scenario Prepare changed, observed. Exercise the named valid, malformed or reordered fixture control. Invoke assertCanonicalReducedErgo / assertReducedToSignedErgoSemantics through the suite helper.
++   * @expected toThrow(); toThrow('semantics mismatch')
++   */
++
++  it.each(mutations)(
++    'rejects a self-consistent Signed %s change against Reduced',
++    (name, mutate) => {
++      const changed = body();
++      mutate(changed);
++      const observed = signed(changed);
++      if (name === 'input order') observed.inputBoxes.reverse();
++      expect(compare(observed, observed)).not.toThrow();
++      expect(compareReduced(reduced(), observed)).toThrow('semantics mismatch');
++    },
++  );
++
++  /**
++   * @target assertCanonicalReducedErgo / assertReducedToSignedErgoSemantics 'rejects a changed Signed %s ID with matching full auxiliary'
++   * @dependencies Real Ergo WASM codecs and complete Reduced/Signed transaction and auxiliary-box fixtures; arbitrary proofs.
++   * @scenario Prepare changed, observed. Change only changed.inputs[0].boxId, changed.dataInputs[0].boxId, observed.inputBoxes[0], observed.dataInputs[0] as selected by the named control. Invoke assertCanonicalReducedErgo / assertReducedToSignedErgoSemantics through the suite helper.
++   * @expected toThrow(); toThrow('semantics mismatch')
++   */
++
++  it.each(['input', 'data input'])(
++    'rejects a changed Signed %s ID with matching full auxiliary',
++    (kind) => {
++      const changed = body();
++      if (kind === 'input')
++        changed.inputs[0].boxId = changed.dataInputs[0].boxId;
++      else changed.dataInputs[0].boxId = changed.inputs[0].boxId;
++      const observed = signed(changed);
++      if (kind === 'input') observed.inputBoxes[0] = observed.dataInputs[0];
++      else observed.dataInputs[0] = observed.inputBoxes[0];
++      expect(compare(observed, observed)).not.toThrow();
++      expect(compareReduced(reduced(), observed)).toThrow('semantics mismatch');
++    },
++  );
++
++  /**
++   * @target assertCanonicalReducedErgo / assertReducedToSignedErgoSemantics 'rejects a self-consistent changed Signed %s'
++   * @dependencies Real Ergo WASM codecs and complete Reduced/Signed transaction and auxiliary-box fixtures; arbitrary proofs.
++   * @scenario Prepare changed, observed. Change only changed.outputs[0].assets[0].tokenId as selected by the named control. Invoke assertCanonicalReducedErgo / assertReducedToSignedErgoSemantics through the suite helper.
++   * @expected toThrow(); toThrow('semantics mismatch')
++   */
++
++  it.each(['token ID', 'input count', 'data-input count', 'output count'])(
++    'rejects a self-consistent changed Signed %s',
++    (field) => {
++      const changed = body();
++      if (field === 'token ID')
++        changed.outputs[0].assets[0].tokenId = 'ab'.repeat(32);
++      if (field === 'input count') changed.inputs.pop();
++      if (field === 'data-input count') changed.dataInputs.pop();
++      if (field === 'output count') changed.outputs.pop();
++      const observed = signed(changed);
++      if (field === 'input count') observed.inputBoxes.pop();
++      if (field === 'data-input count') observed.dataInputs.pop();
++      expect(compare(observed, observed)).not.toThrow();
++      expect(compareReduced(reduced(), observed)).toThrow('semantics mismatch');
++    },
++  );
++});
++describe('assertCanonicalReducedErgo', () => {
++  /**
++   * @target assertCanonicalReducedErgo 'frees every new Reduced WASM handle on %s'
++   * @dependencies Real Ergo WASM codecs and complete Reduced/Signed transaction and auxiliary-box fixtures; arbitrary proofs.
++   * @scenario Prepare model, freeReduced, freeUnsigned, freeId. Change only model.txBytes, model.txId, model.inputBoxes[0] as selected by the named control. Invoke assertCanonicalReducedErgo through the suite helper.
++   * @expected toThrow(); toHaveBeenCalledTimes(1); toHaveBeenCalledTimes(fault === 'suffix' ? 0 : 1)
++   */
++
++  it.each(['valid', 'suffix', 'identity', 'auxiliary'])(
++    'frees every new Reduced WASM handle on %s',
++    (fault) => {
++      const model = reduced();
++      if (fault === 'suffix')
++        model.txBytes = Buffer.concat([model.txBytes, Uint8Array.of(0)]);
++      if (fault === 'identity') model.txId = '00'.repeat(32);
++      if (fault === 'auxiliary') model.inputBoxes[0] = Uint8Array.of(255);
++      const freeReduced = vi.spyOn(wasm.ReducedTransaction.prototype, 'free');
++      const freeUnsigned = vi.spyOn(wasm.UnsignedTransaction.prototype, 'free');
++      const freeId = vi.spyOn(wasm.TxId.prototype, 'free');
++      try {
++        if (fault === 'valid')
++          expect(() => assertCanonicalReducedErgo(model)).not.toThrow();
++        else expect(() => assertCanonicalReducedErgo(model)).toThrow();
++        expect(freeReduced).toHaveBeenCalledTimes(1);
++        expect(freeUnsigned).toHaveBeenCalledTimes(fault === 'suffix' ? 0 : 1);
++        expect(freeId).toHaveBeenCalledTimes(fault === 'suffix' ? 0 : 1);
++      } finally {
++        freeReduced.mockRestore();
++        freeUnsigned.mockRestore();
++        freeId.mockRestore();
++      }
++    },
++  );
++});
+diff --git a/services/guard-service/tests/verification/ergoSignedSemanticsTestUtils.ts b/services/guard-service/tests/verification/ergoSignedSemanticsTestUtils.ts
+new file mode 100644
+index 0000000..088292a
+--- /dev/null
++++ b/services/guard-service/tests/verification/ergoSignedSemanticsTestUtils.ts
+@@ -0,0 +1,104 @@
++import * as wasm from 'ergo-lib-wasm-nodejs';
++
++import { ErgoTransaction } from '@rosen-chains/ergo';
++
++import { assertSameSignedErgoSemantics } from '../../src/verification/ergoSignedSemantics';
++import reducedFixture from '../signing/fixtures/recoveryMultiInput';
++
++/** Creates a fresh complete reduced model from the recovery fixture. */
++export const reduced = () => ErgoTransaction.fromJson(reducedFixture);
++
++/** Reads the unsigned EIP-12 model with owned WASM handles. */
++export const body = () => {
++  const tx = wasm.ReducedTransaction.sigma_parse_bytes(reduced().txBytes);
++  const unsigned = tx.unsigned_tx();
++  try {
++    return unsigned.to_js_eip12();
++  } finally {
++    unsigned.free();
++    tx.free();
++  }
++};
++
++/** Creates canonical signed bytes with arbitrary proof data. */
++export const signed = (value = body(), proof = [1, 2, 3]) => {
++  const unsigned = wasm.UnsignedTransaction.from_json(JSON.stringify(value));
++  const inputs = unsigned.inputs();
++  const count = inputs.len();
++  inputs.free();
++  // Real WASM codecs, arbitrary proof bytes: no cryptographic validity claim.
++  const tx = wasm.Transaction.from_unsigned_tx(
++    unsigned,
++    Array.from({ length: count }, () => Uint8Array.from(proof)),
++  );
++  const id = tx.id();
++  try {
++    const model = reduced();
++    model.txBytes = tx.sigma_serialize_bytes();
++    model.txId = id.to_str();
++    return model;
++  } finally {
++    id.free();
++    tx.free();
++  }
++};
++
++/** Returns the signed semantics comparison assertion callback. */
++export const compare =
++  (captured: ErgoTransaction, observed: ErgoTransaction) => () =>
++    assertSameSignedErgoSemantics(captured, observed);
++
++/** Single-field semantic mutation controls for the complete model. */
++export const mutations: [string, (value: ReturnType<typeof body>) => void][] = [
++  [
++    'extension',
++    (value) => {
++      value.inputs[0].extension = { '1': '0402' };
++    },
++  ],
++  [
++    'input order',
++    (value) => {
++      value.inputs.reverse();
++    },
++  ],
++  [
++    'value',
++    (value) => {
++      value.outputs[0].value = String(BigInt(value.outputs[0].value) + 1n);
++    },
++  ],
++  [
++    'token amount',
++    (value) => {
++      value.outputs[0].assets[0].amount = String(
++        BigInt(value.outputs[0].assets[0].amount) + 1n,
++      );
++    },
++  ],
++  [
++    'register',
++    (value) => {
++      value.outputs[0].additionalRegisters = { R4: '0402' };
++    },
++  ],
++  [
++    'tree',
++    (value) => {
++      value.outputs[0].ergoTree =
++        '0008cd02ba9caed7214e9bc5ab7ef4ab049b891208d16fd6d5612f8e4bf211a0c0b1a37f';
++    },
++  ],
++  [
++    'height',
++    (value) => {
++      value.outputs[0].creationHeight++;
++    },
++  ],
++  [
++    'output order',
++    (value) => {
++      value.outputs.reverse();
++    },
++  ],
++];

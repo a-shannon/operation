@@ -1,0 +1,27 @@
+{
+  "schema": "rosen-avalanche-contract-preparation/v1",
+  "chainId": 43114,
+  "cleanupConfirm": null,
+  "globalTokens": {
+    "RWTRepoNFT": null,
+    "GuardNFT": null,
+    "RSN": null,
+    "MinFeeNFT": null,
+    "EmissionNFT": null,
+    "ERSN": null
+  },
+  "chainTokens": {
+    "RWTId": null,
+    "CleanupNFT": null,
+    "AwcNFT": null,
+    "RepoConfigNFT": null
+  },
+  "custody": {
+    "lock": null,
+    "cold": null
+  },
+  "counterparts": {
+    "avax": { "tokenId": null, "decimals": 9 },
+    "joe": { "tokenId": null, "decimals": 9 }
+  }
+}

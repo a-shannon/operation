@@ -1,0 +1,19 @@
+{
+  "avalanche": {
+    "enabled": false,
+    "chainId": 43114,
+    "healthCheck": {
+      "nativeWarnWei": null,
+      "nativeCriticalWei": null,
+      "scannerWarnAgeSeconds": null,
+      "scannerCriticalAgeSeconds": null,
+      "tokens": [
+        {
+          "tokenId": "0x6e84a6216ea6dacc71ee8e6b0a5b7322eebc0fdd",
+          "warnRaw": null,
+          "criticalRaw": null
+        }
+      ]
+    }
+  }
+}

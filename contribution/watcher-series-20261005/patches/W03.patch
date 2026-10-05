@@ -1,0 +1,181 @@
+diff --git a/.changeset/watcher-runtime-test-compatibility.md b/.changeset/watcher-runtime-test-compatibility.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..854adc444862b65575b62d8aa118d52a418e63b2
+--- /dev/null
++++ b/.changeset/watcher-runtime-test-compatibility.md
+@@ -0,0 +1,5 @@
++---
++'@rosen-bridge/watcher': patch
++---
++
++Use the Node 22 runtime and portable legacy test command. Add the RCS Vitest runner for shared producer tests and retain the existing legacy suite. Require the transaction-owned ORM implementation.
+diff --git a/.mocharc.json b/.mocharc.json
+index da3e7d79107ca1dbd6eeebfab4c8e941e47de578..884e9578ffa2ef643baa24165ea9c5e460a65856 100644
+--- a/.mocharc.json
++++ b/.mocharc.json
+@@ -2,5 +2,10 @@
+   "extensions": ["ts"],
+   "spec": ["tests/**/*.ts"],
+   "node-option": ["import=tsx"],
+-  "require": ["src/bootstrap.ts", "tests/bootstrap.ts"]
++  "require": ["src/bootstrap.ts", "tests/bootstrap.ts"],
++  "ignore": [
++    "tests/ergo/utils.spec.ts",
++    "tests/ergo/transaction/queue.spec.ts",
++    "tests/sharedSetup.ts"
++  ]
+ }
+diff --git a/.nvmrc b/.nvmrc
+index 8b0beab16a5807d524f0bac77cf4e684b8e59c20..91d5f6ff8e3fc0f5fb381fba399126dc3ff4a5af 100644
+--- a/.nvmrc
++++ b/.nvmrc
+@@ -1 +1 @@
+-20.11.0
++22.18.0
+diff --git a/Dockerfile b/Dockerfile
+index cc5e4acb41fd122d88ae5a77f0d3d92cd0379067..e51417846df0182d8b8e60105781c9d0784d7f19 100644
+--- a/Dockerfile
++++ b/Dockerfile
+@@ -1,5 +1,5 @@
+ # syntax=docker/dockerfile:1
+-FROM node:20.11-bookworm-slim
++FROM node:22.18-bookworm-slim
+ ARG SERVICE_DIR=/app/services/watcher
+ 
+ LABEL maintainer="rosen-bridge team <team@rosen.tech>"
+@@ -19,7 +19,7 @@ ENV NODE_ENV=production
+ RUN --mount=type=cache,target=/root/.npm \
+     --mount=type=cache,target=/root/.cache \
+     --mount=type=cache,target=/tmp/node-compile-cache \
+-    npm ci && chown -R ergo:ergo /app/
++    npm i -g npm@11.6.2 && npm ci && chown -R ergo:ergo /app/
+ 
+ USER ergo
+ ENV SERVICE_PORT=3000
+diff --git a/package.json b/package.json
+index 1fa90ed8bf6076830aa531a8ac00a4fcbe81f6ba..db9b484208fafda6e69d5aafe5cc21b9e50d8745 100644
+--- a/package.json
++++ b/package.json
+@@ -11,7 +11,7 @@
+     "prettify": "prettier --write . --ignore-path ./.gitignore",
+     "prepare": "husky || true",
+     "start": "tsx ./src/index.ts",
+-    "test": "NODE_ENV=\"test\" mocha --exit --slow 3000",
++    "test": "npm run test:legacy && npm run test:shared",
+     "type-check": "tsc --noEmit",
+     "typeorm:generate:sqlite": "npm run typeorm migration:generate ./src/database/migrations/sqlite/watcherMigration -- -p -d ./config/dataSource.ts",
+     "typeorm:generate:postgres": "npm run typeorm migration:generate ./src/database/migrations/postgres/watcherMigration -- -p -d ./config/dataSource.ts",
+@@ -20,7 +20,10 @@
+     "build": "rollup --config ./rollup.config.ts --configPlugin @rollup/plugin-typescript",
+     "release": "npm run build && pkg ./out/index.cjs --targets host --out-path bin",
+     "version": "npx changeset version && npx changeset add --empty && npm i",
+-    "postinstall": "patch-package"
++    "postinstall": "patch-package",
++    "test:legacy": "cross-env NODE_ENV=test mocha --exit --slow 3000",
++    "test:shared": "node --import tsx node_modules/vitest/vitest.mjs run --config vitest.shared.config.ts --passWithNoTests",
++    "type-check:shared": "tsc -p tsconfig.shared.json --noEmit"
+   },
+   "repository": {
+     "type": "git",
+@@ -70,7 +73,9 @@
+     "rollup-plugin-node-externals": "^6.0.1",
+     "sinon": "^14.0.0",
+     "supertest": "^7.1.4",
+-    "typescript": "^4.7.2"
++    "typescript": "5.8.3",
++    "cross-env": "7.0.3",
++    "vitest": "3.2.4"
+   },
+   "dependencies": {
+     "@rosen-bridge/abstract-logger": "^4.0.0",
+@@ -91,7 +96,7 @@
+     "@rosen-bridge/ergo-scanner": "^2.0.1",
+     "@rosen-bridge/evm-observation-extractor": "^7.0.7",
+     "@rosen-bridge/evm-scanner": "^2.0.1",
+-    "@rosen-bridge/extended-typeorm": "1.1.0",
++    "@rosen-bridge/extended-typeorm": "1.1.1",
+     "@rosen-bridge/firo-observation-extractor": "^1.1.5",
+     "@rosen-bridge/firo-scanner": "^1.0.1",
+     "@rosen-bridge/handshake-observation-extractor": "^1.0.8",
+@@ -111,7 +116,7 @@
+     "@rosen-clients/rate-limited-axios": "^2.0.1",
+     "bip39": "^3.1.0",
+     "blakejs": "^1.2.1",
+-    "config": "^3.3.7",
++    "config": "3.3.12",
+     "cors": "^2.8.5",
+     "ergo-lib-wasm-nodejs": "^0.24.0",
+     "ethers": "^6.16.0",
+@@ -125,6 +130,7 @@
+     "tsx": "^4.20.5"
+   },
+   "engines": {
+-    "node": ">=20.11.0"
++    "node": ">=22.18.0",
++    "npm": "11.6.2"
+   }
+ }
+diff --git a/tests/sharedSetup.ts b/tests/sharedSetup.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..50cfe49d03039a5f5b47878f1263c06e3d5ec214
+--- /dev/null
++++ b/tests/sharedSetup.ts
+@@ -0,0 +1,14 @@
++import '@rosen-bridge/extended-typeorm/bootstrap';
++import { beforeAll } from 'vitest';
++import { DefaultLogger, DummyLogger } from '@rosen-bridge/abstract-logger';
++import nock from 'nock';
++
++DefaultLogger.init(new DummyLogger());
++nock.disableNetConnect();
++
++const { getConfig } = await import('../src/config/config');
++const { TokensConfig } = await import('../src/config/tokensConfig');
++
++beforeAll(async () => {
++  await TokensConfig.init(getConfig().general.rosenTokensPath);
++});
+diff --git a/tsconfig.shared.json b/tsconfig.shared.json
+new file mode 100644
+index 0000000000000000000000000000000000000000..067c726b6d6dfbf2bac7fb2373c73191d9d2a9fe
+--- /dev/null
++++ b/tsconfig.shared.json
+@@ -0,0 +1,14 @@
++{
++  "extends": "./tsconfig.json",
++  "compilerOptions": {
++    "noEmit": true
++  },
++  "include": [
++    "src",
++    "config/dataSource.ts",
++    "vitest.shared.config.ts",
++    "tests/sharedSetup.ts",
++    "tests/ergo/utils.spec.ts",
++    "tests/ergo/transaction/queue.spec.ts"
++  ]
++}
+diff --git a/vitest.shared.config.ts b/vitest.shared.config.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..d059f188b916bfd97dc3ecc38229f6af9659db30
+--- /dev/null
++++ b/vitest.shared.config.ts
+@@ -0,0 +1,18 @@
++import { defineConfig } from 'vitest/config';
++
++export default defineConfig({
++  test: {
++    include: [
++      'tests/ergo/utils.spec.ts',
++      'tests/ergo/transaction/queue.spec.ts',
++    ],
++    setupFiles: ['tests/sharedSetup.ts'],
++    globals: false,
++    environment: 'node',
++    fileParallelism: false,
++    maxWorkers: 1,
++    pool: 'forks',
++    poolOptions: { forks: { execArgv: ['--import', 'tsx'] } },
++    env: { NODE_ENV: 'test', NODE_BACKEND: 'js' },
++  },
++});

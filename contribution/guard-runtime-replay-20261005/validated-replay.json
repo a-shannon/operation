@@ -1,0 +1,74 @@
+{
+  "schema": "rosen-guard-focused-runtime-replay.v1",
+  "status": "PASS",
+  "elapsedMs": 87752,
+  "exitCode": 0,
+  "signal": null,
+  "processErrorCode": null,
+  "timeoutMs": 240000,
+  "sourceManifestSha256": "9645a68eef2393e7f3ecc8df3aeefd8bf624979789eb3208d3dfe64f38aede17",
+  "finalTree": "68496f6b1bad18617d16bc4a3d3032c78dd3fa33",
+  "sourceFilesUnchanged": 870,
+  "toolFilesUnchanged": 6,
+  "nodeVersion": "v22.18.0",
+  "files": [
+    {
+      "path": "tests/jobs/avalancheScannerWiring.spec.ts",
+      "expected": 4,
+      "actual": 4,
+      "passed": 4,
+      "status": "passed"
+    },
+    {
+      "path": "tests/jobs/avalancheScannerRegistration.spec.ts",
+      "expected": 6,
+      "actual": 6,
+      "passed": 6,
+      "status": "passed"
+    },
+    {
+      "path": "tests/jobs/avalancheStartupOrdering.spec.ts",
+      "expected": 8,
+      "actual": 8,
+      "passed": 8,
+      "status": "passed"
+    },
+    {
+      "path": "tests/transaction/avalancheLastCheck.spec.ts",
+      "expected": 48,
+      "actual": 48,
+      "passed": 48,
+      "status": "passed"
+    },
+    {
+      "path": "tests/transaction/avalancheSigningProcessor.spec.ts",
+      "expected": 22,
+      "actual": 22,
+      "passed": 22,
+      "status": "passed"
+    },
+    {
+      "path": "tests/transaction/avalancheTransactionActions.spec.ts",
+      "expected": 59,
+      "actual": 59,
+      "passed": 59,
+      "status": "passed"
+    }
+  ],
+  "passed": 147,
+  "cache": {
+    "resultCache": false,
+    "configTemporaryDirectory": "adjacent to private replay.config.mts; Vite5.4.18 timestamp module is unlinked after loading",
+    "viteCacheDirectory": "vite-cache",
+    "dependencyJunctions": [
+      "vitest",
+      "vite",
+      "reflect-metadata"
+    ]
+  },
+  "limits": [
+    "Six selected source-owned suites; overlaps prior 529 scoped controls.",
+    "Prepared installed dependency graph and three Ergo source aliases; ordinary registry qualification remains separate.",
+    "SQLite fixtures and mocked network/TSS transports; no complete Guard-job or production-signing qualification."
+  ]
+}

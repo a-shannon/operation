@@ -1,0 +1,65 @@
+{
+  "schema": "rosen-watcher-complete-release-preview.v1",
+  "status": "PASS complete pending Changesets plan and authentic version output",
+  "manifest": {
+    "bytes": 11779,
+    "sha256": "576158f3c9b19594ab97b28e405e75f748eb7260b9974ef952e9ee8ab12335be"
+  },
+  "baselinePlan": {
+    "bytes": 3012,
+    "sha256": "5da5f37b58484549a40b6c435c80922787f8b7ce015266c5f4c0435b23ec7123"
+  },
+  "existingChangesets": [
+    "flat-bags-jump",
+    "neat-zebras-switch",
+    "ninety-taxis-scream",
+    "perfect-flies-nail",
+    "rude-boxes-exist",
+    "silver-suns-deny",
+    "violet-queens-shake"
+  ],
+  "candidatePlan": {
+    "bytes": 4636,
+    "sha256": "f8a821d576ed682e21ba209501c46e3d16c61bd602cab7958e2d1f2029f0ede4"
+  },
+  "releases": [
+    {
+      "name": "@rosen-bridge/watcher",
+      "type": "major",
+      "oldVersion": "6.3.2",
+      "changesets": [
+        "avalanche-watcher-support",
+        "neat-zebras-switch",
+        "ninety-taxis-scream",
+        "perfect-flies-nail",
+        "rude-boxes-exist",
+        "silver-suns-deny",
+        "violet-queens-shake",
+        "watcher-await-queue-reset",
+        "watcher-generic-signing-action",
+        "watcher-runtime-test-compatibility"
+      ],
+      "newVersion": "7.0.0"
+    }
+  ],
+  "packages": [
+    {
+      "name": "@rosen-bridge/watcher",
+      "before": "6.3.2",
+      "version": "7.0.0",
+      "manifest": {
+        "bytes": 5611,
+        "sha256": "e775f4da8721818521b44e9e20f8083bec65d31c6b9a330d46a815f01cb8be7e"
+      }
+    }
+  ],
+  "cli": {
+    "bytes": 50,
+    "sha256": "c17dddb4b7cf4733109a995caa33f2a9bdb01ffdfe71bce6f2d184dc52276a29"
+  },
+  "sourceReceipt": {
+    "bytes": 11890,
+    "sha256": "4075e79a9c336ab5dad0d6a68db19e365081b4742e5531ae328888342029498b"
+  },
+  "limits": "Private Changesets preview using installed dependencies. No approved release, registry availability, regenerated lockfile, clean installation, maintainer review or activation is claimed."
+}
