@@ -1,0 +1,10 @@
+const chain = new URL(import.meta.url).searchParams.get("chain");
+const start = async () => ({ name: () => chain });
+export const startErgoScanner = start;
+export const startCardanoScanner = start;
+export const startBitcoinScanner = start;
+export const startEthereumScanner = start;
+export const startBinanceScanner = start;
+export const startDogeScanner = start;
+export const startFiroScanner = start;
+export const startHandshakeScanner = start;

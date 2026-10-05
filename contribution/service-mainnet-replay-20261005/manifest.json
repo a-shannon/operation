@@ -1,0 +1,126 @@
+{
+  "schema": "rosen-avalanche-deployment-candidate/v1",
+  "chainId": 43114,
+  "activated": false,
+  "minted": false,
+  "broadcast": false,
+  "generatorVersion": "7.1.1",
+  "javaVersion": "1.8.0_504",
+  "scalaVersion": "2.12.7",
+  "inputs": [
+    {
+      "role": "assigned-values",
+      "sha256": "98e536149ddfea595fdccd30fb6849a56425f16554e3361212e2b5bf242910c5"
+    },
+    {
+      "role": "contracts-base",
+      "sha256": "2741ff0bc2366629111f21fbf05e899f41a18e5eb25e7be6a951beee5450e9e0"
+    },
+    {
+      "role": "tokens-base",
+      "sha256": "1bf4492afa2a5a31fab6e622a83b8aadd92d3db2135a3e01920588e2db36e402"
+    }
+  ],
+  "sources": [
+    {
+      "path": "build.sbt",
+      "sha256": "f7e80e34005a18f21cec3f22253e155b62c7b9abce118694d1fbd41b7834cd43"
+    },
+    {
+      "path": "project/build.properties",
+      "sha256": "72e9e3c2752fdac42e064522cc6961dcb08789d8059bd6a6db9d60a506eb4f20"
+    },
+    {
+      "path": "project/plugins.sbt",
+      "sha256": "f8d2f5e8d7de2da8630e91c6a54325f51007b73ccade72665cca3ff2058d55c8"
+    },
+    {
+      "path": "src/main/scala/helpers/Configs.scala",
+      "sha256": "7b0b3b9d45f27b6764411c525aa6d2ce53f89f81593633a5fed3586110bf5ae4"
+    },
+    {
+      "path": "src/main/scala/helpers/Models.scala",
+      "sha256": "14f75b1d3a6c07d9e1d27c81c885b6f2fe42b0397ec104671b821a4237f0e1fd"
+    },
+    {
+      "path": "src/main/scala/helpers/Templates.scala",
+      "sha256": "22f13e060f67cc44f215ec2f13af07a5eae612c23dae712a1157d188666483b2"
+    },
+    {
+      "path": "src/main/scala/helpers/Utils.scala",
+      "sha256": "c7a4464139ee226317e3db0771adcecb06aecb0a8c241878a57e0b628aca7bbb"
+    },
+    {
+      "path": "src/main/scala/rosen/bridge/AvalancheOverlayMerge.scala",
+      "sha256": "0c2c86c516e106ec7c6bd08be0673bab29cc8f739f40b095d0934681b8fa08e1"
+    },
+    {
+      "path": "src/main/scala/rosen/bridge/AvalanchePreparation.scala",
+      "sha256": "78c5da418726c1523039ef51f9daf8c2201475a983c455c8b7d07409c208c497"
+    },
+    {
+      "path": "src/main/scala/rosen/bridge/Contracts.scala",
+      "sha256": "961dc8aa0f8674aa671293580f97ff49497d37723975915aef8e36a69b42dbe2"
+    },
+    {
+      "path": "src/main/scala/rosen/bridge/Main.scala",
+      "sha256": "951f02912e54e4cf8df3cdbdf98d6612074d2bbe7452d112fc735f847b427d49"
+    },
+    {
+      "path": "src/main/scala/rosen/bridge/TokensMap.scala",
+      "sha256": "1a39c615f2a9780cc242a9d29e83f6d88bae09f77ce6a0f166c177ea62d740e6"
+    },
+    {
+      "path": "src/main/scala/rosen/bridge/scripts/Collateral.es",
+      "sha256": "c4a0bfe2015bdb14262c0d556b5eb62b6d321e13ebc64c280642758654d3b27a"
+    },
+    {
+      "path": "src/main/scala/rosen/bridge/scripts/Commitment.es",
+      "sha256": "982920eb56e019e1b9e4966b800b4a0130d34491b5dbb1178dee09fab508c525"
+    },
+    {
+      "path": "src/main/scala/rosen/bridge/scripts/Emission.es",
+      "sha256": "e170717863a6fb59b197ca9d2a6a266be228848680a55dd220a89da2f222576e"
+    },
+    {
+      "path": "src/main/scala/rosen/bridge/scripts/EventTrigger.es",
+      "sha256": "cddcbae6aeb63d0721d90557da1d71d4112e4afda6282aa38b4e43a3e8389f30"
+    },
+    {
+      "path": "src/main/scala/rosen/bridge/scripts/Fraud.es",
+      "sha256": "b118de32da5aa2d3e4f1e393bc0436276e1d7fbd971f686d4ec9b03ea991d5a3"
+    },
+    {
+      "path": "src/main/scala/rosen/bridge/scripts/GuardSign.es",
+      "sha256": "cbf83ca408e251ea676b092297a1d866d8297b10ba10e806db3bf24c88dd6a66"
+    },
+    {
+      "path": "src/main/scala/rosen/bridge/scripts/Lock.es",
+      "sha256": "71682ca528909c7a2e144ca5f871077f28415373299245b1d4776ab412991779"
+    },
+    {
+      "path": "src/main/scala/rosen/bridge/scripts/Permit.es",
+      "sha256": "5d6141ae64fd18e49a0fdee70911e9b65501486e43c8ff0f58347e5856714a1e"
+    },
+    {
+      "path": "src/main/scala/rosen/bridge/scripts/RepoConfig.es",
+      "sha256": "ba39f827794b47ec79c8814abc5f1f82625adc0bcb5e8415ba56203508229c20"
+    },
+    {
+      "path": "src/main/scala/rosen/bridge/scripts/RwtRepo.es",
+      "sha256": "c0187d0764cea7b93a39e3db2c3534c8ccf6085ede17aba052bbf0833539b22b"
+    }
+  ],
+  "files": [
+    {
+      "path": "contracts.json",
+      "bytes": 7063,
+      "sha256": "911236500cc3bd52a85895c1fc9ae3d04e70f52b746915933f0f19942315d280"
+    },
+    {
+      "path": "tokens.json",
+      "bytes": 1354,
+      "sha256": "6c2106bfb0aef7b9f5c6ce5536338a59ece5b762b075d4c5b872cd9067ad7cfb"
+    }
+  ]
+}
